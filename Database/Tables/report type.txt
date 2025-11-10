@@ -1,0 +1,9 @@
+CREATE TABLE `report_types` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) COLLATE utf8mb4_bin NOT NULL,
+  `name_ar` varchar(100) COLLATE utf8mb4_bin NOT NULL,
+  `name_en` varchar(100) COLLATE utf8mb4_bin NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`),
+  UNIQUE KEY `uq_report_types_code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

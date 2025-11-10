@@ -1,0 +1,18 @@
+CREATE TABLE `initiatives` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `name_ar` varchar(200) COLLATE utf8mb4_bin NOT NULL,
+  `name_en` varchar(200) COLLATE utf8mb4_bin NOT NULL,
+  `mobile_number` varchar(20) COLLATE utf8mb4_bin NOT NULL,
+  `join_form_link` varchar(500) COLLATE utf8mb4_bin DEFAULT NULL,
+  `government_id` int unsigned NOT NULL,
+  `logo_url` varchar(500) COLLATE utf8mb4_bin DEFAULT NULL,
+  `members_count` int unsigned NOT NULL DEFAULT '0',
+  `reports_completed_count` int unsigned NOT NULL DEFAULT '0',
+  `is_active` smallint NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mobile_number` (`mobile_number`),
+  KEY `government_id` (`government_id`),
+  CONSTRAINT `initiatives_ibfk_1` FOREIGN KEY (`government_id`) REFERENCES `governments` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

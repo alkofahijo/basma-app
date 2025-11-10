@@ -1,0 +1,5 @@
+1	under_review	قيد المراجعة	Under Review
+2	open	مفتوح	Open
+3	in_progress	قيد التنفيذ	In Progress
+4	completed	مكتمل	Completed
+			
