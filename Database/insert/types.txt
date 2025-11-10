@@ -1,0 +1,7 @@
+1	cleanliness	نظافة	Cleanliness
+2	potholes	حُفر	Potholes
+3	sidewalks	أرصفة	Sidewalks
+4	walls	جدران	Walls
+5	planting	زراعة	Planting
+6	other	أخرى	Other
+			
