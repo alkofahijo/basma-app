@@ -169,7 +169,8 @@ class LoginPage extends StatelessWidget {
                 width: size.width * 0.8,
                 height: size.height * 0.06,
                 child: ElevatedButton(
-                  onPressed: controller.isLoading.value
+                  onPressed:
+                      controller.isLoading.value && controller.isFormValid
                       ? null
                       : controller.login,
                   style: ElevatedButton.styleFrom(
