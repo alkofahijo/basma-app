@@ -25,6 +25,8 @@ class LoginController extends GetxController {
     }
   }
 
+  bool get isFormValid => email.isNotEmpty && password.isNotEmpty;
+
   void togglePassword() {
     obscurePassword.value = !obscurePassword.value;
   }
