@@ -1,5 +1,6 @@
 import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'guest/guest_select_page.dart';
 import 'auth/login_page.dart';
 
@@ -56,10 +57,7 @@ class HomePage extends StatelessWidget {
                 title: 'Explore Reports',
                 subtitle: 'See New Available Reports.',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const GuestSelectPage()),
-                  );
+                  Get.to(() => GuestSelectPage());
                 },
                 color: Color(0xFFCAF2DB),
                 iconColor: const Color.fromARGB(255, 19, 106, 32),
@@ -71,10 +69,7 @@ class HomePage extends StatelessWidget {
                 title: 'Report or Fix an Issue',
                 subtitle: 'report the problem.',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                  );
+                  Get.to(() => LoginPage());
                 },
                 color: Color(0xFFCAE6F2),
                 iconColor: const Color.fromARGB(255, 10, 62, 104),
