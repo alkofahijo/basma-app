@@ -1,3 +1,4 @@
+import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:flutter/material.dart';
 import 'guest/guest_select_page.dart';
 import 'auth/login_page.dart';
@@ -6,28 +7,80 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key});
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     return Scaffold(
-      appBar: AppBar(title: const Text('Basma App')),
+      appBar: AppBar(
+        backgroundColor: Color(0xFFEFF1F1),
+        title: Image.asset(
+          "assets/images/logo-arabic-side.png",
+          height: size.height * 0.05,
+        ),
+        centerTitle: true,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GuestSelectPage()),
+        padding: EdgeInsets.symmetric(
+          horizontal: size.width * 0.06,
+          vertical: size.height * 0.04,
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              Text(
+                'Choose Your Action!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: size.width * 0.090,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  height: 1.3,
+                ),
               ),
-              child: const Text('تصفح كتصفح ضيف'),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
+
+              SizedBox(height: size.height * 0.015),
+
+              // Subtitle
+              Text(
+                'Ready to make a difference in your community?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: size.width * 0.04,
+                  color: Colors.black,
+                  height: 1.4,
+                ),
               ),
-              child: const Text('تسجيل الدخول / التسجيل'),
-            ),
-          ],
+
+              SizedBox(height: size.height * 0.08),
+
+              HomeScreenButton(
+                icon: Icons.assignment,
+                title: 'Explore Reports',
+                subtitle: 'See New Available Reports.',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GuestSelectPage()),
+                  );
+                },
+                color: Color(0xFFCAF2DB),
+                iconColor: const Color.fromARGB(255, 19, 106, 32),
+              ),
+              SizedBox(height: size.height * 0.03),
+
+              HomeScreenButton(
+                icon: Icons.camera_alt_outlined,
+                title: 'Report or Fix an Issue',
+                subtitle: 'report the problem.',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                color: Color(0xFFCAE6F2),
+                iconColor: const Color.fromARGB(255, 10, 62, 104),
+              ),
+            ],
+          ),
         ),
       ),
     );
