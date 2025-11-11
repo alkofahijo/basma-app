@@ -39,7 +39,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       appBar: AppBar(
         backgroundColor: Color(0xFFEFF1F1),
         title: Image.asset(
-          "assets/images/logo.png",
+          "assets/images/logo-arabic-side.png",
           height: size.height * 0.05,
         ),
         centerTitle: true,
@@ -64,7 +64,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     ),
                     child: Column(
                       children: [
-                        SizedBox(height: size.height * 0.05),
+                        // SizedBox(height: size.height * 0.05),
                         Image.asset(
                           onboardingData[index]["image"]!,
                           height: size.height * 0.35,
@@ -111,7 +111,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                       spacing: 8,
                     ),
                   ),
-                  SizedBox(height: size.height * 0.08),
+                  SizedBox(height: size.height * 0.13),
                   SizedBox(
                     width: size.width * 0.8,
                     height: size.height * 0.06,
@@ -156,4 +156,4 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       ),
     );
   }
-} 
+}
