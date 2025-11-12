@@ -27,7 +27,7 @@ class HomePage extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'Choose Your Action!',
+                'اختر إجراءك!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: size.width * 0.090,
@@ -41,7 +41,7 @@ class HomePage extends StatelessWidget {
 
               // Subtitle
               Text(
-                'Ready to make a difference in your community?',
+                'هل أنت مستعد لإحداث فرق في مجتمعك؟',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: size.width * 0.04,
@@ -54,8 +54,8 @@ class HomePage extends StatelessWidget {
 
               HomeScreenButton(
                 icon: Icons.assignment,
-                title: 'Explore Reports',
-                subtitle: 'See New Available Reports.',
+                title: 'تصفح البلاغات',
+                subtitle: 'عرض البلاغات الجديدة.',
                 onTap: () {
                   Get.to(() => GuestSelectPage());
                 },
@@ -66,8 +66,8 @@ class HomePage extends StatelessWidget {
 
               HomeScreenButton(
                 icon: Icons.camera_alt_outlined,
-                title: 'Report an Issue',
-                subtitle: 'Tell us the problem.',
+                title: 'الإبلاغ عن مشكلة',
+                subtitle: 'أبلغ عن المشكلة.',
                 onTap: () {
                   Get.to(() => LoginPage());
                 },

@@ -11,9 +11,9 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
     final controller = Get.find<RegisterInitiativeController>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Color(0xFFEFF1F1),
       appBar: AppBar(
-        title: const Text("Account Information"),
+        title: const Text('معلومات الحساب'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -24,7 +24,7 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
           () => ListView(
             children: [
               const Text(
-                "Account Details",
+                'تفاصيل الحساب',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -36,8 +36,8 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
               Obx(
                 () => CustomTextField(
                   controller: controller.usernameCtrl,
-                  label: "Username",
-                  hint: "Enter your username",
+                  label: 'اسم المستخدم',
+                  hint: 'أدخل اسم المستخدم',
                   errorText: controller.usernameError.value,
                 ),
               ),
@@ -46,8 +46,8 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
               Obx(
                 () => CustomTextField(
                   controller: controller.passwordCtrl,
-                  label: "Password",
-                  hint: "Enter your password",
+                  label: 'كلمة المرور',
+                  hint: 'أدخل كلمة المرور',
                   obscure: true,
                   errorText: controller.passwordError.value,
                 ),
@@ -69,7 +69,7 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
                   child: controller.isSubmitting.value
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                          "Submit",
+                          'إرسال',
                           style: TextStyle(color: Colors.white),
                         ),
                 ),

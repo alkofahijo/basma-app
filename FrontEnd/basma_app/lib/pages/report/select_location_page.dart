@@ -30,7 +30,7 @@ class SelectLocationPage extends StatelessWidget {
             children: [
               const SizedBox(height: 40),
               const Text(
-                "Select Location",
+                'اختر الموقع',
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 40),
@@ -41,14 +41,14 @@ class SelectLocationPage extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 return buildDropdownBox<Government>(
-                  label: "Government",
+                  label: 'المحافظة',
                   items: controller.governments,
                   selected: controller.selectedGov.value,
                   onChanged: (g) {
                     controller.selectedGov.value = g;
                     if (g != null) controller.loadDistricts(g.id);
                   },
-                  getName: (g) => g.nameEn,
+                  getName: (g) => g.nameAr,
                 );
               }),
               const SizedBox(height: 20),
@@ -59,14 +59,14 @@ class SelectLocationPage extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 return buildDropdownBox<District>(
-                  label: "District",
+                  label: 'اللواء/القضاء',
                   items: controller.districts,
                   selected: controller.selectedDistrict.value,
                   onChanged: (d) {
                     controller.selectedDistrict.value = d;
                     if (d != null) controller.loadAreas(d.id);
                   },
-                  getName: (d) => d.nameEn,
+                  getName: (d) => d.nameAr,
                 );
               }),
               const SizedBox(height: 20),
@@ -77,11 +77,11 @@ class SelectLocationPage extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 return buildDropdownBox<Area>(
-                  label: "Area",
+                  label: 'المنطقة',
                   items: controller.areas,
                   selected: controller.selectedArea.value,
                   onChanged: (a) => controller.selectedArea.value = a,
-                  getName: (a) => a.nameEn,
+                  getName: (a) => a.nameAr,
                 );
               }),
 
@@ -116,7 +116,7 @@ class SelectLocationPage extends StatelessWidget {
                           }
                         : null,
                     child: const Text(
-                      "NEXT",
+                      'التالي',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),

@@ -1,3 +1,4 @@
+import 'package:basma_app/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/login_controller.dart';
@@ -20,6 +21,10 @@ class LoginPage extends StatelessWidget {
           "assets/images/logo-arabic-side.png",
           height: size.height * 0.05,
         ),
+        leading: IconButton(
+          onPressed: () => Get.offAll(() => HomePage()),
+          icon: Icon(Icons.arrow_back),
+        ),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
@@ -31,7 +36,7 @@ class LoginPage extends StatelessWidget {
           children: [
             // ===== Title =====
             const Text(
-              'Login to Your Account',
+              'تسجيل الدخول إلى حسابك',
               style: TextStyle(
                 color: Color(0xFF008000),
                 fontWeight: FontWeight.bold,
@@ -40,7 +45,7 @@ class LoginPage extends StatelessWidget {
             ),
             SizedBox(height: size.height * 0.01),
             const Text(
-              'Please enter your credentials to access your account.',
+              'الرجاء إدخال بياناتك للوصول إلى حسابك.',
               style: TextStyle(
                 color: Colors.black54,
                 fontSize: 14,
@@ -72,7 +77,7 @@ class LoginPage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
               child: const Text(
-                'User Name',
+                'اسم المستخدم',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -81,7 +86,7 @@ class LoginPage extends StatelessWidget {
               onChanged: (v) => controller.email.value = v,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                hintText: 'Enter your username',
+                hintText: 'أدخل اسم المستخدم',
                 hintStyle: const TextStyle(
                   color: Color.fromARGB(255, 154, 157, 154),
                 ),
@@ -103,7 +108,7 @@ class LoginPage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
               child: const Text(
-                'Password',
+                'كلمة المرور',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -113,7 +118,7 @@ class LoginPage extends StatelessWidget {
                 onChanged: (v) => controller.password.value = v,
                 obscureText: controller.obscurePassword.value,
                 decoration: InputDecoration(
-                  hintText: 'Enter your Password',
+                  hintText: 'أدخل كلمة المرور',
                   hintStyle: const TextStyle(
                     color: Color.fromARGB(255, 154, 157, 154),
                   ),
@@ -147,7 +152,7 @@ class LoginPage extends StatelessWidget {
               child: TextButton(
                 onPressed: () {},
                 child: const Text(
-                  'Forget Password?',
+                  'نسيت كلمة المرور؟',
                   style: TextStyle(
                     decoration: TextDecoration.underline,
                     color: Color.fromARGB(255, 117, 119, 117),
@@ -176,7 +181,7 @@ class LoginPage extends StatelessWidget {
                   child: controller.isLoading.value
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                          'Login',
+                          'تسجيل الدخول',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.white,
@@ -193,11 +198,11 @@ class LoginPage extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Don't have an account? "),
+                  const Text('ليس لديك حساب؟ '),
                   GestureDetector(
                     onTap: () => Get.to(() => const RegisterChoicePage()),
                     child: const Text(
-                      'Sign Up',
+                      'إنشاء حساب',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.green,

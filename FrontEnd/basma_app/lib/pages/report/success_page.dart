@@ -32,7 +32,7 @@ class SuccessPage extends StatelessWidget {
               const SizedBox(height: 40),
 
               const Text(
-                "Report Submitted Successfully",
+                'تم إرسال البلاغ بنجاح',
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 20,
@@ -52,7 +52,7 @@ class SuccessPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Report Number:",
+                      'رقم البلاغ:',
                       style: TextStyle(
                         color: Colors.black54,
                         fontWeight: FontWeight.w500,
@@ -83,7 +83,7 @@ class SuccessPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Status: Under Review",
+                      'الحالة: قيد المراجعة',
                       style: TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.bold,
@@ -92,9 +92,7 @@ class SuccessPage extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      "Thank you for your contribution to improving our city. "
-                      "Your report will be reviewed by our specialized team, and "
-                      "you can track the status through 'My Report' in the home page.",
+                      'شكرًا لمساهمتك في تحسين مدينتنا. سيتم مراجعة بلاغك من قبل فريقنا المختص، ويمكنك متابعة الحالة من خلال "بلاغي" في الصفحة الرئيسية.',
                       style: TextStyle(color: Colors.black54, height: 1.4),
                     ),
                   ],
@@ -117,8 +115,12 @@ class SuccessPage extends StatelessWidget {
                     Get.offAll(() => const HomePage());
                   },
                   child: const Text(
-                    "Return to Home Screen",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                    "العودة إلى الشاشة الرئيسية",
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
