@@ -123,15 +123,16 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 18),
 
-              // Obx(
-              //   () => CustomTextField(
-              //     controller: controller.nameEnCtrl,
-              //     label: 'الاسم (بالإنجليزية)',
-              //     hint: 'أدخل الاسم بالإنجليزية',
-              //     errorText: controller.nameEnError.value,
-              //   ),
-              // ),
-              // const SizedBox(height: 18),
+              Obx(
+                () => CustomTextField(
+                  controller: controller.nameEnCtrl,
+                  label: 'الاسم (بالإنجليزية)',
+                  hint: 'أدخل الاسم بالإنجليزية',
+                  errorText: controller.nameEnError.value,
+                ),
+              ),
+              const SizedBox(height: 18),
+
               Obx(
                 () => CustomTextField(
                   controller: controller.mobileCtrl,
