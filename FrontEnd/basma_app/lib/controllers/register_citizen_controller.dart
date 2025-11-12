@@ -115,7 +115,7 @@ class RegisterCitizenController extends GetxController {
         "username": userController.text,
         "password": passController.text,
       });
-      Get.off(() => RegisterSuccessPage()); // success → go back
+      Get.offAll(() => RegisterSuccessPage()); // success → go back
     } catch (e) {
       Get.snackbar(
         "Error",

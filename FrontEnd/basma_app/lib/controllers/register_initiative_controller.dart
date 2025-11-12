@@ -42,7 +42,7 @@ class RegisterInitiativeController extends GetxController {
     try {
       governments.value = await ApiService.governments();
     } catch (e) {
-      loadError.value = "Failed to load governments";
+      loadError.value = 'فشل تحميل المحافظات';
     } finally {
       isLoadingGovs.value = false;
     }
@@ -50,36 +50,36 @@ class RegisterInitiativeController extends GetxController {
 
   // ===== VALIDATION METHODS =====
   void validateArabicName(String value) {
-    nameArError.value = value.trim().isEmpty ? 'Arabic name required' : null;
+    nameArError.value = value.trim().isEmpty ? 'الاسم بالعربية مطلوب' : null;
   }
 
   void validateEnglishName(String value) {
-    nameEnError.value = value.trim().isEmpty ? 'English name required' : null;
+    nameEnError.value = value.trim().isEmpty ? 'الاسم بالإنجليزية مطلوب' : null;
   }
 
   void validateMobile(String value) {
     if (value.trim().isEmpty) {
-      mobileError.value = 'Mobile number required';
+      mobileError.value = 'رقم الجوال مطلوب';
     } else if (!RegExp(r'^[0-9]{9,}$').hasMatch(value)) {
-      mobileError.value = 'Invalid mobile number (10 digits)';
+      mobileError.value = 'رقم جوال غير صالح';
     } else {
       mobileError.value = null;
     }
   }
 
   void validateGovernorate(Government? value) {
-    govError.value = value == null ? 'Select a governorate' : null;
+    govError.value = value == null ? 'اختر محافظة' : null;
   }
 
   void validateUsername(String value) {
-    usernameError.value = value.trim().isEmpty ? 'Username required' : null;
+    usernameError.value = value.trim().isEmpty ? 'اسم المستخدم مطلوب' : null;
   }
 
   void validatePassword(String value) {
     if (value.trim().isEmpty) {
-      passwordError.value = 'Password required';
+      passwordError.value = 'كلمة المرور مطلوبة';
     } else if (value.length < 8) {
-      passwordError.value = 'At least 8 characters';
+      passwordError.value = 'يجب أن لا تقل عن 8 أحرف';
     } else {
       passwordError.value = null;
     }
@@ -105,8 +105,6 @@ class RegisterInitiativeController extends GetxController {
       usernameCtrl.text.isNotEmpty && passwordCtrl.text.isNotEmpty;
 
   VoidCallback? get fetchGovernments => null;
-
-
 
   // ===== STEP 1 VALIDATION CALLER =====
   bool validateStep1() {
@@ -149,7 +147,7 @@ class RegisterInitiativeController extends GetxController {
       Get.offAll(() => const RegisterSuccessPage());
     } catch (e) {
       Get.snackbar(
-        "Error",
+        'خطأ',
         e.toString(),
         backgroundColor: Colors.red.shade300,
         colorText: Colors.white,

@@ -27,7 +27,7 @@ class RegisterChoicePage extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'Type of Account',
+                'نوع الحساب',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: size.width * 0.090,
@@ -41,7 +41,7 @@ class RegisterChoicePage extends StatelessWidget {
 
               // Subtitle
               Text(
-                'Choose the type of account you want to create',
+                'اختر نوع الحساب الذي تريد إنشاؤه',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: size.width * 0.04,
@@ -54,8 +54,8 @@ class RegisterChoicePage extends StatelessWidget {
 
               HomeScreenButton(
                 icon: Icons.person,
-                title: 'Citizen',
-                subtitle: 'You\'re an individual',
+                title: 'مواطن',
+                subtitle: 'أنت فرد',
                 onTap: () {
                   Get.to(() => RegisterCitizenPage());
                 },
@@ -66,8 +66,8 @@ class RegisterChoicePage extends StatelessWidget {
 
               HomeScreenButton(
                 icon: Icons.business,
-                title: 'Initiative',
-                subtitle: 'You represent an organization',
+                title: 'مبادرة',
+                subtitle: 'تمثل مبادرة/منظمة',
                 onTap: () {
                   Get.to(() => RegisterInitiativeInfoPage());
                 },

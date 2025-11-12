@@ -16,18 +16,18 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   final List<Map<String, String>> onboardingData = [
     {
       "image": "assets/images/on-boarding-1.png",
-      "title": "Report visual pollution easily",
-      "subtitle": "Capture and send the location in seconds.",
+      "title": "أبلغ عن التلوث البصري بسهولة",
+      "subtitle": "التقط وأرسل الموقع في ثوانٍ.",
     },
     {
       "image": "assets/images/on-boarding-2.png",
-      "title": "Teams act fast to maintain",
-      "subtitle": "Working together to improve our city for everyone.",
+      "title": "فرق الصيانة سريعة الاستجابة",
+      "subtitle": "نعمل معًا لتحسين مدينتنا للجميع.",
     },
     {
       "image": "assets/images/on-boarding-3.png",
-      "title": "Cleaner, Greener City",
-      "subtitle": "Building a sustainable tomorrow.",
+      "title": "مدينة أنظف وأكثر خضرة",
+      "subtitle": "نبني غدًا مستدامًا.",
     },
   ];
 
@@ -139,8 +139,8 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                       },
                       child: Text(
                         currentPage == onboardingData.length - 1
-                            ? "CONTINUE"
-                            : "NEXT",
+                            ? 'ابدأ'
+                            : 'التالي',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,

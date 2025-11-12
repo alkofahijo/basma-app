@@ -16,9 +16,12 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
     final picker = ImagePicker();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Color(0xFFEFF1F1),
       appBar: AppBar(
-        title: const Text("Register Initiative"),
+        title: const Text(
+          'تسجيل المبادرة',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -62,7 +65,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                             : null,
                         child: image == null
                             ? const Icon(
-                                Icons.camera_alt,
+                                Icons.person_outlined,
                                 color: Colors.grey,
                                 size: 40,
                               )
@@ -101,7 +104,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               const SizedBox(height: 25),
 
               const Text(
-                "Initiative Information",
+                'معلومات المبادرة',
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 18,
@@ -113,28 +116,27 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               Obx(
                 () => CustomTextField(
                   controller: controller.nameArCtrl,
-                  label: "Name (Arabic)",
-                  hint: "Enter the Arabic name",
+                  label: 'الاسم (بالعربية)',
+                  hint: 'أدخل الاسم بالعربية',
                   errorText: controller.nameArError.value,
                 ),
               ),
               const SizedBox(height: 18),
 
-              Obx(
-                () => CustomTextField(
-                  controller: controller.nameEnCtrl,
-                  label: "Name (English)",
-                  hint: "Enter the English name",
-                  errorText: controller.nameEnError.value,
-                ),
-              ),
-              const SizedBox(height: 18),
-
+              // Obx(
+              //   () => CustomTextField(
+              //     controller: controller.nameEnCtrl,
+              //     label: 'الاسم (بالإنجليزية)',
+              //     hint: 'أدخل الاسم بالإنجليزية',
+              //     errorText: controller.nameEnError.value,
+              //   ),
+              // ),
+              // const SizedBox(height: 18),
               Obx(
                 () => CustomTextField(
                   controller: controller.mobileCtrl,
-                  label: "Mobile Number",
-                  hint: "07XXXXXXXX",
+                  label: 'رقم الهاتف',
+                  hint: '07XXXXXXXX',
                   inputType: TextInputType.phone,
                   errorText: controller.mobileError.value,
                 ),
@@ -143,15 +145,15 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
 
               CustomTextField(
                 controller: controller.joinFormCtrl,
-                label: "Join Form Link (optional)",
-                hint: "Paste the form link (optional)",
+                label: "رابط نموذج الانضمام",
+                hint: "أدخل رابط النموذج (اختياري)",
               ),
               const SizedBox(height: 18),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text(
-                  "Governorate",
+                  'المحافظة',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -159,12 +161,12 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
 
               Obx(
                 () => DropdownButtonFormField<Government>(
-                  value: controller.selectedGov.value,
-                  hint: const Text("Choose your Governorate"),
+                  initialValue: controller.selectedGov.value,
+                  hint: const Text('اختر محافظتك'),
                   items: controller.governments
                       .map(
                         (g) =>
-                            DropdownMenuItem(value: g, child: Text(g.nameEn)),
+                            DropdownMenuItem(value: g, child: Text(g.nameAr)),
                       )
                       .toList(),
                   onChanged: (v) => controller.selectedGov.value = v,
@@ -201,7 +203,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                     }
                   },
                   child: const Text(
-                    "Next",
+                    'التالي',
                     style: TextStyle(fontSize: 18, color: Colors.white),
                   ),
                 ),

@@ -35,7 +35,7 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== Title =====
                 Center(
                   child: Text(
-                    'Register as Citizen',
+                    'التسجيل كمواطن',
                     style: TextStyle(
                       color: const Color(0xFF008000),
                       fontWeight: FontWeight.bold,
@@ -46,7 +46,7 @@ class RegisterCitizenPage extends StatelessWidget {
                 SizedBox(height: size.height * 0.01),
                 Center(
                   child: const Text(
-                    'Please fill in the details below to create your account.',
+                    'الرجاء تعبئة البيانات أدناه لإنشاء حسابك.',
                     style: TextStyle(
                       color: Colors.black54,
                       fontSize: 14,
@@ -65,9 +65,9 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== Arabic Name =====
                 Obx(
                   () => CustomTextField(
-                    hint: 'Enter your name in Arabic',
+                    hint: 'أدخل اسمك بالعربية',
                     controller: controller.arController,
-                    label: 'Name (Arabic)',
+                    label: 'الاسم (بالعربية)',
                     errorText: controller.nameArError.value,
                     onChanged: controller.validateArabicName,
                   ),
@@ -77,9 +77,9 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== English Name =====
                 Obx(
                   () => CustomTextField(
-                    hint: 'Enter your name in English',
+                    hint: 'أدخل اسمك بالإنجليزية',
                     controller: controller.enController,
-                    label: 'Name (English)',
+                    label: 'الاسم (بالإنجليزية)',
                     errorText: controller.nameEnError.value,
                     onChanged: controller.validateEnglishName,
                   ),
@@ -89,9 +89,9 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== Username =====
                 Obx(
                   () => CustomTextField(
-                    hint: 'Enter your username',
+                    hint: 'أدخل اسم المستخدم',
                     controller: controller.userController,
-                    label: 'Username',
+                    label: 'اسم المستخدم',
                     errorText: controller.userError.value,
                     onChanged: controller.validateUsername,
                   ),
@@ -101,9 +101,9 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== Password =====
                 Obx(
                   () => CustomTextField(
-                    hint: 'Enter your Password',
+                    hint: 'أدخل كلمة المرور',
                     controller: controller.passController,
-                    label: 'Password',
+                    label: 'كلمة المرور',
                     obscure: true,
                     errorText: controller.passError.value,
                     onChanged: controller.validatePassword,
@@ -115,7 +115,7 @@ class RegisterCitizenPage extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: size.width * 0.02),
                   child: const Text(
-                    'Governorate',
+                    'المحافظة',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -123,12 +123,12 @@ class RegisterCitizenPage extends StatelessWidget {
                 SizedBox(height: size.height * 0.01),
                 Obx(
                   () => DropdownButtonFormField<Government>(
-                    hint: const Text('Select your governorate'),
+                    hint: const Text('اختر محافظتك'),
                     initialValue: controller.gov.value,
                     items: controller.govs
                         .map(
                           (g) =>
-                              DropdownMenuItem(value: g, child: Text(g.nameEn)),
+                              DropdownMenuItem(value: g, child: Text(g.nameAr)),
                         )
                         .toList(),
                     onChanged: (v) {
@@ -155,9 +155,9 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== Mobile =====
                 Obx(
                   () => CustomTextField(
-                    hint: 'Enter your mobile number',
+                    hint: 'أدخل رقم الجوال',
                     controller: controller.mobileController,
-                    label: 'Mobile Number',
+                    label: 'رقم الجوال',
                     inputType: TextInputType.phone,
                     errorText: controller.mobileError.value,
                     onChanged: controller.validateMobile,
@@ -182,7 +182,7 @@ class RegisterCitizenPage extends StatelessWidget {
                         ),
                       ),
                       child: const Text(
-                        'Register',
+                        'تسجيل',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,

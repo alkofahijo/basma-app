@@ -9,8 +9,8 @@ class RegisterSuccessPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
+        backgroundColor: Color(0xFFEFF1F1),
         centerTitle: true,
         title: Image.asset(
           "assets/images/logo-arabic-side.png",
@@ -34,7 +34,7 @@ class RegisterSuccessPage extends StatelessWidget {
 
               // Title
               const Text(
-                "Registration Successful !",
+                'تم التسجيل بنجاح!',
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 22,
@@ -45,7 +45,7 @@ class RegisterSuccessPage extends StatelessWidget {
 
               // Subtitle
               const Text(
-                "Your Account is now registered.",
+                'تم تسجيل حسابك.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.black54, fontSize: 14),
               ),
@@ -66,7 +66,7 @@ class RegisterSuccessPage extends StatelessWidget {
                     Get.offAll(() => LoginPage());
                   },
                   child: const Text(
-                    "Back To Login Page",
+                    'العودة إلى صفحة تسجيل الدخول',
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),

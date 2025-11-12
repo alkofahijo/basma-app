@@ -11,7 +11,7 @@ class LoginController extends GetxController {
 
   Future<void> login() async {
     if (email.isEmpty || password.isEmpty) {
-      errorMessage.value = 'Please Fill All Fields';
+      errorMessage.value = 'الرجاء تعبئة جميع الحقول';
       return;
     }
     try {
@@ -19,7 +19,7 @@ class LoginController extends GetxController {
       await ApiService.login(email.value.trim(), password.value);
       Get.to(() => const SelectLocationPage());
     } catch (e) {
-      errorMessage.value = 'Login Failed. Please Try Again.';
+      errorMessage.value = 'خطأ في اسم المستخدم أو كلمة المرور.';
     } finally {
       isLoading.value = false;
     }
