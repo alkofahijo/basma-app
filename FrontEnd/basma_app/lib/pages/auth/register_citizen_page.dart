@@ -33,21 +33,25 @@ class RegisterCitizenPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ===== Title =====
-                Text(
-                  'Register as Citizen',
-                  style: TextStyle(
-                    color: const Color(0xFF008000),
-                    fontWeight: FontWeight.bold,
-                    fontSize: size.width * 0.08,
+                Center(
+                  child: Text(
+                    'Register as Citizen',
+                    style: TextStyle(
+                      color: const Color(0xFF008000),
+                      fontWeight: FontWeight.bold,
+                      fontSize: size.width * 0.08,
+                    ),
                   ),
                 ),
                 SizedBox(height: size.height * 0.01),
-                const Text(
-                  'Please fill in the details below to create your account.',
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontSize: 14,
-                    height: 1.4,
+                Center(
+                  child: const Text(
+                    'Please fill in the details below to create your account.',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
                   ),
                 ),
                 if (controller.errorMessage.isNotEmpty)
@@ -164,7 +168,7 @@ class RegisterCitizenPage extends StatelessWidget {
                 // ===== Submit Button =====
                 Obx(
                   () => SizedBox(
-                    width: double.infinity,
+                    width: size.width,
                     height: 55,
                     child: ElevatedButton(
                       onPressed:
