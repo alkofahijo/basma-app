@@ -2,7 +2,7 @@ import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'register_citizen_page.dart';
-import 'register_initiative_page.dart';
+import 'register_initiative_info.dart';
 
 class RegisterChoicePage extends StatelessWidget {
   const RegisterChoicePage({super.key});
@@ -69,7 +69,7 @@ class RegisterChoicePage extends StatelessWidget {
                 title: 'Initiative',
                 subtitle: 'You represent an organization',
                 onTap: () {
-                  Get.to(() => RegisterInitiativePage());
+                  Get.to(() => RegisterInitiativeInfoPage());
                 },
                 color: Color(0xFFCAE6F2),
                 iconColor: const Color.fromARGB(255, 10, 62, 104),
