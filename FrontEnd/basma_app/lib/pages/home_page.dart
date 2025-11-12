@@ -66,7 +66,7 @@ class HomePage extends StatelessWidget {
 
               HomeScreenButton(
                 icon: Icons.camera_alt_outlined,
-                title: 'Report or Fix an Issue',
+                title: 'Report an Issue',
                 subtitle: 'Tell us the problem.',
                 onTap: () {
                   Get.to(() => LoginPage());
