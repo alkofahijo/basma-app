@@ -1,4 +1,4 @@
-import 'package:basma_app/pages/auth/login_page.dart';
+import 'package:basma_app/pages/auth/reg_success.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';
@@ -54,7 +54,7 @@ class RegisterCitizenController extends GetxController {
   void validateMobile(String value) {
     if (value.trim().isEmpty) {
       mobileError.value = 'Mobile number required';
-    } else if (!RegExp(r'^[0-9]{9,12}$').hasMatch(value)) {
+    } else if (!RegExp(r'^[0-9]{10,12}$').hasMatch(value)) {
       mobileError.value = 'Invalid phone number';
     } else {
       mobileError.value = null;
@@ -68,8 +68,8 @@ class RegisterCitizenController extends GetxController {
   void validatePassword(String value) {
     if (value.isEmpty) {
       passError.value = 'Password required';
-    } else if (value.length < 6) {
-      passError.value = 'At least 6 characters';
+    } else if (value.length < 8) {
+      passError.value = 'At least 8 characters';
     } else {
       passError.value = null;
     }
@@ -115,9 +115,14 @@ class RegisterCitizenController extends GetxController {
         "username": userController.text,
         "password": passController.text,
       });
-      Get.off(() => LoginPage()); // success → go back
+      Get.off(() => RegisterSuccessPage()); // success → go back
     } catch (e) {
-      errorMessage.value = 'Registration failed. Try again.';
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: Colors.red.shade300,
+        colorText: Colors.white,
+      );
     }
   }
 }
