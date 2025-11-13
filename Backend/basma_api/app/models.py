@@ -10,7 +10,6 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
     text,
-    Enum,
 )
 from sqlalchemy.dialects.mysql import (
     INTEGER as MySQLInteger,
@@ -19,16 +18,20 @@ from sqlalchemy.dialects.mysql import (
 
 Base = declarative_base()
 
+# ============================================================
+# LOCATIONS
+# ============================================================
 
-# ===================== Locations =====================
+
 class Government(Base):
     __tablename__ = "governments"
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     name_ar = Column(String(100), nullable=False)
-    name_en = Column(String(100), nullable=False)
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -44,14 +47,15 @@ class District(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     government_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("governments.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
     )
+
     name_ar = Column(String(100), nullable=False)
-    name_en = Column(String(100), nullable=False)
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -68,14 +72,16 @@ class Area(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     district_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("districts.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("districts.id"), nullable=False
     )
+
     name_ar = Column(String(100), nullable=False)
     name_en = Column(String(100), nullable=False)
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -92,16 +98,17 @@ class Location(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     area_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("areas.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("areas.id"), nullable=False
     )
+
     name_ar = Column(String(150), nullable=False)
-    name_en = Column(String(150), nullable=False)
     longitude = Column(Numeric(9, 6), nullable=True)
     latitude = Column(Numeric(9, 6), nullable=True)
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -112,22 +119,31 @@ class Location(Base):
     area = relationship("Area", back_populates="locations")
 
 
-# ===================== People / Accounts =====================
+# ============================================================
+# CITIZENS & INITIATIVES
+# ============================================================
+
+
 class Citizen(Base):
     __tablename__ = "citizens"
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     name_ar = Column(String(150), nullable=False)
-    name_en = Column(String(150), nullable=False)
     mobile_number = Column(String(20), nullable=False, unique=True)
+
     government_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("governments.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
     )
-    reports_completed_count = Column(MySQLInteger(unsigned=True), nullable=False, server_default=text("0"))
+
+    reports_completed_count = Column(
+        MySQLInteger(unsigned=True), nullable=False, server_default=text("0")
+    )
+
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -141,19 +157,26 @@ class Initiative(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     name_ar = Column(String(200), nullable=False)
-    name_en = Column(String(200), nullable=False)
     mobile_number = Column(String(20), nullable=False, unique=True)
     join_form_link = Column(String(500), nullable=True)
+
     government_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("governments.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
     )
+
     logo_url = Column(String(500), nullable=True)
-    members_count = Column(MySQLInteger(unsigned=True), nullable=False, server_default=text("0"))
-    reports_completed_count = Column(MySQLInteger(unsigned=True), nullable=False, server_default=text("0"))
+    members_count = Column(
+        MySQLInteger(unsigned=True), nullable=False, server_default=text("0")
+    )
+    reports_completed_count = Column(
+        MySQLInteger(unsigned=True), nullable=False, server_default=text("0")
+    )
+
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -170,17 +193,22 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     user_type = Column(SmallInteger, nullable=False)  # 1 admin, 2 initiative, 3 citizen
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
+
     initiative_id = Column(
         MySQLInteger(unsigned=True),
         ForeignKey("initiatives.id", onupdate="RESTRICT", ondelete="SET NULL"),
         nullable=True,
     )
+
     citizen_id = Column(
         MySQLInteger(unsigned=True),
         ForeignKey("citizens.id", onupdate="RESTRICT", ondelete="SET NULL"),
         nullable=True,
     )
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,
@@ -189,14 +217,17 @@ class User(Base):
     )
 
 
-# ===================== Lookups =====================
+# ============================================================
+# REPORTS LOOKUPS
+# ============================================================
+
+
 class ReportType(Base):
     __tablename__ = "report_types"
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     code = Column(String(50), nullable=False, unique=True)
     name_ar = Column(String(100), nullable=False)
-    name_en = Column(String(100), nullable=False)
 
 
 class ReportStatus(Base):
@@ -205,10 +236,13 @@ class ReportStatus(Base):
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     code = Column(String(50), nullable=False, unique=True)
     name_ar = Column(String(100), nullable=False)
-    name_en = Column(String(100), nullable=False)
 
 
-# ===================== Reports =====================
+# ============================================================
+# REPORTS
+# ============================================================
+
+
 class Report(Base):
     __tablename__ = "reports"
 
@@ -216,52 +250,43 @@ class Report(Base):
     report_code = Column(String(100), nullable=False, unique=True)
 
     report_type_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("report_types.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("report_types.id"), nullable=False
     )
 
     name_ar = Column(String(200), nullable=False)
-    name_en = Column(String(200), nullable=False)
 
-    # Long text fields -> MEDIUMTEXT to avoid MySQL 1074
     description_ar = Column(MySQLMediumText, nullable=False)
-    description_en = Column(MySQLMediumText, nullable=False)
     note = Column(MySQLMediumText, nullable=True)
 
     image_before_url = Column(String(500), nullable=False)
     image_after_url = Column(String(500), nullable=True)
 
     status_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("report_status.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("report_status.id"), nullable=False
     )
-    reported_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-    # Polymorphic reference (initiative.id or citizen.id)
+    reported_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
+    # 🚨 IMPORTANT: integer not enum
     adopted_by_id = Column(MySQLInteger(unsigned=True), nullable=True)
-    adopted_by_type = Column(Enum("initiative", "citizen"), nullable=True)
+    adopted_by_type = Column(
+        MySQLInteger(unsigned=True), nullable=True
+    )  # 1= citizen, 2= initiative
 
     government_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("governments.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
     )
+
     district_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("districts.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("districts.id"), nullable=False
     )
+
     area_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("areas.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("areas.id"), nullable=False
     )
+
     location_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("locations.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
+        MySQLInteger(unsigned=True), ForeignKey("locations.id"), nullable=False
     )
 
     user_id = Column(
@@ -269,10 +294,13 @@ class Report(Base):
         ForeignKey("users.id", onupdate="RESTRICT", ondelete="SET NULL"),
         nullable=True,
     )
+
     reported_by_name = Column(String(200), nullable=True)
 
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    created_at = Column(
+        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at = Column(
         TIMESTAMP,
         nullable=False,

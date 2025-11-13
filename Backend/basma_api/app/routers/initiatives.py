@@ -53,7 +53,11 @@ def list_initiatives(
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
-            or_(Initiative.name_ar.like(like), Initiative.name_en.like(like), Initiative.mobile_number.like(like))
+            or_(
+                Initiative.name_ar.like(like),
+                Initiative.name_en.like(like),
+                Initiative.mobile_number.like(like),
+            )
         )
 
     stmt = stmt.order_by(Initiative.id.desc()).limit(limit).offset(offset)
@@ -83,6 +87,9 @@ def create_initiative(payload: InitiativeCreate, db: Session = Depends(get_db)):
         join_form_link=payload.join_form_link,
         government_id=payload.government_id,
         logo_url=payload.logo_url,
+        members_count=payload.members_count,
+        reports_completed_count=payload.reports_completed_count or 0,
+        is_active=1,
     )
     db.add(initv)
     try:
@@ -113,7 +120,11 @@ def create_initiative(payload: InitiativeCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{initiative_id}", response_model=InitiativeOut)
-def update_initiative(initiative_id: int, payload: InitiativeUpdate, db: Session = Depends(get_db)):
+def update_initiative(
+    initiative_id: int,
+    payload: InitiativeUpdate,
+    db: Session = Depends(get_db),
+):
     obj = db.get(Initiative, initiative_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Initiative not found")

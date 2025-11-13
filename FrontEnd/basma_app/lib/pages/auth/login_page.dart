@@ -1,4 +1,4 @@
-import 'package:basma_app/pages/home_page.dart';
+import 'package:basma_app/pages/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/login_controller.dart';

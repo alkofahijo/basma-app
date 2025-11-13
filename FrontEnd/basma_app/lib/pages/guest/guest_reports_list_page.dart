@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/report_models.dart';
 import '../../services/api_service.dart';
-import 'report_details_page.dart';
+import '../report/report_details_page.dart';
 
 class GuestReportsListPage extends StatefulWidget {
   final int areaId;
@@ -12,10 +12,10 @@ class GuestReportsListPage extends StatefulWidget {
 }
 
 class _GuestReportsListPageState extends State<GuestReportsListPage> {
-  List<ReportSummary> _reports = <ReportSummary>[];
-  String _tab = "open"; // "open" or "completed"
+  List<ReportSummary> _reports = [];
   bool _loading = true;
   String? _error;
+  String _tab = "open"; // open = status 2, completed = 4
 
   @override
   void initState() {
@@ -30,31 +30,14 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     });
 
     try {
-      List<ReportSummary> list;
-      if (_tab == "completed") {
-        // Ask backend for completed only
-        list = await ApiService.listReports(
-          areaId: widget.areaId,
-          statusCode: "completed",
-          limit: 200,
-          offset: 0,
-        );
-      } else {
-        // Fetch all, then keep non-completed on client
-        list = await ApiService.listReports(
-          areaId: widget.areaId,
-          limit: 200,
-          offset: 0,
-        );
-        list = list.where((r) {
-          // Prefer explicit statusCode if backend sends it
-          if (r.statusCode != null) {
-            return r.statusCode != "completed";
-          }
-          // Fallback: consider completed if image_after_url is present
-          return r.imageAfterUrl == null;
-        }).toList();
-      }
+      final status = _tab == "open" ? 2 : 4;
+
+      final list = await ApiService.listReports(
+        areaId: widget.areaId,
+        statusId: status,
+        limit: 200,
+        offset: 0,
+      );
 
       setState(() {
         _reports = list;
@@ -62,56 +45,49 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       });
     } catch (e) {
       setState(() {
-        _error = "تعذّر تحميل البلاغات";
+        _reports = [];
         _loading = false;
+        _error = "تعذّر تحميل البلاغات";
       });
     }
   }
 
   void _switchTab(String tab) {
-    if (_tab == tab) {
-      return;
-    }
-    setState(() {
-      _tab = tab;
-    });
+    if (_tab == tab) return;
+    setState(() => _tab = tab);
     _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOpen = _tab == "open";
+    final bool isOpenTab = _tab == "open";
 
     return Scaffold(
-      appBar: AppBar(title: const Text('البلاغات')),
+      appBar: AppBar(title: const Text("البلاغات")),
       body: Column(
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          // ------------------- TABS -------------------
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ChoiceChip(
-                label: const Text('مفتوح'),
-                selected: isOpen,
-                onSelected: (sel) {
-                  if (sel) {
-                    _switchTab("open");
-                  }
-                },
+                label: const Text("مفتوح"),
+                selected: isOpenTab,
+                onSelected: (_) => _switchTab("open"),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               ChoiceChip(
-                label: const Text('مكتمل'),
-                selected: !isOpen,
-                onSelected: (sel) {
-                  if (sel) {
-                    _switchTab("completed");
-                  }
-                },
+                label: const Text("مكتمل"),
+                selected: !isOpenTab,
+                onSelected: (_) => _switchTab("completed"),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+
+          const SizedBox(height: 10),
+
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -125,38 +101,34 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
                 : _reports.isEmpty
                 ? Center(
                     child: Text(
-                      isOpen
-                          ? 'لا توجد بلاغات مفتوحة حالياً'
-                          : 'لا توجد بلاغات مكتملة',
+                      isOpenTab
+                          ? "لا توجد بلاغات مفتوحة"
+                          : "لا توجد بلاغات مكتملة",
                     ),
                   )
                 : ListView.separated(
                     itemCount: _reports.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final r = _reports[index];
-                      final isCompleted =
-                          (r.statusCode == "completed") ||
-                          (r.imageAfterUrl != null);
+                    itemBuilder: (_, i) {
+                      final r = _reports[i];
+                      final isCompleted = r.statusId == 4;
 
                       return ListTile(
                         title: Text(r.nameAr),
                         subtitle: Text(r.reportCode),
                         trailing: Text(
-                          isCompleted ? 'مكتمل' : 'قيد المعالجة',
+                          isCompleted ? "مكتمل" : "قيد المعالجة",
                           style: TextStyle(
                             color: isCompleted ? Colors.green : Colors.orange,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReportDetailsPage(reportId: r.id),
-                            ),
-                          );
-                        },
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReportDetailsPage(reportId: r.id),
+                          ),
+                        ),
                       );
                     },
                   ),

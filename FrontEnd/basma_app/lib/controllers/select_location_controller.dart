@@ -1,21 +1,25 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/location_models.dart';
 import '../services/api_service.dart';
 
 class SelectLocationController extends GetxController {
-  // Observables
-  var governments = <Government>[].obs;
-  var districts = <District>[].obs;
-  var areas = <Area>[].obs;
+  final governments = <Government>[].obs;
+  final districts = <District>[].obs;
+  final areas = <Area>[].obs;
 
-  var selectedGov = Rxn<Government>();
-  var selectedDistrict = Rxn<District>();
-  var selectedArea = Rxn<Area>();
+  final selectedGov = Rx<Government?>(null);
+  final selectedDistrict = Rx<District?>(null);
+  final selectedArea = Rx<Area?>(null);
 
-  var isLoadingGov = true.obs;
-  var isLoadingDistrict = false.obs;
-  var isLoadingArea = false.obs;
+  final isLoadingGov = false.obs;
+  final isLoadingDistrict = false.obs;
+  final isLoadingArea = false.obs;
+
+  /// ✔ getter مطلوب للزر (التالي)
+  bool get isValidSelection =>
+      selectedGov.value != null &&
+      selectedDistrict.value != null &&
+      selectedArea.value != null;
 
   @override
   void onInit() {
@@ -23,55 +27,56 @@ class SelectLocationController extends GetxController {
     loadGovernments();
   }
 
-  // Load governments
   Future<void> loadGovernments() async {
-    try {
-      isLoadingGov.value = true;
-      governments.value = await ApiService.governments();
-    } catch (e) {
-      Get.snackbar("Error", "Failed to load governments: $e",
-          backgroundColor: const Color(0xFFEF5350), colorText: const Color(0xFFFFFFFF));
-    } finally {
-      isLoadingGov.value = false;
-    }
+    isLoadingGov.value = true;
+    final data = await ApiService.governments();
+    governments.assignAll(data);
+    isLoadingGov.value = false;
   }
 
-  // Load districts
   Future<void> loadDistricts(int govId) async {
-    try {
-      isLoadingDistrict.value = true;
-      districts.clear();
-      selectedDistrict.value = null;
-      areas.clear();
-      selectedArea.value = null;
+    isLoadingDistrict.value = true;
 
-      districts.value = await ApiService.districts(govId);
-    } catch (e) {
-      Get.snackbar("Error", "Failed to load districts: $e",
-          backgroundColor: const Color(0xFFEF5350), colorText: const Color(0xFFFFFFFF));
-    } finally {
-      isLoadingDistrict.value = false;
-    }
+    selectedDistrict.value = null;
+    selectedArea.value = null;
+    districts.clear();
+    areas.clear();
+
+    final data = await ApiService.districts(govId);
+    districts.assignAll(data);
+
+    isLoadingDistrict.value = false;
   }
 
-  // Load areas
   Future<void> loadAreas(int districtId) async {
-    try {
-      isLoadingArea.value = true;
-      areas.clear();
-      selectedArea.value = null;
+    isLoadingArea.value = true;
 
-      areas.value = await ApiService.areas(districtId);
-    } catch (e) {
-      Get.snackbar("Error", "Failed to load areas: $e",
-          backgroundColor: const Color(0xFFEF5350), colorText: const Color(0xFFFFFFFF));
-    } finally {
-      isLoadingArea.value = false;
-    }
+    selectedArea.value = null;
+    areas.clear();
+
+    final data = await ApiService.areas(districtId);
+    areas.assignAll(data);
+
+    isLoadingArea.value = false;
   }
 
-  bool get isValidSelection =>
-      selectedGov.value != null &&
-      selectedDistrict.value != null &&
-      selectedArea.value != null;
+  /// إنشاء منطقة جديدة + تحديدها
+  Future<Area> createAndSelectArea(String nameAr, String nameEn) async {
+    if (selectedDistrict.value == null) {
+      throw Exception("لم يتم اختيار اللواء");
+    }
+
+    final newArea = await ApiService.createArea(
+      districtId: selectedDistrict.value!.id,
+      nameAr: nameAr,
+      nameEn: nameEn,
+    );
+
+    await loadAreas(selectedDistrict.value!.id);
+
+    selectedArea.value =
+        areas.firstWhereOrNull((a) => a.id == newArea.id) ?? newArea;
+
+    return newArea;
+  }
 }

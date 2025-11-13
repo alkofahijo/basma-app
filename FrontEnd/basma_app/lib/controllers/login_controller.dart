@@ -1,6 +1,7 @@
-import 'package:basma_app/pages/report/select_location_page.dart';
+import 'package:basma_app/pages/home_page.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginController extends GetxController {
   var email = ''.obs;
@@ -17,7 +18,10 @@ class LoginController extends GetxController {
     try {
       isLoading.value = true;
       await ApiService.login(email.value.trim(), password.value);
-      Get.to(() => const SelectLocationPage());
+      final sp = await SharedPreferences.getInstance();
+      print("TOKEN = ${sp.getString("token")}");
+
+      Get.to(() => const HomePage());
     } catch (e) {
       errorMessage.value = 'خطأ في اسم المستخدم أو كلمة المرور.';
     } finally {
