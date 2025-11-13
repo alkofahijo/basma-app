@@ -60,11 +60,9 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
               const SizedBox(height: 8),
               _kv('العنوان (عربي)', r!.nameAr),
               const SizedBox(height: 8),
-              _kv('العنوان (إنجليزي)', r!.nameEn),
-              const SizedBox(height: 8),
+
               _kv('الوصف (عربي)', r!.descriptionAr),
-              const SizedBox(height: 8),
-              _kv('الوصف (إنجليزي)', r!.descriptionEn),
+
               if (r!.note != null && r!.note!.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 _kv('ملاحظات', r!.note!),

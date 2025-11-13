@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../../models/location_models.dart';
 import '../../models/report_models.dart';
 import '../../services/api_service.dart';
@@ -11,7 +13,7 @@ class CreateReportPage extends StatefulWidget {
   final District district;
   final Area area;
 
-  /// If null, user can type a new location (name_ar/name_en and optional lat/lng).
+  /// إذا كانت null → يكتب المستخدم موقع جديد
   final LocationModel? location;
 
   const CreateReportPage({
@@ -29,433 +31,338 @@ class CreateReportPage extends StatefulWidget {
 class _CreateReportPageState extends State<CreateReportPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // report types
-  List<ReportType> _types = <ReportType>[];
+  // نوع البلاغ
+  List<ReportType> _types = [];
   ReportType? _selectedType;
 
-  // free-typed location fields (used only when widget.location == null)
-  final _locNameAr = TextEditingController();
-  final _locNameEn = TextEditingController();
-  final _latCtrl = TextEditingController();
-  final _lngCtrl = TextEditingController();
+  // معلومات موقع جديد
+  final TextEditingController _locNameAr = TextEditingController();
+  final TextEditingController _latCtrl = TextEditingController();
+  final TextEditingController _lngCtrl = TextEditingController();
 
-  // report fields
-  final _nameAr = TextEditingController();
-  final _nameEn = TextEditingController();
-  final _descAr = TextEditingController();
-  final _descEn = TextEditingController();
-  final _note = TextEditingController();
-  final _reporter = TextEditingController();
+  // معلومات البلاغ
+  final TextEditingController _nameAr = TextEditingController();
+  final TextEditingController _descAr = TextEditingController();
+  final TextEditingController _note = TextEditingController();
+  final TextEditingController _reporterName = TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
-  XFile? _before;
+  XFile? _beforeImage;
+
   bool _loading = true;
-  bool _submitting = false;
-  String? _err;
+  bool _sending = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _initialLoad();
+    _loadTypes();
   }
 
-  @override
-  void dispose() {
-    _locNameAr.dispose();
-    _locNameEn.dispose();
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
-
-    _nameAr.dispose();
-    _nameEn.dispose();
-    _descAr.dispose();
-    _descEn.dispose();
-    _note.dispose();
-    _reporter.dispose();
-    super.dispose();
-  }
-
-  Future<void> _initialLoad() async {
-    setState(() {
-      _loading = true;
-      _err = null;
-    });
+  Future<void> _loadTypes() async {
     try {
-      final types = await ApiService.reportTypes();
-      if (!mounted) return;
+      final list = await ApiService.reportTypes();
       setState(() {
-        _types = types;
-        if (_types.isNotEmpty) {
-          _selectedType = _types.first;
-        }
+        _types = list;
+        if (list.isNotEmpty) _selectedType = list.first;
         _loading = false;
       });
-    } catch (_) {
-      if (!mounted) return;
+    } catch (e) {
       setState(() {
-        _err = 'تعذّر التحميل الأولي للبيانات';
+        _error = "تعذّر تحميل أنواع البلاغ";
         _loading = false;
       });
     }
   }
 
-  Future<void> _pickFromGallery() async {
-    try {
-      final img = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 90,
-      );
-      if (img != null) {
-        setState(() => _before = img);
-      }
-    } catch (_) {
-      setState(() => _err = 'تعذّر فتح المعرض');
-    }
+  Future<void> pickCamera() async {
+    final img = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 90,
+    );
+    if (img != null) setState(() => _beforeImage = img);
   }
 
-  Future<void> _pickFromCamera() async {
-    try {
-      final img = await _picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 90,
-      );
-      if (img != null) {
-        setState(() => _before = img);
-      }
-    } catch (_) {
-      setState(() => _err = 'تعذّر فتح الكاميرا');
-    }
+  Future<void> pickGallery() async {
+    final img = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (img != null) setState(() => _beforeImage = img);
   }
 
-  double? _parseNullableDouble(String v) {
+  double? tryParseD(String v) {
     final t = v.trim();
     if (t.isEmpty) return null;
     return double.tryParse(t);
   }
 
+  String? validateLat(String? v) {
+    if (v == null || v.trim().isEmpty) return null;
+    final d = double.tryParse(v);
+    if (d == null || d < -90 || d > 90) {
+      return "يجب أن يكون بين -90 و 90";
+    }
+    return null;
+  }
+
+  String? validateLng(String? v) {
+    if (v == null || v.trim().isEmpty) return null;
+    final d = double.tryParse(v);
+    if (d == null || d < -180 || d > 180) {
+      return "يجب أن يكون بين -180 و 180";
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
-    final form = _formKey.currentState!;
-    if (!form.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedType == null) {
+      setState(() => _error = "يرجى اختيار نوع البلاغ");
       return;
     }
 
-    if (_selectedType == null) {
-      setState(() => _err = 'يرجى اختيار نوع البلاغ');
-      return;
-    }
-    if (_before == null) {
-      setState(() => _err = 'يرجى إرفاق صورة (قبل)');
+    if (_beforeImage == null) {
+      setState(() => _error = "يرجى اختيار صورة قبل");
       return;
     }
 
     setState(() {
-      _err = null;
-      _submitting = true;
+      _error = null;
+      _sending = true;
     });
 
     try {
-      // 1) upload the BEFORE image
-      final bytes = await _before!.readAsBytes();
-      final beforeUrl = await ApiService.uploadImage(bytes, _before!.name);
+      // رفع الصورة
+      final bytes = await _beforeImage!.readAsBytes();
+      final beforeUrl = await ApiService.uploadImage(bytes, _beforeImage!.name);
 
-      // 2) Build payload. Choose between location_id or new_location.
-      final payload = <String, dynamic>{
+      // بناء البيانات
+      final payload = {
         "report_type_id": _selectedType!.id,
         "name_ar": _nameAr.text.trim(),
-        "name_en": _nameEn.text.trim(),
         "description_ar": _descAr.text.trim(),
-        "description_en": _descEn.text.trim(),
         "note": _note.text.trim().isEmpty ? null : _note.text.trim(),
         "government_id": widget.government.id,
         "district_id": widget.district.id,
         "area_id": widget.area.id,
-        "reported_by_name": _reporter.text.trim().isEmpty
+        "reported_by_name": _reporterName.text.trim().isEmpty
             ? null
-            : _reporter.text.trim(),
+            : _reporterName.text.trim(),
         "image_before_url": beforeUrl,
       };
 
-      if (widget.location != null) {
-        // user selected an existing location earlier
-        payload["location_id"] = widget.location!.id;
-      } else {
-        // user must type new location
-        final lat = _parseNullableDouble(_latCtrl.text);
-        final lng = _parseNullableDouble(_lngCtrl.text);
-
+      // موقع جديد
+      if (widget.location == null) {
         payload["new_location"] = {
           "area_id": widget.area.id,
           "name_ar": _locNameAr.text.trim(),
-          "name_en": _locNameEn.text.trim(),
-          "latitude": lat,
-          "longitude": lng,
+          "latitude": tryParseD(_latCtrl.text),
+          "longitude": tryParseD(_lngCtrl.text),
         };
+      } else {
+        payload["location_id"] = widget.location!.id;
       }
 
-      // 3) create the report
-      final created = await ApiService.createReport(payload); // ReportDetail
+      // إنشاء البلاغ
+      final created = await ApiService.createReport(payload);
+
       if (!mounted) return;
 
-      // 4) success
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SuccessPage(reportCode: created.reportCode),
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _err = 'إرسال البلاغ فشل');
+      // صفحة النجاح
+      Get.off(() => SuccessPage(reportCode: created.reportCode));
+    } catch (e) {
+      setState(() => _error = "فشل إرسال البلاغ");
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) setState(() => _sending = false);
     }
-  }
-
-  String? _validateLat(String? v) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return null; // optional
-    final d = double.tryParse(t);
-    if (d == null || d < -90 || d > 90) {
-      return 'خط العرض يجب أن يكون بين -90 و 90';
-    }
-    return null;
-  }
-
-  String? _validateLng(String? v) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return null; // optional
-    final d = double.tryParse(t);
-    if (d == null || d < -180 || d > 180) {
-      return 'خط الطول يجب أن يكون بين -180 و 180';
-    }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('إنشاء بلاغ')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  if (_err != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        _err!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-
-                  // Context line
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'الإدارة: ${widget.government.nameAr} / ${widget.district.nameAr} / ${widget.area.nameAr}',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // If no existing location, show typed fields
-                  if (widget.location == null) ...[
-                    TextFormField(
-                      controller: _locNameAr,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم الموقع (عربي)',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _locNameEn,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم الموقع (إنجليزي)',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _latCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'خط العرض (اختياري)',
-                              hintText: 'مثال: 31.963158',
-                            ),
-                            keyboardType: TextInputType.number,
-                            validator: _validateLat,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _lngCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'خط الطول (اختياري)',
-                              hintText: 'مثال: 35.930359',
-                            ),
-                            keyboardType: TextInputType.number,
-                            validator: _validateLng,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Type dropdown
-                  DropdownButtonFormField<ReportType>(
-                    isExpanded: true,
-                    initialValue: _selectedType,
-                    items: _types
-                        .map(
-                          (t) =>
-                              DropdownMenuItem(value: t, child: Text(t.nameAr)),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedType = v),
-                    decoration: const InputDecoration(labelText: 'نوع البلاغ'),
-                    validator: (v) => v == null ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Title AR
-                  TextFormField(
-                    controller: _nameAr,
-                    decoration: const InputDecoration(
-                      labelText: 'عنوان البلاغ (عربي)',
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Title EN
-                  TextFormField(
-                    controller: _nameEn,
-                    decoration: const InputDecoration(
-                      labelText: 'عنوان البلاغ (إنجليزي)',
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Desc AR
-                  TextFormField(
-                    controller: _descAr,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'الوصف (عربي)',
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Desc EN
-                  TextFormField(
-                    controller: _descEn,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'الوصف (إنجليزي)',
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Note (optional)
-                  TextFormField(
-                    controller: _note,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'ملاحظات (اختياري)',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Reporter (optional)
-                  TextFormField(
-                    controller: _reporter,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم المبلِّغ (اختياري)',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Image pick row (camera / gallery)
-                  Row(
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: _loading
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : Scaffold(
+              appBar: AppBar(title: const Text("إنشاء بلاغ")),
+              body: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _submitting ? null : _pickFromCamera,
-                          icon: const Icon(Icons.photo_camera),
-                          label: const Text('التقاط بالكاميرا'),
+                      if (_error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 15,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _submitting ? null : _pickFromGallery,
-                          icon: const Icon(Icons.photo_library),
-                          label: const Text('اختيار من المعرض'),
-                        ),
-                      ),
+
+                      _contextInfo(),
+                      const SizedBox(height: 20),
+
+                      if (widget.location == null) _newLocationFields(),
+
+                      _typeDropdown(),
+                      const SizedBox(height: 20),
+
+                      _buildField(_nameAr, "عنوان البلاغ", true),
+                      const SizedBox(height: 12),
+
+                      _buildField(_descAr, "الوصف", true, max: 3),
+                      const SizedBox(height: 12),
+
+                      _buildField(_note, "ملاحظات (اختياري)", false, max: 2),
+                      const SizedBox(height: 12),
+
+                      _imagePicker(),
+                      const SizedBox(height: 22),
+
+                      _sendButton(),
                     ],
                   ),
-                  const SizedBox(height: 12),
-
-                  // Selected image name (and a small preview)
-                  if (_before != null) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        _before!.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(File(_before!.path), fit: BoxFit.cover),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Submit
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _submitting ? null : _submit,
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('إرسال'),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+    );
+  }
+
+  Widget _sendButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _sending ? null : _submit,
+        child: _sending
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text("إرسال البلاغ", style: TextStyle(fontSize: 18)),
       ),
+    );
+  }
+
+  Widget _contextInfo() {
+    return Text(
+      "الموقع:  ${widget.government.nameAr} / "
+      "${widget.district.nameAr} / "
+      "${widget.area.nameAr}",
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+    );
+  }
+
+  Widget _newLocationFields() {
+    return Column(
+      children: [
+        _buildField(_locNameAr, "اسم الموقع", true),
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: _buildField(
+                _latCtrl,
+                "خط العرض (اختياري)",
+                false,
+                validator: validateLat,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildField(
+                _lngCtrl,
+                "خط الطول (اختياري)",
+                false,
+                validator: validateLng,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _typeDropdown() {
+    return DropdownButtonFormField<ReportType>(
+      isExpanded: true,
+      initialValue: _selectedType,
+      items: _types
+          .map((t) => DropdownMenuItem(value: t, child: Text(t.nameAr)))
+          .toList(),
+      decoration: const InputDecoration(labelText: "نوع البلاغ"),
+      onChanged: (v) => setState(() => _selectedType = v),
+      validator: (v) => v == null ? "مطلوب" : null,
+    );
+  }
+
+  Widget _imagePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("الصورة قبل:", style: TextStyle(fontSize: 16)),
+        const SizedBox(height: 10),
+
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _sending ? null : pickCamera,
+                icon: const Icon(Icons.camera_alt),
+                label: const Text("كاميرا"),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _sending ? null : pickGallery,
+                icon: const Icon(Icons.photo_library),
+                label: const Text("معرض"),
+              ),
+            ),
+          ],
+        ),
+
+        if (_beforeImage != null) ...[
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              File(_beforeImage!.path),
+              height: 200,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildField(
+    TextEditingController c,
+    String label,
+    bool required, {
+    int max = 1,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: c,
+      maxLines: max,
+      validator:
+          validator ??
+          (v) {
+            if (required && (v == null || v.trim().isEmpty)) {
+              return "الحقل مطلوب";
+            }
+            return null;
+          },
+      decoration: InputDecoration(labelText: label),
     );
   }
 }

@@ -2,7 +2,7 @@ import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'guest/guest_select_page.dart';
-import 'package:basma_app/pages/report/select_location_page.dart';
+import 'auth/login_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -66,10 +66,10 @@ class HomePage extends StatelessWidget {
 
               HomeScreenButton(
                 icon: Icons.camera_alt_outlined,
-                title: 'تقديم بلاغ ',
-                subtitle: 'تقديم بلاغ ',
+                title: 'تسجيل الدخول',
+                subtitle: '  تسجيل الدخول كمواطن او ك مبادرة ',
                 onTap: () {
-                  Get.to(() => SelectLocationPage());
+                  Get.to(() => LoginPage());
                 },
                 color: Color(0xFFCAE6F2),
                 iconColor: const Color.fromARGB(255, 10, 62, 104),

@@ -1,26 +1,90 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+
 from ..db import get_db
-from ..models import Government, District, Area, Location
-from ..schemas import GovernmentOut, DistrictOut, AreaOut, LocationOut
-from typing import List
+from ..models import Government, District, Area
+from ..schemas import GovernmentOut, DistrictOut, AreaOut, AreaCreate
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
-@router.get("/governments", response_model=List[GovernmentOut])
-def governments(db: Session = Depends(get_db)):
-    return db.execute(select(Government)).scalars().all()
 
-@router.get("/governments/{gov_id}/districts", response_model=List[DistrictOut])
-def districts(gov_id: int, db: Session = Depends(get_db)):
-    return db.execute(select(District).where(District.government_id==gov_id)).scalars().all()
+@router.get("/governments", response_model=list[GovernmentOut])
+def list_governments(db: Session = Depends(get_db)):
+  stmt = (
+      select(Government)
+      .where(Government.is_active == 1)
+      .order_by(Government.name_ar.asc())
+  )
+  return db.scalars(stmt).all()
 
-@router.get("/districts/{d_id}/areas", response_model=List[AreaOut])
-def areas(d_id: int, db: Session = Depends(get_db)):
-    return db.execute(select(Area).where(Area.district_id==d_id)).scalars().all()
 
-@router.get("/areas/{a_id}/locations", response_model=List[LocationOut])
-def locations(a_id: int, db: Session = Depends(get_db)):
-    return db.execute(select(Location).where(Location.area_id==a_id)).scalars().all()
+@router.get("/governments/{government_id}/districts", response_model=list[DistrictOut])
+def list_districts(government_id: int, db: Session = Depends(get_db)):
+  gov = db.get(Government, government_id)
+  if not gov:
+      raise HTTPException(status_code=404, detail="Government not found")
+
+  stmt = (
+      select(District)
+      .where(
+          District.government_id == government_id,
+          District.is_active == 1,
+      )
+      .order_by(District.name_ar.asc())
+  )
+  return db.scalars(stmt).all()
+
+
+@router.get("/districts/{district_id}/areas", response_model=list[AreaOut])
+def list_areas(district_id: int, db: Session = Depends(get_db)):
+  dist = db.get(District, district_id)
+  if not dist:
+      raise HTTPException(status_code=404, detail="District not found")
+
+  stmt = (
+      select(Area)
+      .where(
+          Area.district_id == district_id,
+          Area.is_active == 1,
+      )
+      .order_by(Area.name_ar.asc())
+  )
+  return db.scalars(stmt).all()
+
+
+@router.post("/areas", response_model=AreaOut, status_code=201)
+def create_area(payload: AreaCreate, db: Session = Depends(get_db)):
+  # Ensure district exists
+  dist = db.get(District, payload.district_id)
+  if not dist:
+      raise HTTPException(status_code=400, detail="Invalid district_id")
+
+  # Optional: prevent duplicates (Arabic or English) in same district
+  existing = db.scalar(
+      select(Area).where(
+          Area.district_id == payload.district_id,
+          (
+              (Area.name_ar == payload.name_ar)
+              | (Area.name_en == payload.name_en)
+          ),
+      )
+  )
+  if existing:
+      raise HTTPException(
+          status_code=400,
+          detail="Area with this name already exists in this district",
+      )
+
+  area = Area(
+      district_id=payload.district_id,
+      name_ar=payload.name_ar,
+      name_en=payload.name_en,
+      is_active=1,
+  )
+  db.add(area)
+  db.commit()
+  db.refresh(area)
+  return area
