@@ -1,9 +1,12 @@
+// lib/pages/auth/initiative/register_initiative_info_page.dart
 import 'dart:io';
+
 import 'package:basma_app/models/location_models.dart';
 import 'package:basma_app/pages/custom_widgets.dart/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../../controllers/register_initiative_controller.dart';
 import 'register_initiative_account_page.dart';
 
@@ -16,7 +19,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
     final picker = ImagePicker();
 
     return Scaffold(
-      backgroundColor: Color(0xFFEFF1F1),
+      backgroundColor: const Color(0xFFEFF1F1),
       appBar: AppBar(
         title: const Text(
           'تسجيل المبادرة',
@@ -39,7 +42,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: controller.fetchGovernments,
-                  child: const Text("Retry"),
+                  child: const Text("إعادة المحاولة"),
                 ),
               ],
             ),
@@ -119,6 +122,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                   label: 'الاسم (بالعربية)',
                   hint: 'أدخل الاسم بالعربية',
                   errorText: controller.nameArError.value,
+                  onChanged: controller.validateArabicName,
                 ),
               ),
               const SizedBox(height: 18),
@@ -129,6 +133,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                   label: 'الاسم (بالإنجليزية)',
                   hint: 'أدخل الاسم بالإنجليزية',
                   errorText: controller.nameEnError.value,
+                  onChanged: controller.validateEnglishName,
                 ),
               ),
               const SizedBox(height: 18),
@@ -140,6 +145,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                   hint: '07XXXXXXXX',
                   inputType: TextInputType.phone,
                   errorText: controller.mobileError.value,
+                  onChanged: controller.validateMobile,
                 ),
               ),
               const SizedBox(height: 18),
@@ -170,7 +176,10 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                             DropdownMenuItem(value: g, child: Text(g.nameAr)),
                       )
                       .toList(),
-                  onChanged: (v) => controller.selectedGov.value = v,
+                  onChanged: (v) {
+                    controller.selectedGov.value = v;
+                    controller.validateGovernorate(v);
+                  },
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,

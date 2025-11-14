@@ -1,14 +1,17 @@
-CREATE TABLE `areas` (
+SELECT * FROM basmadb.v_location_hierarchy;CREATE TABLE `areas` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `government_id` int unsigned NOT NULL,
   `district_id` int unsigned NOT NULL,
-  `name_ar` varchar(100) COLLATE utf8mb4_bin NOT NULL,
-  `name_en` varchar(100) COLLATE utf8mb4_bin NOT NULL,
+  `name_ar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `name_en` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ux_areas_dist_name_en` (`district_id`,`name_en`),
   UNIQUE KEY `ux_areas_dist_name_ar` (`district_id`,`name_ar`),
+  UNIQUE KEY `uq_area` (`government_id`,`district_id`,`name_ar`),
+  UNIQUE KEY `ux_areas_district_name_ar` (`district_id`,`name_ar`),
   KEY `ix_areas_district` (`district_id`),
   CONSTRAINT `fk_areas_district` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

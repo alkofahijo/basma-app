@@ -14,4 +14,4 @@ CREATE TABLE `users` (
   KEY `citizen_id` (`citizen_id`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`initiative_id`) REFERENCES `initiatives` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `users_ibfk_2` FOREIGN KEY (`citizen_id`) REFERENCES `citizens` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

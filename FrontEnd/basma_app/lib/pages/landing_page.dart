@@ -1,11 +1,11 @@
 import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'guest/guest_select_page.dart';
+import 'guest/guest_reports_list_page.dart';
 import 'auth/login_page.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class LandingPage extends StatelessWidget {
+  const LandingPage({super.key});
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -55,9 +55,9 @@ class HomePage extends StatelessWidget {
               HomeScreenButton(
                 icon: Icons.assignment,
                 title: 'تصفح البلاغات',
-                subtitle: 'عرض البلاغات الجديدة.',
+                subtitle: "تصفح بلاغات التشوه البصري كضيف",
                 onTap: () {
-                  Get.to(() => GuestSelectPage());
+                  Get.to(() => GuestReportsListPage());
                 },
                 color: Color(0xFFCAF2DB),
                 iconColor: const Color.fromARGB(255, 19, 106, 32),
@@ -67,7 +67,8 @@ class HomePage extends StatelessWidget {
               HomeScreenButton(
                 icon: Icons.camera_alt_outlined,
                 title: 'تسجيل الدخول',
-                subtitle: '  تسجيل الدخول كمواطن او ك مبادرة ',
+                subtitle:
+                    'تسجيل الدخول كمواطن او كمبادرة للتبليغ عن او حل مشكلة تشوه بصري',
                 onTap: () {
                   Get.to(() => LoginPage());
                 },

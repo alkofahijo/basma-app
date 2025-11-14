@@ -1,16 +1,28 @@
+// lib/main.dart
 import 'package:basma_app/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final sp = await SharedPreferences.getInstance();
+  final token = sp.getString('token');
+
+  // لو ما في توكن اعتبره ضيف ونمسح أي بقايا من مستخدم قديم
+  if (token == null || token.isEmpty) {
+    await sp.clear();
+  }
+
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      locale: Locale('ar'),
-      fallbackLocale: Locale('ar'),
-      supportedLocales: [Locale('ar')],
-      localizationsDelegates: [
+      locale: const Locale('ar'),
+      fallbackLocale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
@@ -20,7 +32,7 @@ void main() {
         child: child ?? const SizedBox.shrink(),
       ),
       theme: ThemeData(scaffoldBackgroundColor: const Color(0xFFEFF1F1)),
-      home: SplashScreen(),
+      home: const SplashScreen(),
     ),
   );
 }

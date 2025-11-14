@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:basma_app/pages/auth/reg_success.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../models/location_models.dart';
 import '../services/api_service.dart';
 
@@ -40,12 +41,18 @@ class RegisterInitiativeController extends GetxController {
 
   Future<void> _fetchGovernments() async {
     try {
+      isLoadingGovs.value = true;
+      loadError.value = '';
       governments.value = await ApiService.governments();
     } catch (e) {
       loadError.value = 'فشل تحميل المحافظات';
     } finally {
       isLoadingGovs.value = false;
     }
+  }
+
+  Future<void> fetchGovernments() async {
+    await _fetchGovernments();
   }
 
   // ===== VALIDATION METHODS =====
@@ -85,7 +92,6 @@ class RegisterInitiativeController extends GetxController {
     }
   }
 
-  // ===== STEP VALIDATION CHECKS =====
   bool get isStep1Valid =>
       nameArError.value == null &&
       nameEnError.value == null &&
@@ -104,9 +110,6 @@ class RegisterInitiativeController extends GetxController {
   bool get isStep2Filled =>
       usernameCtrl.text.isNotEmpty && passwordCtrl.text.isNotEmpty;
 
-  VoidCallback? get fetchGovernments => null;
-
-  // ===== STEP 1 VALIDATION CALLER =====
   bool validateStep1() {
     validateArabicName(nameArCtrl.text);
     validateEnglishName(nameEnCtrl.text);
@@ -115,22 +118,68 @@ class RegisterInitiativeController extends GetxController {
     return isStep1Valid;
   }
 
-  // ===== STEP 2 VALIDATION CALLER =====
   bool validateStep2() {
     validateUsername(usernameCtrl.text);
     validatePassword(passwordCtrl.text);
     return isStep2Valid;
   }
 
-  // ===== SUBMIT =====
   Future<void> submit() async {
+    // تأكيد خطوة 1
+    validateStep1();
+    if (!isStep1Valid) {
+      Get.snackbar(
+        'تنبيه',
+        'الرجاء التأكد من تعبئة بيانات المبادرة بشكل صحيح.',
+        backgroundColor: Colors.orange.shade300,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (selectedGov.value == null) {
+      govError.value = 'اختر محافظة';
+      Get.snackbar(
+        'تنبيه',
+        'الرجاء اختيار المحافظة.',
+        backgroundColor: Colors.orange.shade300,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // تأكيد بيانات الحساب
     validateUsername(usernameCtrl.text);
     validatePassword(passwordCtrl.text);
-
     if (!isStep2Valid) return;
 
     isSubmitting.value = true;
     try {
+      String? logoUrl;
+
+      if (logoFile.value != null) {
+        final file = logoFile.value!;
+
+        // ✅ تأكد أن الملف موجود قبل القراءة
+        final exists = await file.exists();
+        if (!exists) {
+          Get.snackbar(
+            'خطأ',
+            'تعذّر الوصول إلى ملف الشعار، الرجاء اختيار الصورة من جديد.',
+            backgroundColor: Colors.red.shade300,
+            colorText: Colors.white,
+          );
+          isSubmitting.value = false;
+          return;
+        }
+
+        final bytes = await file.readAsBytes();
+        logoUrl = await ApiService.uploadImage(
+          bytes,
+          file.path.split('/').last,
+        );
+      }
+
       await ApiService.registerInitiative({
         "name_ar": nameArCtrl.text.trim(),
         "name_en": nameEnCtrl.text.trim(),
@@ -138,12 +187,12 @@ class RegisterInitiativeController extends GetxController {
         "join_form_link": joinFormCtrl.text.trim().isEmpty
             ? null
             : joinFormCtrl.text.trim(),
-        "government_id": selectedGov.value?.id,
+        "government_id": selectedGov.value!.id,
+        "logo_url": logoUrl,
         "username": usernameCtrl.text.trim(),
         "password": passwordCtrl.text.trim(),
       });
 
-      // Navigate to success screen
       Get.offAll(() => const RegisterSuccessPage());
     } catch (e) {
       Get.snackbar(

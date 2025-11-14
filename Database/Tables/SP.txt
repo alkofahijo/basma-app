@@ -1,0 +1,8 @@
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_set_reports_status_1_to_2`()
+BEGIN
+    UPDATE reports
+    SET status_id = 2
+    WHERE status_id = 1;
+END$$
+DELIMITER ;

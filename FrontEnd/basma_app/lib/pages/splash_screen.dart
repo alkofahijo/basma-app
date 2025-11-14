@@ -1,5 +1,8 @@
+// lib/pages/splash_screen.dart
+import 'package:basma_app/pages/home_page.dart';
 import 'package:basma_app/pages/on_boarding_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,12 +15,29 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 5), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const OnBoardingScreen()),
-      );
-    });
+    _decideNext();
+  }
+
+  Future<void> _decideNext() async {
+    // نعرض الشعار ثانيتين مثلاً
+    await Future.delayed(const Duration(seconds: 2));
+
+    final sp = await SharedPreferences.getInstance();
+    final token = sp.getString('token');
+
+    Widget next;
+
+    if (token != null && token.isNotEmpty) {
+      // ✅ مستخدم مسجّل دخول → مباشرة إلى HomePage
+      next = const HomePage();
+    } else {
+      // ❌ ضيف → إلى شاشة الـ OnBoarding
+      next = const OnBoardingScreen();
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => next));
   }
 
   @override

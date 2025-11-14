@@ -1,3 +1,4 @@
+// lib/controllers/login_controller.dart (الموقع حسب مشروعك)
 import 'package:basma_app/pages/home_page.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';
@@ -21,7 +22,8 @@ class LoginController extends GetxController {
       final sp = await SharedPreferences.getInstance();
       print("TOKEN = ${sp.getString("token")}");
 
-      Get.to(() => const HomePage());
+      // ✅ امسح كل المسارات السابقة وروّح لـ HomePage
+      Get.offAll(() => const HomePage());
     } catch (e) {
       errorMessage.value = 'خطأ في اسم المستخدم أو كلمة المرور.';
     } finally {

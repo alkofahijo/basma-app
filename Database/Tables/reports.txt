@@ -3,16 +3,14 @@ CREATE TABLE `reports` (
   `report_code` varchar(100) COLLATE utf8mb4_bin NOT NULL,
   `report_type_id` int unsigned NOT NULL,
   `name_ar` varchar(200) COLLATE utf8mb4_bin NOT NULL,
-  `name_en` varchar(200) COLLATE utf8mb4_bin NOT NULL,
   `description_ar` mediumtext COLLATE utf8mb4_bin NOT NULL,
-  `description_en` mediumtext COLLATE utf8mb4_bin NOT NULL,
   `note` mediumtext COLLATE utf8mb4_bin,
   `image_before_url` varchar(500) COLLATE utf8mb4_bin NOT NULL,
   `image_after_url` varchar(500) COLLATE utf8mb4_bin DEFAULT NULL,
   `status_id` int unsigned NOT NULL,
   `reported_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `adopted_by_id` int unsigned DEFAULT NULL,
-  `adopted_by_type` enum('initiative','citizen') COLLATE utf8mb4_bin DEFAULT NULL,
+  `adopted_by_type` int DEFAULT NULL,
   `government_id` int unsigned NOT NULL,
   `district_id` int unsigned NOT NULL,
   `area_id` int unsigned NOT NULL,
@@ -38,4 +36,4 @@ CREATE TABLE `reports` (
   CONSTRAINT `reports_ibfk_5` FOREIGN KEY (`area_id`) REFERENCES `areas` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `reports_ibfk_6` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `reports_ibfk_7` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
