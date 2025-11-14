@@ -2,18 +2,16 @@ CREATE TABLE `locations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `area_id` int unsigned NOT NULL,
   `name_ar` varchar(150) COLLATE utf8mb4_bin NOT NULL,
-  `name_en` varchar(150) COLLATE utf8mb4_bin NOT NULL,
   `longitude` decimal(9,6) DEFAULT NULL,
   `latitude` decimal(9,6) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `ux_locations_area_name_en` (`area_id`,`name_en`),
-  UNIQUE KEY `ux_locations_area_name_ar` (`area_id`,`name_ar`),
   KEY `ix_locations_lat_lon` (`latitude`,`longitude`),
   KEY `ix_locations_area` (`area_id`),
+  KEY `ix_locations_area_name_ar` (`area_id`,`name_ar`),
   CONSTRAINT `fk_locations_area` FOREIGN KEY (`area_id`) REFERENCES `areas` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_locations_lat` CHECK (((`latitude` is null) or (`latitude` between -(90.000000) and 90.000000))),
   CONSTRAINT `chk_locations_lon` CHECK (((`longitude` is null) or (`longitude` between -(180.000000) and 180.000000)))
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

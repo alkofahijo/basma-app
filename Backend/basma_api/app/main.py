@@ -13,6 +13,7 @@ from .routers.reports import router as reports_router
 from .routers.uploads import uploads_router, files_router
 from .routers.citizens import router as citizens_router
 from .routers.initiatives import router as initiatives_router
+from app.routers import ai_reports
 
 
 Base.metadata.create_all(bind=engine)
@@ -42,7 +43,7 @@ app.include_router(uploads_router)
 app.include_router(files_router)
 app.include_router(citizens_router)
 app.include_router(initiatives_router)  # ⬅️ add this line
-
+app.include_router(ai_reports.router)
 
 @app.get("/")
 def root():

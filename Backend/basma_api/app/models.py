@@ -28,6 +28,7 @@ class Government(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     name_ar = Column(String(100), nullable=False)
+    # name_en موجود في الجدول لكن لا نحتاجه حالياً للـ API
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
     created_at = Column(
         TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
@@ -129,6 +130,7 @@ class Citizen(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     name_ar = Column(String(150), nullable=False)
+    name_en = Column(String(200), nullable=False)
     mobile_number = Column(String(20), nullable=False, unique=True)
 
     government_id = Column(
@@ -157,6 +159,7 @@ class Initiative(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     name_ar = Column(String(200), nullable=False)
+    name_en = Column(String(200), nullable=False)
     mobile_number = Column(String(20), nullable=False, unique=True)
     join_form_link = Column(String(500), nullable=True)
 
@@ -267,7 +270,6 @@ class Report(Base):
 
     reported_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
-    # 🚨 IMPORTANT: integer not enum
     adopted_by_id = Column(MySQLInteger(unsigned=True), nullable=True)
     adopted_by_type = Column(
         MySQLInteger(unsigned=True), nullable=True
@@ -307,3 +309,11 @@ class Report(Base):
         server_default=text("CURRENT_TIMESTAMP"),
         onupdate=text("CURRENT_TIMESTAMP"),
     )
+
+    # علاقات اختيارية لو احتجتها
+    report_type = relationship("ReportType")
+    status = relationship("ReportStatus")
+    government = relationship("Government")
+    district = relationship("District")
+    area = relationship("Area")
+    location = relationship("Location")

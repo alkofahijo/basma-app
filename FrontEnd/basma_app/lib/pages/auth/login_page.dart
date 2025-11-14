@@ -22,7 +22,7 @@ class LoginPage extends StatelessWidget {
           height: size.height * 0.05,
         ),
         leading: IconButton(
-          onPressed: () => Get.offAll(() => HomePage()),
+          onPressed: () => Get.offAll(() => LandingPage()),
           icon: Icon(Icons.arrow_back),
         ),
       ),

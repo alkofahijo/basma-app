@@ -1,0 +1,9 @@
+CREATE TABLE `ml_training_queue` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `report_id` bigint NOT NULL,
+  `image_url` varchar(500) COLLATE utf8mb4_bin NOT NULL,
+  `report_type_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `processed` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

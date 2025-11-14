@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "C:/Users/USER/Desktop/Basmah/Backend/basma_api/.venv/Scripts/python.exe",
+  "python.analysis.diagnosticMode": "workspace",
+  "python.languageServer": "Pylance"
+}

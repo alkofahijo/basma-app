@@ -1,3 +1,4 @@
+// lib/pages/on_boarding_screen.dart
 import 'package:basma_app/pages/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -37,7 +38,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFFEFF1F1),
+        backgroundColor: const Color(0xFFEFF1F1),
         title: Image.asset(
           "assets/images/logo-arabic-side.png",
           height: size.height * 0.05,
@@ -64,7 +65,6 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     ),
                     child: Column(
                       children: [
-                        // SizedBox(height: size.height * 0.05),
                         Image.asset(
                           onboardingData[index]["image"]!,
                           height: size.height * 0.35,
@@ -95,7 +95,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
               ),
             ),
 
-            // Bottom section
+            // ----- الجزء السفلي -----
             Padding(
               padding: EdgeInsets.only(bottom: size.height * 0.04),
               child: Column(
@@ -124,10 +124,11 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                       ),
                       onPressed: () {
                         if (currentPage == onboardingData.length - 1) {
+                          // ✅ بعد آخر سلايد نذهب لصفحة الضيف (LandingPage)
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const HomePage(),
+                              builder: (context) => LandingPage(),
                             ),
                           );
                         } else {

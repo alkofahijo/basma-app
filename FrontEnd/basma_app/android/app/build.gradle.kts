@@ -1,29 +1,35 @@
+import org.gradle.api.JavaVersion
+import org.gradle.api.tasks.compile.JavaCompile
+
 plugins {
+    // يطابق الإعداد الموجود في settings.gradle.kts
     id("com.android.application")
-    id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("org.jetbrains.kotlin.android")
+    // Flutter Gradle Plugin
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.example.basma_app"
+    // قيم flutter تأتي من Flutter Gradle Plugin
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // إعدادات Java للـ Android module
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // إعدادات Kotlin
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // عدّل الـ applicationId لو حابب اسم مختلف
         applicationId = "com.example.basma_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,13 +38,25 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // مؤقتاً: نستخدم debug key عشان flutter run --release يشتغل
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        debug {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
 
+// إعداد Flutter (لا تلمسه عادة)
 flutter {
     source = "../.."
+}
+
+// نضمن أن كل مهام JavaCompile تستخدم Java 17
+tasks.withType<JavaCompile>().configureEach {
+    sourceCompatibility = JavaVersion.VERSION_17.toString()
+    targetCompatibility = JavaVersion.VERSION_17.toString()
+
+    // لو حابب تكتم تحذيرات الـ options القديمة بالكامل، فكّ التعليق:
+    // options.compilerArgs.add("-Xlint:-options")
 }

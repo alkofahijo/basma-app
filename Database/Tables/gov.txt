@@ -1,4 +1,4 @@
-	CREATE TABLE `governments` (
+CREATE TABLE `governments` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name_ar` varchar(100) COLLATE utf8mb4_bin NOT NULL,
   `name_en` varchar(100) COLLATE utf8mb4_bin NOT NULL,
@@ -8,4 +8,4 @@
   PRIMARY KEY (`id`),
   UNIQUE KEY `ux_governments_name_en` (`name_en`),
   UNIQUE KEY `ux_governments_name_ar` (`name_ar`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

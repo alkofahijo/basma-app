@@ -14,13 +14,20 @@ class SolveReportDialog extends StatefulWidget {
 }
 
 class _SolveReportDialogState extends State<SolveReportDialog> {
-  bool loading = false;
-  String? err;
+  bool _loading = false;
+  String? _errorMessage;
+
+  /// تحويل ديناميكي إلى int بأمان
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
 
   Future<void> _confirmSolve() async {
     setState(() {
-      loading = true;
-      err = null;
+      _loading = true;
+      _errorMessage = null;
     });
 
     try {
@@ -28,59 +35,50 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
 
       if (user == null) {
         setState(() {
-          err = "الرجاء تسجيل الدخول من جديد";
-          loading = false;
+          _errorMessage = "الرجاء تسجيل الدخول من جديد.";
+          _loading = false;
         });
         return;
       }
 
-      debugPrint("AUTH USER = $user");
-
-      // نستخدم الحقل النصي "type" القادم من الـ JWT:
-      final String type = (user["type"] ?? "").toString();
+      // نوع المستخدم من الـ JWT: "citizen" أو "initiative"
+      final String type = (user["type"] ?? "").toString().trim();
 
       int? adoptedByType; // 1: citizen, 2: initiative
       int? adoptedById;
 
       if (type == "citizen") {
         adoptedByType = 1;
+        adoptedById = _parseInt(user["citizen_id"]);
 
-        final rawCid = user["citizen_id"];
-        final cid = rawCid is int
-            ? rawCid
-            : int.tryParse(rawCid?.toString() ?? "");
-        if (cid == null) {
+        if (adoptedById == null) {
           setState(() {
-            err = "لم يتم العثور على هوية المواطن، أعد تسجيل الدخول.";
-            loading = false;
+            _errorMessage =
+                "لم يتم العثور على هوية المواطن، يرجى إعادة تسجيل الدخول.";
+            _loading = false;
           });
           return;
         }
-        adoptedById = cid;
       } else if (type == "initiative") {
         adoptedByType = 2;
+        adoptedById = _parseInt(user["initiative_id"]);
 
-        final rawIid = user["initiative_id"];
-        final iid = rawIid is int
-            ? rawIid
-            : int.tryParse(rawIid?.toString() ?? "");
-        if (iid == null) {
+        if (adoptedById == null) {
           setState(() {
-            err = "لم يتم العثور على هوية المبادرة، أعد تسجيل الدخول.";
-            loading = false;
+            _errorMessage =
+                "لم يتم العثور على هوية المبادرة، يرجى إعادة تسجيل الدخول.";
+            _loading = false;
           });
           return;
         }
-        adoptedById = iid;
       } else {
         setState(() {
-          err = "نوع مستخدم غير صالح";
-          loading = false;
+          _errorMessage = "نوع مستخدم غير صالح لاعتماد البلاغ.";
+          _loading = false;
         });
         return;
       }
 
-      // 🔥 هذا الآن يرسل adopted_by_type = 1 أو 2 فقط
       await ApiService.adopt(
         reportId: widget.reportId,
         adoptedById: adoptedById,
@@ -91,8 +89,8 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        err = "فشل اعتماد البلاغ: $e";
-        loading = false;
+        _errorMessage = "فشل اعتماد البلاغ، حاول مرة أخرى.\n$e";
+        _loading = false;
       });
     }
   }
@@ -102,34 +100,128 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
-        title: const Text("تأكيد استلام البلاغ"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        titlePadding: const EdgeInsets.only(top: 16),
+        backgroundColor: Colors.white,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // دائرة الأيقونة
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Colors.teal.shade400, Colors.teal.shade700],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+              ),
+              child: const Icon(
+                Icons.handshake_outlined,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "تأكيد استلام البلاغ",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const SizedBox(height: 8),
             const Text(
-              "هل أنت متأكد أنك تريد استلام البلاغ والبدء بحلّه؟",
+              "باستلامك لهذا البلاغ، سيتم تسجيلك كجهة مسؤولة عن حل المشكلة، "
+              "وسيتغيّر حالته إلى \"قيد التنفيذ\".",
               textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14),
             ),
-            if (err != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  err!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: Colors.teal.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      "تأكد أنك قادر على متابعة البلاغ حتى إتمام الحل ورفع الصور بعد المعالجة.",
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(fontSize: 12, color: Colors.red),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ],
           ],
         ),
+        actionsPadding: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: 12,
+          top: 4,
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
           TextButton(
-            onPressed: loading ? null : () => Navigator.pop(context, false),
+            onPressed: _loading ? null : () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey.shade700),
             child: const Text("إلغاء"),
           ),
           ElevatedButton(
-            onPressed: loading ? null : _confirmSolve,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: loading
+            onPressed: _loading ? null : _confirmSolve,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              minimumSize: const Size(110, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _loading
                 ? const SizedBox(
                     width: 20,
                     height: 20,
@@ -138,7 +230,10 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Text("تأكيد"),
+                : const Text(
+                    "تأكيد الاستلام",
+                    style: TextStyle(color: Colors.white),
+                  ),
           ),
         ],
       ),

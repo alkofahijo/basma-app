@@ -1,6 +1,7 @@
 // lib/services/api_service.dart
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:basma_app/models/citizen_models.dart';
 import 'package:basma_app/models/initiative_models.dart';
@@ -10,6 +11,64 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// -------------------------
+/// AI MODELS (DTOs)
+/// -------------------------
+class ResolvedLocation {
+  final int governmentId;
+  final String governmentNameAr;
+  final int districtId;
+  final String districtNameAr;
+  final int areaId;
+  final String areaNameAr;
+
+  ResolvedLocation({
+    required this.governmentId,
+    required this.governmentNameAr,
+    required this.districtId,
+    required this.districtNameAr,
+    required this.areaId,
+    required this.areaNameAr,
+  });
+
+  factory ResolvedLocation.fromJson(Map<String, dynamic> json) {
+    return ResolvedLocation(
+      governmentId: json['government']['id'],
+      governmentNameAr: json['government']['name_ar'],
+      districtId: json['district']['id'],
+      districtNameAr: json['district']['name_ar'],
+      areaId: json['area']['id'],
+      areaNameAr: json['area']['name_ar'],
+    );
+  }
+}
+
+class AiSuggestion {
+  final int reportTypeId;
+  final String reportTypeNameAr;
+  final double confidence;
+  final String suggestedTitle;
+  final String suggestedDescription;
+
+  AiSuggestion({
+    required this.reportTypeId,
+    required this.reportTypeNameAr,
+    required this.confidence,
+    required this.suggestedTitle,
+    required this.suggestedDescription,
+  });
+
+  factory AiSuggestion.fromJson(Map<String, dynamic> json) {
+    return AiSuggestion(
+      reportTypeId: json['report_type_id'],
+      reportTypeNameAr: json['report_type_name_ar'],
+      confidence: (json['confidence'] as num).toDouble(),
+      suggestedTitle: json['suggested_title'],
+      suggestedDescription: json['suggested_description'],
+    );
+  }
+}
 
 class ApiService {
   /// Emulator base URL
@@ -35,7 +94,7 @@ class ApiService {
   static Map<String, String> _headers(String? tok, {bool json = true}) {
     final h = <String, String>{};
     if (json) h["Content-Type"] = "application/json";
-    if (tok != null) h["Authorization"] = "Bearer $tok";
+    if (tok != null && tok.isNotEmpty) h["Authorization"] = "Bearer $tok";
     return h;
   }
 
@@ -53,9 +112,9 @@ class ApiService {
       final body = jsonDecode(raw);
       if (body is Map && body["detail"] != null) {
         msg = body["detail"].toString();
-      } else if (raw.isNotEmpty)
-        // ignore: curly_braces_in_flow_control_structures
+      } else if (raw.isNotEmpty) {
         msg = "$msg: $raw";
+      }
     } catch (_) {
       if (raw.isNotEmpty) msg = "$msg: $raw";
     }
@@ -113,8 +172,27 @@ class ApiService {
     }
   }
 
+  /// تغيير كلمة المرور للمستخدم الحالي (حسب الـ JWT)
+  static Future<void> changePassword(String newPassword) async {
+    final tok = await _token();
+    if (tok == null || tok.isEmpty) {
+      throw Exception("Not authenticated");
+    }
+
+    final uri = Uri.parse("$base/auth/change-password");
+    final res = await http.post(
+      uri,
+      headers: _headers(tok),
+      body: jsonEncode({"new_password": newPassword}),
+    );
+
+    if (res.statusCode != 204) {
+      _throwHttp(res, fallback: "فشل تغيير كلمة المرور");
+    }
+  }
+
   // -------------------------------------------------------------
-  // LOCATIONS
+  // LOCATIONS (main models)
   // -------------------------------------------------------------
   static Future<List<Government>> governments() async {
     final uri = Uri.parse("$base/locations/governments");
@@ -205,7 +283,7 @@ class ApiService {
   }
 
   // -------------------------------------------------------------
-  // REPORT LIST
+  // REPORT LIST (internal)
   // -------------------------------------------------------------
   static Future<List<ReportSummary>> listReports({
     int? areaId,
@@ -365,5 +443,247 @@ class ApiService {
     }
 
     return jsonDecode(body)["url"];
+  }
+
+  // -------------------------------------------------------------
+  // GUEST: FILTER OPTIONS (simple models)
+  // -------------------------------------------------------------
+  static Future<List<GovernmentOption>> listGovernments() async {
+    final url = Uri.parse('$base/locations/governments');
+    final res = await http.get(url);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load governments');
+    }
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data
+        .map((e) => GovernmentOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<DistrictOption>> listDistrictsByGovernment(
+    int governmentId,
+  ) async {
+    final url = Uri.parse(
+      '$base/locations/governments/$governmentId/districts',
+    );
+    final res = await http.get(url);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load districts');
+    }
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data
+        .map((e) => DistrictOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<AreaOption>> listAreasByDistrict(int districtId) async {
+    final url = Uri.parse('$base/locations/districts/$districtId/areas');
+    final res = await http.get(url);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load areas');
+    }
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data
+        .map((e) => AreaOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<ReportTypeOption>> listReportTypes() async {
+    final url = Uri.parse('$base/reports/types');
+    final res = await http.get(url);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load report types');
+    }
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data
+        .map((e) => ReportTypeOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // -------------------------------------------------------------
+  // PUBLIC REPORTS (for guest UI)
+  // -------------------------------------------------------------
+  static Future<List<ReportPublicSummary>> listPublicReports({
+    int? statusId,
+    int? governmentId,
+    int? districtId,
+    int? areaId,
+    int? reportTypeId,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final query = <String, String>{'limit': '$limit', 'offset': '$offset'};
+
+    if (statusId != null) query['status_id'] = '$statusId';
+    if (governmentId != null) query['government_id'] = '$governmentId';
+    if (districtId != null) query['district_id'] = '$districtId';
+    if (areaId != null) query['area_id'] = '$areaId';
+    if (reportTypeId != null) query['report_type_id'] = '$reportTypeId';
+
+    final url = Uri.parse(
+      '$base/reports/public',
+    ).replace(queryParameters: query);
+    final res = await http.get(url);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load reports');
+    }
+
+    return ReportPublicSummary.listFromJson(res.body);
+  }
+
+  // -------------------------------------------------------------
+  // MY REPORTS (adopted by current user)
+  // -------------------------------------------------------------
+  static Future<List<ReportPublicSummary>> listMyReports({
+    int? statusId,
+    int? governmentId,
+    int? districtId,
+    int? areaId,
+    int? reportTypeId,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final tok = await _token();
+    if (tok == null || tok.isEmpty) {
+      throw Exception("Not authenticated");
+    }
+
+    final query = <String, String>{'limit': '$limit', 'offset': '$offset'};
+
+    if (statusId != null) query['status_id'] = '$statusId';
+    if (governmentId != null) query['government_id'] = '$governmentId';
+    if (districtId != null) query['district_id'] = '$districtId';
+    if (areaId != null) query['area_id'] = '$areaId';
+    if (reportTypeId != null) query['report_type_id'] = '$reportTypeId';
+
+    final url = Uri.parse('$base/reports/my').replace(queryParameters: query);
+    final res = await http.get(url, headers: _headers(tok, json: false));
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: "Failed to load my reports");
+    }
+
+    return ReportPublicSummary.listFromJson(res.body);
+  }
+
+  // -------------------------------------------------------------
+  // UPDATE CITIZEN PROFILE
+  // -------------------------------------------------------------
+  static Future<void> updateCitizenProfile({
+    required int id,
+    String? nameAr,
+    String? nameEn,
+    String? mobileNumber,
+  }) async {
+    final tok = await _token();
+    if (tok == null || tok.isEmpty) {
+      throw Exception("Not authenticated");
+    }
+
+    final uri = Uri.parse("$base/citizens/$id");
+
+    final payload = <String, dynamic>{};
+    if (nameAr != null) payload["name_ar"] = nameAr;
+    if (nameEn != null) payload["name_en"] = nameEn;
+    if (mobileNumber != null) payload["mobile_number"] = mobileNumber;
+
+    final res = await http.patch(
+      uri,
+      headers: _headers(tok, json: true),
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: "فشل تحديث بيانات المواطن");
+    }
+  }
+
+  // -------------------------------------------------------------
+  // UPDATE INITIATIVE PROFILE
+  // -------------------------------------------------------------
+  static Future<void> updateInitiativeProfile({
+    required int id,
+    String? nameAr,
+    String? nameEn,
+    String? mobileNumber,
+    String? joinFormLink,
+    String? logoUrl,
+  }) async {
+    final tok = await _token();
+    if (tok == null || tok.isEmpty) {
+      throw Exception("Not authenticated");
+    }
+
+    final uri = Uri.parse("$base/initiatives/$id");
+
+    final payload = <String, dynamic>{};
+    if (nameAr != null) payload["name_ar"] = nameAr;
+    if (nameEn != null) payload["name_en"] = nameEn;
+    if (mobileNumber != null) payload["mobile_number"] = mobileNumber;
+    if (joinFormLink != null) payload["join_form_link"] = joinFormLink;
+    if (logoUrl != null) payload["logo_url"] = logoUrl;
+
+    final res = await http.patch(
+      uri,
+      headers: _headers(tok, json: true),
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: "فشل تحديث بيانات المبادرة");
+    }
+  }
+
+  // -------------------------------------------------------------
+  // AI ENDPOINTS
+  // -------------------------------------------------------------
+
+  /// 1) استدعاء /ai/resolve-location
+  static Future<ResolvedLocation> resolveLocationByLatLng(
+    double lat,
+    double lng,
+  ) async {
+    final tok = await _token();
+    final url = Uri.parse('$base/ai/resolve-location');
+    final resp = await http.post(
+      url,
+      headers: _headers(tok), // JSON + Authorization لو متوفر
+      body: jsonEncode({'latitude': lat, 'longitude': lng}),
+    );
+    if (resp.statusCode != 200) {
+      throw Exception('فشل في تحديد الموقع (${resp.statusCode}): ${resp.body}');
+    }
+    final data = jsonDecode(resp.body);
+    return ResolvedLocation.fromJson(data);
+  }
+
+  /// 2) استدعاء /ai/analyze-image
+  static Future<AiSuggestion> analyzeReportImage({
+    required Uint8List bytes,
+    required String filename,
+    required int governmentId,
+    required int districtId,
+    required int areaId,
+  }) async {
+    final tok = await _token();
+    final url = Uri.parse(
+      '$base/ai/analyze-image?gov_id=$governmentId&dist_id=$districtId&area_id=$areaId',
+    );
+
+    final request = http.MultipartRequest('POST', url);
+    request.headers.addAll(_headers(tok, json: false));
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: filename),
+    );
+
+    final streamedResp = await request.send();
+    final resp = await http.Response.fromStream(streamedResp);
+
+    if (resp.statusCode != 200) {
+      throw Exception('فشل في تحليل الصورة (${resp.statusCode}): ${resp.body}');
+    }
+    final data = jsonDecode(resp.body);
+    return AiSuggestion.fromJson(data);
   }
 }

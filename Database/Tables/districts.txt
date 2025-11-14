@@ -9,6 +9,7 @@ CREATE TABLE `districts` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `ux_districts_gov_name_en` (`government_id`,`name_en`),
   UNIQUE KEY `ux_districts_gov_name_ar` (`government_id`,`name_ar`),
+  UNIQUE KEY `ux_districts_government_name_ar` (`government_id`,`name_ar`),
   KEY `ix_districts_government` (`government_id`),
   CONSTRAINT `fk_districts_government` FOREIGN KEY (`government_id`) REFERENCES `governments` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

@@ -1,6 +1,8 @@
+// lib/pages/auth/initiative/register_initiative_account_page.dart
 import 'package:basma_app/pages/custom_widgets.dart/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../controllers/register_initiative_controller.dart';
 
 class RegisterInitiativeAccountPage extends StatelessWidget {
@@ -11,7 +13,7 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
     final controller = Get.find<RegisterInitiativeController>();
 
     return Scaffold(
-      backgroundColor: Color(0xFFEFF1F1),
+      backgroundColor: const Color(0xFFEFF1F1),
       appBar: AppBar(
         title: const Text('معلومات الحساب'),
         centerTitle: true,
@@ -33,29 +35,28 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              Obx(
-                () => CustomTextField(
-                  controller: controller.usernameCtrl,
-                  label: 'اسم المستخدم',
-                  hint: 'أدخل اسم المستخدم',
-                  errorText: controller.usernameError.value,
-                ),
+              CustomTextField(
+                controller: controller.usernameCtrl,
+                label: 'اسم المستخدم',
+                hint: 'أدخل اسم المستخدم',
+                errorText: controller.usernameError.value,
+                onChanged: controller.validateUsername,
               ),
               const SizedBox(height: 18),
 
-              Obx(
-                () => CustomTextField(
-                  controller: controller.passwordCtrl,
-                  label: 'كلمة المرور',
-                  hint: 'أدخل كلمة المرور',
-                  obscure: true,
-                  errorText: controller.passwordError.value,
-                ),
+              CustomTextField(
+                controller: controller.passwordCtrl,
+                label: 'كلمة المرور',
+                hint: 'أدخل كلمة المرور',
+                obscure: true,
+                errorText: controller.passwordError.value,
+                onChanged: controller.validatePassword,
               ),
               const SizedBox(height: 30),
 
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(
+                width: double.infinity,
+                height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
@@ -67,10 +68,17 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
                       ? null
                       : controller.submit,
                   child: controller.isSubmitting.value
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text(
                           'إرسال',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                 ),
               ),
