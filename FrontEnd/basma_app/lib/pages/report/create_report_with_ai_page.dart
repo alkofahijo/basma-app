@@ -7,11 +7,14 @@ import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/pages/report/success_page.dart';
 import 'package:basma_app/pages/shared/select_location_on_map_page.dart';
+import 'package:basma_app/widgets/loading_center.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
+const Color _primaryColor = Color(0xFF008000);
 
 class CreateReportWithAiPage extends StatefulWidget {
   const CreateReportWithAiPage({super.key});
@@ -27,6 +30,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
   bool _analyzingImage = false;
   bool _sending = false;
   String? _errorMessage;
+  String? _imageErrorMessage;
 
   ResolvedLocation? _resolvedLocation;
   LatLng? _currentLatLng;
@@ -60,8 +64,15 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     super.dispose();
   }
 
+  /// Safe setState wrapper that checks `mounted` to avoid calling
+  /// setState after the State object has been disposed.
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
+
   Future<void> _initLocation() async {
-    setState(() {
+    _safeSetState(() {
       _loadingLocation = true;
       _errorMessage = null;
     });
@@ -94,12 +105,12 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         pos.longitude,
       );
 
-      setState(() {
+      _safeSetState(() {
         _resolvedLocation = resolved;
         _loadingLocation = false;
       });
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = e.toString();
         _loadingLocation = false;
       });
@@ -107,7 +118,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
   }
 
   Future<void> _loadReportTypes() async {
-    setState(() {
+    _safeSetState(() {
       _loadingTypes = true;
       _typesError = null;
     });
@@ -115,7 +126,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     try {
       // هذه ترجع List<ReportTypeOption>
       final types = await ApiService.listReportTypes();
-      setState(() {
+      _safeSetState(() {
         _types = types;
         _loadingTypes = false;
 
@@ -130,7 +141,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         }
       });
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _loadingTypes = false;
         _typesError = "فشل تحميل أنواع البلاغ: $e";
       });
@@ -150,7 +161,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     );
 
     if (result != null) {
-      setState(() {
+      _safeSetState(() {
         _currentLatLng = result;
         _loadingLocation = true;
         _aiSuggestion = null; // إعادة ضبط الاقتراحات القديمة
@@ -162,12 +173,12 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
           result.latitude,
           result.longitude,
         );
-        setState(() {
+        _safeSetState(() {
           _resolvedLocation = resolved;
           _loadingLocation = false;
         });
       } catch (e) {
-        setState(() {
+        _safeSetState(() {
           _errorMessage = e.toString();
           _loadingLocation = false;
         });
@@ -183,11 +194,12 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       );
       if (img == null) return;
 
-      setState(() {
+      _safeSetState(() {
         _imageFile = img;
         _aiSuggestion = null; // reset
         _selectedType = null;
         _errorMessage = null;
+        _imageErrorMessage = null;
         _titleCtrl.clear();
         _descCtrl.clear();
         _noteCtrl.clear();
@@ -195,16 +207,130 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
       await _analyzeImageWithAi();
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = "حدث خطأ أثناء اختيار الصورة: $e";
       });
     }
   }
 
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(true);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.camera_alt,
+                                size: 28,
+                                color: Colors.black,
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'التقاط صورة',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(false);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.photo_library,
+                                size: 28,
+                                color: Colors.black,
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'اختيار من المعرض',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _analyzeImageWithAi() async {
     if (_imageFile == null || _resolvedLocation == null) return;
 
-    setState(() {
+    _safeSetState(() {
       _analyzingImage = true;
       _errorMessage = null;
     });
@@ -220,7 +346,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         areaId: _resolvedLocation!.areaId,
       );
 
-      setState(() {
+      _safeSetState(() {
         _aiSuggestion = suggestion;
 
         // تعبئة الحقول المقترحة
@@ -236,11 +362,11 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         }
       });
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = "فشل تحليل الصورة بالذكاء الاصطناعي: $e";
       });
     } finally {
-      setState(() {
+      _safeSetState(() {
         _analyzingImage = false;
       });
     }
@@ -248,19 +374,19 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
   Future<void> _submit() async {
     if (_resolvedLocation == null) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = "لم يتم تحديد الموقع بعد.";
       });
       return;
     }
     if (_imageFile == null) {
-      setState(() {
-        _errorMessage = "يرجى اختيار صورة للبلاغ.";
+      _safeSetState(() {
+        _imageErrorMessage = "يرجى اختيار صورة للبلاغ.";
       });
       return;
     }
     if (_selectedType == null) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = "يرجى اختيار نوع البلاغ.";
       });
       return;
@@ -269,7 +395,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       return;
     }
 
-    setState(() {
+    _safeSetState(() {
       _sending = true;
       _errorMessage = null;
     });
@@ -307,12 +433,12 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
       Get.off(() => SuccessPage(reportCode: created.reportCode));
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = "فشل إرسال البلاغ: $e";
       });
     } finally {
       if (mounted) {
-        setState(() {
+        _safeSetState(() {
           _sending = false;
         });
       }
@@ -324,17 +450,22 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F7F8),
+        backgroundColor: const Color(0xFFEFF1F1),
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           title: const Text(
             "إنشاء بلاغ بالذكاء الاصطناعي",
             style: TextStyle(color: Colors.white),
           ),
           elevation: 0,
-          backgroundColor: Colors.green,
+          centerTitle: true,
+          backgroundColor: _primaryColor,
         ),
         body: _loadingLocation
-            ? const Center(child: CircularProgressIndicator())
+            ? const LoadingCenter()
             : SafeArea(
                 child: Form(
                   key: _formKey,
@@ -351,6 +482,8 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                       // 👇 تفاصيل البلاغ تظهر فقط بعد اختيار/التقاط صورة
                       if (_imageFile != null) ...[
                         const SizedBox(height: 12),
+                        _buildTypeCard(),
+                        const SizedBox(height: 12),
                         _buildDetailsCard(),
                       ],
                       const SizedBox(height: 20),
@@ -365,6 +498,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
   Widget _buildHeader() {
     return Card(
+      color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
@@ -400,7 +534,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   SizedBox(height: 4),
                   Text(
                     "سيتم تحديد موقعك تلقائياً وتحليل الصورة لتخمين نوع البلاغ واقتراح عنوان ووصف.",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: Colors.black),
                   ),
                 ],
               ),
@@ -442,6 +576,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         : "${r.governmentNameAr} / ${r.districtNameAr} / ${r.areaNameAr}";
 
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -458,7 +593,15 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
-                TextButton.icon(
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
+                  ),
                   onPressed: _changeLocationManually,
                   icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
                   label: const Text("تعديل", style: TextStyle(fontSize: 12)),
@@ -486,6 +629,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
   Widget _buildImageCard() {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -510,31 +654,147 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
             const SizedBox(height: 6),
             Text(
               "التقط أو ارفع صورة للمشكلة وسيتم تحليلها تلقائياً.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: Colors.black),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _analyzingImage || _sending
-                        ? null
-                        : () => _pickImage(true),
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text("التقاط من الكاميرا"),
-                  ),
+
+            // show image-specific error above the upload box
+            if (_imageErrorMessage != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _analyzingImage || _sending
-                        ? null
-                        : () => _pickImage(false),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text("اختيار من المعرض"),
-                  ),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.4)),
                 ),
-              ],
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _imageErrorMessage ?? '',
+                        style: const TextStyle(fontSize: 13, color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // upload area (single control) + thumbnail
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _analyzingImage || _sending
+                          ? null
+                          : _showImageSourceSheet,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'رفع صورة البلاغ',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _imageFile != null
+                      ? Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey.shade200,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  File(_imageFile!.path),
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: -6,
+                              right: -6,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: _analyzingImage || _sending
+                                    ? null
+                                    : () => _safeSetState(() {
+                                        _imageFile = null;
+                                        _imageErrorMessage = null;
+                                        _aiSuggestion = null;
+                                      }),
+                                icon: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, size: 18),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey.shade100,
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                        ),
+                ],
+              ),
             ),
             if (_imageFile != null) ...[
               const SizedBox(height: 12),
@@ -600,6 +860,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
   Widget _buildDetailsCard() {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -612,14 +873,13 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 Icon(Icons.description_outlined, size: 18, color: Colors.green),
                 SizedBox(width: 6),
                 Text(
-                  "تفاصيل البلاغ",
+                  " تفاصيل البلاغ (يمكنك التعديل)",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            _buildReportTypeDropdown(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             _buildTextField(
               controller: _titleCtrl,
               label: "عنوان البلاغ (يمكنك التعديل)",
@@ -645,64 +905,103 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     );
   }
 
-  Widget _buildReportTypeDropdown() {
-    if (_loadingTypes) {
-      return const Row(
-        children: [
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          SizedBox(width: 8),
-          Text("جارٍ تحميل أنواع البلاغ...", style: TextStyle(fontSize: 12)),
-        ],
-      );
-    }
-
-    if (_typesError != null) {
-      return Text(
-        _typesError!,
-        style: const TextStyle(fontSize: 12, color: Colors.red),
-      );
-    }
-
-    if (_types.isEmpty) {
-      return const Text(
-        "لا توجد أنواع بلاغ متاحة.",
-        style: TextStyle(fontSize: 12),
-      );
-    }
-
-    return DropdownButtonFormField<ReportTypeOption>(
-      initialValue: _selectedType,
-      items: _types
-          .map(
-            (t) => DropdownMenuItem<ReportTypeOption>(
-              value: t,
-              child: Text(t.nameAr),
+  Widget _buildTypeCard() {
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.report, size: 18, color: Colors.green),
+                SizedBox(width: 6),
+                Text(
+                  "نوع البلاغ (يمكنك التعديل)",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ],
             ),
-          )
-          .toList(),
-      decoration: InputDecoration(
-        labelText: "نوع البلاغ",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+            const SizedBox(height: 8),
+            if (_loadingTypes)
+              const Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    "جارٍ تحميل أنواع البلاغ...",
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              )
+            else if (_typesError != null)
+              Text(
+                _typesError!,
+                style: const TextStyle(fontSize: 12, color: Colors.red),
+              )
+            else if (_types.isEmpty)
+              const Text(
+                "لا توجد أنواع بلاغ متاحة.",
+                style: TextStyle(fontSize: 12),
+              )
+            else
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: DropdownButtonFormField<ReportTypeOption>(
+                  value: _selectedType,
+                  items: _types
+                      .map(
+                        (t) => DropdownMenuItem<ReportTypeOption>(
+                          value: t,
+                          child: Text(t.nameAr),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    _safeSetState(() {
+                      _selectedType = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: _selectedType?.nameAr ?? 'اختر نوع البلاغ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                  ),
+                  isExpanded: true,
+                  dropdownColor: Colors.white,
+                  validator: (ReportTypeOption? value) {
+                    if (value == null) return 'يرجى اختيار نوع البلاغ';
+                    return null;
+                  },
+                ),
+              ),
+          ],
         ),
       ),
-      onChanged: (value) {
-        setState(() {
-          _selectedType = value;
-        });
-      },
-      validator: (ReportTypeOption? value) {
-        if (value == null) {
-          return "يرجى اختيار نوع البلاغ";
-        }
-        return null;
-      },
     );
   }
 
@@ -713,7 +1012,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       child: ElevatedButton(
         onPressed: _sending ? null : _submit,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+          backgroundColor: _primaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -741,21 +1040,36 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     required bool required,
     int maxLines = 1,
   }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      validator: (v) {
-        if (required && (v == null || v.trim().isEmpty)) {
-          return "هذا الحقل مطلوب";
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+    // Pill-shaped text field to match the screenshot design
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        validator: (v) {
+          if (required && (v == null || v.trim().isEmpty)) {
+            return "هذا الحقل مطلوب";
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: const TextStyle(color: Colors.black54),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: maxLines > 1 ? 14 : 16,
+          ),
         ),
       ),
     );

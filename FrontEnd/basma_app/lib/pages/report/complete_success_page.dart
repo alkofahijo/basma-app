@@ -39,7 +39,7 @@ class CompleteSuccessPage extends StatelessWidget {
                       horizontal: 60,
                       vertical: 14,
                     ),
-                    backgroundColor: Colors.green,
+                    backgroundColor: const Color.fromARGB(255, 7, 104, 10),
                   ),
                   child: const Text(
                     "تم",

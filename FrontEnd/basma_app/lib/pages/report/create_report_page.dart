@@ -9,7 +9,11 @@ import '../../services/api_service.dart';
 import 'success_page.dart';
 
 import 'package:latlong2/latlong.dart';
+import 'package:basma_app/widgets/loading_center.dart';
 import '../shared/select_location_on_map_page.dart'; // عدّل المسار حسب مكان الملف
+import 'package:basma_app/pages/custom_widgets.dart/custom_dropdown.dart';
+
+const Color _primaryColor = Color(0xFF008000);
 
 class CreateReportPage extends StatefulWidget {
   final Government government;
@@ -77,6 +81,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
   bool _loading = true;
   bool _sending = false;
   String? _errorMessage;
+  String? _imageErrorMessage;
 
   @override
   void initState() {
@@ -116,7 +121,11 @@ class _CreateReportPageState extends State<CreateReportPage> {
       source: ImageSource.camera,
       imageQuality: 90,
     );
-    if (img != null) setState(() => _beforeImage = img);
+    if (img != null)
+      setState(() {
+        _beforeImage = img;
+        _imageErrorMessage = null;
+      });
   }
 
   Future<void> _pickFromGallery() async {
@@ -124,7 +133,125 @@ class _CreateReportPageState extends State<CreateReportPage> {
       source: ImageSource.gallery,
       imageQuality: 90,
     );
-    if (img != null) setState(() => _beforeImage = img);
+    if (img != null)
+      setState(() {
+        _beforeImage = img;
+        _imageErrorMessage = null;
+      });
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickFromCamera();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.camera_alt,
+                                size: 28,
+                                color: Colors.black,
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'التقاط صورة',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickFromGallery();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.photo_library,
+                                size: 28,
+                                color: Colors.black,
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'اختيار من المعرض',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -136,12 +263,13 @@ class _CreateReportPageState extends State<CreateReportPage> {
     }
 
     if (_beforeImage == null) {
-      setState(() => _errorMessage = "يرجى اختيار صورة (قبل).");
+      setState(() => _imageErrorMessage = "يرجى اختيار صورة (قبل).");
       return;
     }
 
     setState(() {
       _errorMessage = null;
+      _imageErrorMessage = null;
       _sending = true;
     });
 
@@ -204,13 +332,27 @@ class _CreateReportPageState extends State<CreateReportPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: _loading
-          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          ? const LoadingCenter()
           : Scaffold(
-              backgroundColor: const Color(0xFFF4F7F8),
+              backgroundColor: const Color(0xFFEFF1F1),
               appBar: AppBar(
-                title: const Text("إنشاء بلاغ جديد"),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                backgroundColor: _primaryColor,
                 elevation: 0,
-                backgroundColor: Colors.teal.shade600,
+                title: const Text(
+                  "إنشاء بلاغ جديد",
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                centerTitle: true,
               ),
               body: SafeArea(
                 child: Form(
@@ -245,6 +387,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
 
   Widget _buildHeader() {
     return Card(
+      color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
@@ -257,7 +400,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [Colors.teal.shade400, Colors.teal.shade700],
+                  colors: [_primaryColor.withOpacity(0.85), _primaryColor],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -320,6 +463,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
         "${widget.government.nameAr} / ${widget.district.nameAr} / ${widget.area.nameAr}";
 
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -329,7 +473,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
           children: [
             const Row(
               children: [
-                Icon(Icons.place_outlined, size: 18, color: Colors.teal),
+                Icon(Icons.place_outlined, size: 18, color: _primaryColor),
                 SizedBox(width: 6),
                 Text(
                   "الموقع الأساسي",
@@ -351,7 +495,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.05),
+                  color: _primaryColor.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -376,6 +520,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
 
   Widget _buildNewLocationCard() {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -388,7 +533,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
                 Icon(
                   Icons.add_location_alt_outlined,
                   size: 18,
-                  color: Colors.teal,
+                  color: _primaryColor,
                 ),
                 SizedBox(width: 6),
                 Text(
@@ -416,13 +561,14 @@ class _CreateReportPageState extends State<CreateReportPage> {
             // زر الخريطة فقط (بدون حقول خط العرض/خط الطول)
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: _sending ? null : _openMapToSelectLocation,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  side: BorderSide(color: Colors.teal.shade400),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(25),
                   ),
                 ),
                 icon: const Icon(Icons.map_outlined),
@@ -438,7 +584,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.05),
+                  color: _primaryColor.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -446,7 +592,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
                     const Icon(
                       Icons.check_circle_outline,
                       size: 18,
-                      color: Colors.teal,
+                      color: _primaryColor,
                     ),
                     const SizedBox(width: 6),
                     const Expanded(
@@ -471,6 +617,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
 
   Widget _buildReportTypeCard() {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -480,7 +627,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
           children: [
             const Row(
               children: [
-                Icon(Icons.category_outlined, size: 18, color: Colors.teal),
+                Icon(Icons.category_outlined, size: 18, color: _primaryColor),
                 SizedBox(width: 6),
                 Text(
                   "نوع البلاغ",
@@ -489,22 +636,13 @@ class _CreateReportPageState extends State<CreateReportPage> {
               ],
             ),
             const SizedBox(height: 10),
-            DropdownButtonFormField<ReportType>(
-              isExpanded: true,
-              initialValue: _selectedType,
-              items: _types
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t.nameAr)))
-                  .toList(),
-              decoration: const InputDecoration(
-                labelText: "اختر نوع البلاغ",
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
+            // Use shared dropdown style
+            buildDropdownBox<ReportType>(
+              label: 'اختر نوع البلاغ',
+              items: _types,
+              selected: _selectedType,
               onChanged: (v) => setState(() => _selectedType = v),
-              validator: (v) => v == null ? "هذا الحقل مطلوب" : null,
+              getName: (t) => t.nameAr,
             ),
           ],
         ),
@@ -514,6 +652,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
 
   Widget _buildDetailsCard() {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -523,7 +662,11 @@ class _CreateReportPageState extends State<CreateReportPage> {
           children: [
             const Row(
               children: [
-                Icon(Icons.description_outlined, size: 18, color: Colors.teal),
+                Icon(
+                  Icons.description_outlined,
+                  size: 18,
+                  color: _primaryColor,
+                ),
                 SizedBox(width: 6),
                 Text(
                   "تفاصيل البلاغ",
@@ -559,6 +702,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
 
   Widget _buildImageCard() {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -571,7 +715,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
                 Icon(
                   Icons.photo_camera_back_outlined,
                   size: 18,
-                  color: Colors.teal,
+                  color: _primaryColor,
                 ),
                 SizedBox(width: 6),
                 Text(
@@ -586,51 +730,156 @@ class _CreateReportPageState extends State<CreateReportPage> {
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _sending ? null : _pickFromCamera,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      side: BorderSide(color: Colors.teal.shade400),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+
+            // show image-specific error above the upload box
+            if (_imageErrorMessage != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.4)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _imageErrorMessage ?? '',
+                        style: const TextStyle(fontSize: 13, color: Colors.red),
                       ),
                     ),
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text("التقاط من الكاميرا"),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _sending ? null : _pickFromGallery,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      side: BorderSide(color: Colors.teal.shade400),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text("اختيار من المعرض"),
-                  ),
-                ),
-              ],
-            ),
-            if (_beforeImage != null) ...[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.file(
-                  File(_beforeImage!.path),
-                  height: 190,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                  ],
                 ),
               ),
-            ],
+            // Design area similar to the provided screenshot: dashed-like border with
+            // left: upload area (icon + text), right: small thumbnail boxes stacked.
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _sending ? null : _showImageSourceSheet,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'رفع صورة البلاغ',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Thumbnails column (up to 3), each small square with close icon
+                  // Single thumbnail box (one photo only)
+                  _beforeImage != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey.shade200,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    File(_beforeImage!.path),
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: _sending
+                                      ? null
+                                      : () => setState(() {
+                                          _beforeImage = null;
+                                          _imageErrorMessage = null;
+                                        }),
+                                  icon: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, size: 18),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey.shade100,
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -644,7 +893,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
       child: ElevatedButton(
         onPressed: _sending ? null : _submit,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.teal.shade600,
+          backgroundColor: _primaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -676,24 +925,41 @@ class _CreateReportPageState extends State<CreateReportPage> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      validator:
-          validator ??
-          (v) {
-            if (required && (v == null || v.trim().isEmpty)) {
-              return "هذا الحقل مطلوب";
-            }
-            return null;
-          },
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          validator:
+              validator ??
+              (v) {
+                if (required && (v == null || v.trim().isEmpty)) {
+                  return "هذا الحقل مطلوب";
+                }
+                return null;
+              },
+          decoration: InputDecoration(
+            labelText: label,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              // vertical: 3,
+            ),
+          ),
         ),
       ),
     );

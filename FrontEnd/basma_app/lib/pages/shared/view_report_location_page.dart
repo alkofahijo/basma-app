@@ -63,19 +63,21 @@ class ViewReportLocationPage extends StatelessWidget {
       child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: AppBar(
-          title: const Text('موقع البلاغ على الخريطة'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [Color(0xFF009688), Color(0xFF00695C)],
-              ),
+          backgroundColor: const Color(0xFF008000),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'موقع البلاغ على الخريطة',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 25,
+              color: Colors.white,
             ),
           ),
+
+          centerTitle: true,
         ),
         body: Stack(
           children: [
@@ -101,11 +103,10 @@ class ViewReportLocationPage extends StatelessWidget {
                         width: 60,
                         height: 60,
                         alignment: Alignment.center,
-                        // ✅ فقط أيقونة داخل الـ Marker → لا Column ولا نص
                         child: const Icon(
                           Icons.location_on,
-                          size: 40,
-                          color: Colors.red,
+                          size: 50,
+                          color: Color(0xFF008000),
                         ),
                       ),
                     ],
@@ -120,10 +121,8 @@ class ViewReportLocationPage extends StatelessWidget {
               child: SafeArea(
                 minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
+                  height: 160,
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.96),
                     borderRadius: BorderRadius.circular(20),
@@ -146,7 +145,10 @@ class ViewReportLocationPage extends StatelessWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF009688), Color(0xFF00695C)],
+                                colors: [
+                                  Color.fromARGB(255, 0, 150, 10),
+                                  Color(0xFF008000),
+                                ],
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -166,7 +168,7 @@ class ViewReportLocationPage extends StatelessWidget {
                                 Text(
                                   locTitle,
                                   style: const TextStyle(
-                                    fontSize: 15,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.w700,
                                   ),
                                   maxLines: 1,
@@ -186,7 +188,7 @@ class ViewReportLocationPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 20),
                       Row(
                         children: [
                           Expanded(
@@ -197,12 +199,26 @@ class ViewReportLocationPage extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 10,
                                 ),
+                                side: BorderSide(
+                                  color: Color(0xFF008000),
+                                  width: 1.5,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
-                              icon: const Icon(Icons.map_outlined),
-                              label: const Text("فتح الموقع في الخرائط"),
+                              icon: const Icon(
+                                Icons.map_outlined,
+                                color: Color(0xFF008000),
+                              ),
+
+                              label: const Text(
+                                "فتح الموقع في الخرائط",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF008000),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -214,7 +230,7 @@ class ViewReportLocationPage extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 10,
                                 ),
-                                backgroundColor: Colors.teal.shade600,
+                                backgroundColor: const Color(0xFF008000),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -226,7 +242,10 @@ class ViewReportLocationPage extends StatelessWidget {
                               ),
                               label: const Text(
                                 "عرض الطريق إلى الموقع",
-                                style: TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),

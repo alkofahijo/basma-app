@@ -4,10 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:basma_app/models/citizen_models.dart';
 import 'package:basma_app/models/initiative_models.dart';
 import 'package:basma_app/services/api_service.dart';
+import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:basma_app/pages/guest/guest_reports_list_page.dart';
+import 'package:basma_app/pages/landing_page.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
 import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
+import 'package:flutter/services.dart';
+
+const Color _primaryColor = Color(0xFF008000);
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -115,8 +123,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     if (_loading) return const LoadingCenter();
 
+    Widget bodyContent;
     if (_err != null) {
-      return Center(
+      bodyContent = Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
@@ -126,17 +135,93 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       );
+    } else if (_userType == 'citizen' && _citizen != null) {
+      bodyContent = _buildCitizenProfile(_citizen!);
+    } else if (_userType == 'initiative' && _initiative != null) {
+      bodyContent = _buildInitiativeProfile(_initiative!);
+    } else {
+      bodyContent = const Center(
+        child: Text("لم يتم العثور على بيانات الملف الشخصي."),
+      );
     }
 
-    if (_userType == 'citizen' && _citizen != null) {
-      return _buildCitizenProfile(_citizen!);
-    }
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFEFF1F1),
+        appBar: AppBar(
+          backgroundColor: _primaryColor,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'الملف الشخصي',
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: bodyContent,
+      ),
+    );
+  }
 
-    if (_userType == 'initiative' && _initiative != null) {
-      return _buildInitiativeProfile(_initiative!);
-    }
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'تسجيل الخروج',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟'),
+            actions: [
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.black),
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                child: const Text('تسجيل الخروج'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
 
-    return const Center(child: Text("لم يتم العثور على بيانات الملف الشخصي."));
+    if (confirmed == true) {
+      await ApiService.setToken(null);
+      final sp = await SharedPreferences.getInstance();
+      await sp.remove('user_type');
+      await sp.remove('citizen_id');
+      await sp.remove('initiative_id');
+
+      Get.offAll(() => LandingPage());
+    }
   }
 
   // ============================================================
@@ -145,7 +230,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildCitizenProfile(Citizen c) {
     return Container(
-      color: const Color(0xFFF4F7F8),
+      color: const Color(0xFFEFF1F1),
       child: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -154,46 +239,53 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: EdgeInsets.zero,
             children: [
               _buildCitizenHeader(c),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    _buildCitizenStatsRow(c),
-                    const SizedBox(height: 16),
+                    // Details card with edit icon inside
+                    // _buildCitizenInfoSection(c),
                     _buildCitizenInfoSection(c),
                     const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _editCitizenProfile,
-                            icon: const Icon(Icons.edit),
-                            label: const Text("تعديل بياناتي"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal.shade600,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
+                    _buildCitizenStatsRow(c),
+
+                    // Stats (reports completed)
+                    const SizedBox(height: 30),
+                    // My reports button
+                    // HomeScreenButton(
+                    //   icon: Icons.list_alt,
+                    //   title: 'بلاغاتي',
+                    //   subtitle: "عرض بلاغاتي التي قيد التنفيذ او المنجزة",
+                    //   onTap: () {
+                    //     Get.to(
+                    //       () => const GuestReportsListPage(
+                    //         initialMainTab: 'mine',
+                    //       ),
+                    //     );
+                    //   },
+                    //   color: const Color(0xFFCAF2DB),
+                    //   iconColor: const Color.fromARGB(255, 19, 106, 32),
+                    // ),
+                    const SizedBox(height: 20),
+                    // Logout at the bottom
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: 250,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _logout(context),
+                        icon: const Icon(Icons.logout, color: Colors.white),
+                        label: const Text(
+                          "تسجيل الخروج",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
                           ),
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            onPressed: _showChangePasswordDialog,
-                            icon: const Icon(Icons.lock_reset),
-                            label: const Text("تغيير كلمة المرور"),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.teal.shade700,
-                              side: BorderSide(color: Colors.teal.shade300),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -209,81 +301,33 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildCitizenHeader(Citizen c) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Colors.teal.shade600, Colors.teal.shade400],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomRight: Radius.circular(28),
-          bottomLeft: Radius.circular(28),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        child: Row(
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person_rounded,
-                size: 40,
-                color: Colors.white.withOpacity(0.95),
-              ),
+      // color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    c.nameAr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  if (c.nameEn.isNotEmpty)
-                    Text(
-                      c.nameEn,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone_android_rounded,
-                        size: 16,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        c.mobileNumber,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            child: const Icon(
+              Icons.person_outline,
+              size: 64,
+              color: Color.fromARGB(255, 47, 50, 47),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            c.nameAr,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -292,11 +336,77 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard(
-            icon: Icons.verified_rounded,
-            title: "البلاغات المنجزة",
-            value: "${c.reportsCompletedCount}",
-            color: Colors.teal,
+          child: Card(
+            color: Colors.white,
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.verified_rounded,
+                          color: _primaryColor,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "البلاغات المنجزة",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "${c.reportsCompletedCount}",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: _primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Put the "بلاغاتي" action inside the stat card
+                  HomeScreenButton(
+                    icon: Icons.list_alt,
+                    title: 'بلاغاتي',
+                    subtitle: "عرض بلاغاتي التي قيد التنفيذ او المنجزة",
+                    onTap: () {
+                      Get.to(
+                        () =>
+                            const GuestReportsListPage(initialMainTab: 'mine'),
+                      );
+                    },
+                    color: const Color(0xFFCAF2DB),
+                    iconColor: const Color.fromARGB(255, 19, 106, 32),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
           ),
         ),
       ],
@@ -305,6 +415,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildCitizenInfoSection(Citizen c) {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -313,12 +424,23 @@ class _ProfilePageState extends State<ProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
-                Icon(Icons.info_outline, size: 18, color: Colors.teal),
-                SizedBox(width: 6),
-                Text(
-                  "تفاصيل المواطن",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: Color(0xFF008000),
+                ),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    "تفاصيل المواطن",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _editCitizenProfile,
+                  icon: const Icon(Icons.edit, color: _primaryColor),
+                  tooltip: 'تعديل',
                 ),
               ],
             ),
@@ -332,6 +454,26 @@ class _ProfilePageState extends State<ProfilePage> {
             InfoRow(label: "الاسم بالعربية", value: c.nameAr),
             InfoRow(label: "الاسم بالإنجليزية", value: c.nameEn),
             InfoRow(label: "رقم الهاتف", value: c.mobileNumber),
+            const SizedBox(height: 12),
+            Center(
+              child: SizedBox(
+                width: 250,
+                child: ElevatedButton.icon(
+                  onPressed: _showChangePasswordDialog,
+                  icon: const Icon(Icons.lock_reset, color: Colors.white),
+                  label: const Text("تغيير كلمة المرور"),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: _primaryColor,
+
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -352,10 +494,17 @@ class _ProfilePageState extends State<ProfilePage> {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(30),
             ),
-            title: const Text("تعديل بيانات المواطن"),
+            title: const Text(
+              "تعديل بيانات المواطن",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -383,9 +532,16 @@ class _ProfilePageState extends State<ProfilePage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text("إلغاء"),
+                child: const Text(
+                  "إلغاء",
+                  style: TextStyle(color: Colors.black),
+                ),
               ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () async {
                   final nameAr = nameArCtrl.text.trim();
                   final nameEn = nameEnCtrl.text.trim();
@@ -435,7 +591,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildInitiativeProfile(Initiative i) {
     return Container(
-      color: const Color(0xFFF4F7F8),
+      color: const Color(0xFFEFF1F1),
       child: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -444,50 +600,37 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: EdgeInsets.zero,
             children: [
               _buildInitiativeHeader(i),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    _buildInitiativeStatsRow(i),
-                    const SizedBox(height: 16),
+                    // Details card with edit icon
                     _buildInitiativeInfoSection(i),
                     const SizedBox(height: 16),
-                    if (i.joinFormLink != null &&
-                        i.joinFormLink!.trim().isNotEmpty)
-                      _buildJoinSection(i.joinFormLink!),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _editInitiativeProfile,
-                            icon: const Icon(Icons.edit),
-                            label: const Text("تعديل بيانات المبادرة"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal.shade600,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
+                    // Stats: members + reports
+                    _buildInitiativeStatsRow(i),
+                    const SizedBox(height: 12),
+                    // Logout button (match citizen style) centered
+                    const SizedBox(height: 10),
+                    Center(
+                      child: SizedBox(
+                        width: 250,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _logout(context),
+                          icon: const Icon(Icons.logout, color: Colors.white),
+                          label: const Text(
+                            "تسجيل الخروج",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            onPressed: _showChangePasswordDialog,
-                            icon: const Icon(Icons.lock_reset),
-                            label: const Text("تغيير كلمة المرور"),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.teal.shade700,
-                              side: BorderSide(color: Colors.teal.shade300),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -502,109 +645,230 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildInitiativeHeader(Initiative i) {
+    // Use the same header style as citizen: centered avatar and Arabic name
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Colors.teal.shade600, Colors.teal.shade400],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomRight: Radius.circular(28),
-          bottomLeft: Radius.circular(28),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-        child: Row(
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(35),
-                child: i.logoUrl != null && i.logoUrl!.isNotEmpty
-                    ? NetworkImageViewer(url: i.logoUrl!, height: 70)
-                    : Icon(
-                        Icons.volunteer_activism,
-                        size: 36,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    i.nameAr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(55),
+              child: i.logoUrl != null && i.logoUrl!.isNotEmpty
+                  ? NetworkImageViewer(url: i.logoUrl!, height: 110)
+                  : const Icon(
+                      Icons.volunteer_activism,
+                      size: 64,
+                      color: Color.fromARGB(255, 47, 50, 47),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  if (i.nameEn.isNotEmpty)
-                    Text(
-                      i.nameEn,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone_in_talk,
-                        size: 16,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        i.mobileNumber,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            i.nameAr,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildInitiativeStatsRow(Initiative i) {
-    return Row(
+    // Stack both cards vertically so they take full width and match citizen sizing.
+    return Column(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.groups_rounded,
-            title: "عدد الأعضاء",
-            value: "${i.membersCount}",
-            color: Colors.indigo,
+        // Members + join link card
+        Card(
+          color: Colors.white,
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _primaryColor.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.groups_rounded,
+                        color: _primaryColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "عدد الأعضاء",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${i.membersCount}",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: _primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Join link section (merged into the members card)
+                if (i.joinFormLink != null && i.joinFormLink!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    "رابط الانضمام للمبادرة",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "يمكنك التقدّم للانضمام للمبادرة عبر الرابط التالي:",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final url = i.joinFormLink!;
+                      await Clipboard.setData(ClipboardData(text: url));
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم نسخ الرابط إلى الحافظة'),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFFAF1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.link, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              i.joinFormLink!,
+                              style: const TextStyle(
+                                color: Colors.green,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.copy, size: 18, color: Colors.green),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.done_all_rounded,
-            title: "البلاغات المنجزة",
-            value: "${i.reportsCompletedCount}",
-            color: Colors.teal,
+        const SizedBox(height: 12),
+        // Reports completed card with 'بلاغاتي' inside
+        Card(
+          color: Colors.white,
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _primaryColor.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.done_all_rounded,
+                        color: _primaryColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "البلاغات المنجزة",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${i.reportsCompletedCount}",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: _primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                HomeScreenButton(
+                  icon: Icons.list_alt,
+                  title: 'بلاغاتي',
+                  subtitle: 'عرض بلاغاتي',
+                  onTap: () {
+                    Get.to(
+                      () => const GuestReportsListPage(initialMainTab: 'mine'),
+                    );
+                  },
+                  color: const Color(0xFFCAF2DB),
+                  iconColor: const Color.fromARGB(255, 19, 106, 32),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -613,6 +877,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildInitiativeInfoSection(Initiative i) {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -621,12 +886,19 @@ class _ProfilePageState extends State<ProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
-                Icon(Icons.info_outline, size: 18, color: Colors.teal),
-                SizedBox(width: 6),
-                Text(
-                  "تفاصيل المبادرة",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              children: [
+                const Icon(Icons.info_outline, size: 18, color: Colors.teal),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    "تفاصيل المبادرة",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _editInitiativeProfile,
+                  icon: const Icon(Icons.edit, color: _primaryColor),
+                  tooltip: 'تعديل',
                 ),
               ],
             ),
@@ -640,60 +912,26 @@ class _ProfilePageState extends State<ProfilePage> {
             InfoRow(label: "اسم المبادرة", value: i.nameAr),
             InfoRow(label: "الاسم بالإنجليزية", value: i.nameEn),
             InfoRow(label: "رقم الهاتف", value: i.mobileNumber),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJoinSection(String link) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.person_add_alt_1, size: 18, color: Colors.teal),
-                SizedBox(width: 6),
-                Text(
-                  "الانضمام إلى المبادرة",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "يمكنك التقدّم للانضمام للمبادرة من خلال الرابط التالي:",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.link, size: 18, color: Colors.teal),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      link,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.teal,
-                        decoration: TextDecoration.underline,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 12),
+            Center(
+              child: SizedBox(
+                width: 250,
+                child: ElevatedButton.icon(
+                  onPressed: _showChangePasswordDialog,
+                  icon: const Icon(Icons.lock_reset, color: Colors.white),
+                  label: const Text(
+                    "تغيير كلمة المرور",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: _primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -710,17 +948,23 @@ class _ProfilePageState extends State<ProfilePage> {
     final nameEnCtrl = TextEditingController(text: i.nameEn);
     final mobileCtrl = TextEditingController(text: i.mobileNumber);
     final joinFormCtrl = TextEditingController(text: i.joinFormLink ?? "");
-
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(30),
             ),
-            title: const Text("تعديل بيانات المبادرة"),
+            title: const Text(
+              "تعديل بيانات المبادرة",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -731,21 +975,24 @@ class _ProfilePageState extends State<ProfilePage> {
                       labelText: "الاسم بالعربية",
                     ),
                   ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: nameEnCtrl,
                     decoration: const InputDecoration(
                       labelText: "الاسم بالإنجليزية",
                     ),
                   ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: mobileCtrl,
                     decoration: const InputDecoration(labelText: "رقم الهاتف"),
                     keyboardType: TextInputType.phone,
                   ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: joinFormCtrl,
                     decoration: const InputDecoration(
-                      labelText: "رابط نموذج الانضمام (اختياري)",
+                      labelText: 'رابط نموذج الانضمام (اختياري)',
                     ),
                   ),
                 ],
@@ -754,14 +1001,20 @@ class _ProfilePageState extends State<ProfilePage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text("إلغاء"),
+                child: const Text(
+                  "إلغاء",
+                  style: TextStyle(color: Colors.black),
+                ),
               ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () async {
                   final nameAr = nameArCtrl.text.trim();
                   final nameEn = nameEnCtrl.text.trim();
                   final mobile = mobileCtrl.text.trim();
-                  final joinFormLink = joinFormCtrl.text.trim();
 
                   if (nameAr.isEmpty || mobile.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -778,14 +1031,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       nameAr: nameAr,
                       nameEn: nameEn,
                       mobileNumber: mobile,
-                      joinFormLink: joinFormLink.isEmpty ? null : joinFormLink,
+                      joinFormLink: joinFormCtrl.text.trim().isEmpty
+                          ? null
+                          : joinFormCtrl.text.trim(),
                     );
                     if (!mounted) return;
                     Navigator.of(ctx).pop(true);
                   } catch (_) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("تعذّر حفظ التعديلات.")),
+                      const SnackBar(content: Text('تعذّر حفظ التعديلات.')),
                     );
                   }
                 },
@@ -797,9 +1052,7 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
 
-    if (saved == true) {
-      await _loadProfile();
-    }
+    if (saved == true) await _loadProfile();
   }
 
   // ============================================================
@@ -820,10 +1073,17 @@ class _ProfilePageState extends State<ProfilePage> {
           child: StatefulBuilder(
             builder: (ctx, setStateDialog) {
               return AlertDialog(
+                backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                title: const Text("تغيير كلمة المرور"),
+                title: const Text(
+                  "تغيير كلمة المرور",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -861,9 +1121,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     onPressed: saving
                         ? null
                         : () => Navigator.of(ctx).pop(false),
-                    child: const Text("إلغاء"),
+                    child: const Text(
+                      "إلغاء",
+                      style: TextStyle(color: Colors.black),
+                    ),
                   ),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                     onPressed: saving
                         ? null
                         : () async {
@@ -877,10 +1144,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               });
                               return;
                             }
-                            if (p1.length < 6) {
+                            if (p1.length < 8) {
                               setStateDialog(() {
                                 error =
-                                    "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
+                                    "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
                               });
                               return;
                             }
@@ -890,6 +1157,41 @@ class _ProfilePageState extends State<ProfilePage> {
                               });
                               return;
                             }
+
+                            // confirmation
+                            final confirm = await showDialog<bool>(
+                              context: ctx,
+                              builder: (cctx) => Directionality(
+                                textDirection: TextDirection.rtl,
+                                child: AlertDialog(
+                                  title: const Text('تأكيد'),
+                                  content: const Text(
+                                    'هل أنت متأكد من رغبتك في تغيير كلمة المرور؟',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(cctx).pop(false),
+                                      child: const Text(
+                                        'لا',
+                                        style: TextStyle(color: Colors.black),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _primaryColor,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.of(cctx).pop(true),
+                                      child: const Text('نعم'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+
+                            if (confirm != true) return;
 
                             setStateDialog(() {
                               saving = true;
@@ -938,52 +1240,5 @@ class _ProfilePageState extends State<ProfilePage> {
   // COMMON STAT CARD
   // ============================================================
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // (stat card helper removed; cards are inlined to match citizen layout exactly)
 }

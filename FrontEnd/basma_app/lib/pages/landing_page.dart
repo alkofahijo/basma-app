@@ -65,7 +65,7 @@ class LandingPage extends StatelessWidget {
               SizedBox(height: size.height * 0.03),
 
               HomeScreenButton(
-                icon: Icons.camera_alt_outlined,
+                icon: Icons.person_outline,
                 title: 'تسجيل الدخول',
                 subtitle:
                     'تسجيل الدخول كمواطن او كمبادرة للتبليغ عن او حل مشكلة تشوه بصري',

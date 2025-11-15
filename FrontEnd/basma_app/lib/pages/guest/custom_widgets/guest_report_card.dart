@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../models/report_models.dart';
 
-/// 🔥 عدّل هذا الـ baseUrl ليناسب بيئتك (Emulator / جهاز حقيقي)
-/// - للـ Android Emulator عادةً: http://10.0.2.2:8000
-/// - للـ iOS Simulator / Web / نفس الجهاز: http://127.0.0.1:8000 أو IP الشبكة
+/// 🔥 عدّل هذا الـ baseUrl ليناسب بيئتك
+/// Android Emulator: http://10.0.2.2:8000
+/// iOS / same machine: http://127.0.0.1:8000
 const String kApiBaseUrl = 'http://10.0.2.2:8000';
 
 class GuestReportCard extends StatelessWidget {
@@ -25,18 +25,12 @@ class GuestReportCard extends StatelessWidget {
 
   String? _buildImageUrl(String? rawPath) {
     if (rawPath == null || rawPath.isEmpty) return null;
-
-    // لو الـ API رجّع URL كامل
     if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
       return rawPath;
     }
-
-    // لو رجع مسار نسبي من نوع /static/uploads/xxx.jpg
     if (rawPath.startsWith('/')) {
       return '$kApiBaseUrl$rawPath';
     }
-
-    // أي حالة أخرى نضيف سلاش في النص
     return '$kApiBaseUrl/$rawPath';
   }
 
@@ -45,9 +39,13 @@ class GuestReportCard extends StatelessWidget {
     final imageUrl = _buildImageUrl(report.imageBeforeUrl);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      elevation: 1,
+      color: Colors.white,
+      shadowColor: Colors.black12.withOpacity(0.9),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      elevation: 1.2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -56,10 +54,10 @@ class GuestReportCard extends StatelessWidget {
             children: [
               // الصورة
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
-                  width: 80,
-                  height: 80,
+                  width: 120,
+                  height: 120,
                   child: imageUrl != null
                       ? Image.network(
                           imageUrl,
@@ -67,7 +65,10 @@ class GuestReportCard extends StatelessWidget {
                           errorBuilder: (_, __, ___) =>
                               const Icon(Icons.image_not_supported),
                         )
-                      : const Icon(Icons.image, size: 40),
+                      : Container(
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image, size: 36),
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -87,12 +88,12 @@ class GuestReportCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -117,52 +118,77 @@ class GuestReportCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
 
-                    // الوصف
                     if (report.descriptionAr != null &&
                         report.descriptionAr!.isNotEmpty)
                       Text(
                         report.descriptionAr!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                      ),
-
-                    const SizedBox(height: 4),
-
-                    // الرمز + التاريخ
-                    Text(
-                      'رمز البلاغ: ${report.reportCode}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    if (report.reportedAt != null)
-                      Text(
-                        'تاريخ البلاغ: ${formatDate(report.reportedAt)}',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
+                          fontSize: 12.5,
+                          color: Colors.grey.shade800,
                         ),
                       ),
+
                     const SizedBox(height: 4),
 
-                    // الموقع
+                    // Text(
+                    //   'رمز البلاغ: ${report.reportCode}',
+                    //   style: TextStyle(
+                    //     fontSize: 11.5,
+                    //     color: Colors.grey.shade700,
+                    //   ),
+                    // ),
                     if (report.governmentNameAr != null)
                       Text(
                         'الموقع: ${report.governmentNameAr ?? ''}'
                         '${report.districtNameAr != null ? ' - ${report.districtNameAr}' : ''}'
                         '${report.areaNameAr != null ? ' - ${report.areaNameAr}' : ''}',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 11.5),
                       ),
 
                     const SizedBox(height: 8),
 
-                    // زر عرض التفاصيل
+                    if (report.reportedAt != null)
+                      Text(
+                        'تاريخ البلاغ: ${formatDate(report.reportedAt)}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
                         onPressed: onTap,
-                        child: const Text('عرض التفاصيل'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF039844),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Container(
+                          width: 120,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(25),
+                            color: const Color(0xFFCAF2DB),
+                          ),
+                          child: Center(
+                            child: const Text(
+                              'عرض التفاصيل',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],

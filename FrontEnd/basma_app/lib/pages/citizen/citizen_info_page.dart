@@ -4,6 +4,8 @@ import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 
+const Color _primaryColor = Color(0xFF008000);
+
 class CitizenInfoPage extends StatefulWidget {
   final int citizenId;
 
@@ -59,11 +61,25 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F7F8),
+        backgroundColor: const Color(0xFFEFF1F1),
         appBar: AppBar(
-          title: const Text("بيانات المواطن"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          backgroundColor: _primaryColor,
           elevation: 0,
-          backgroundColor: Colors.teal.shade600,
+          title: const Text(
+            "بيانات المواطن",
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
         ),
         body: SafeArea(
           child: RefreshIndicator(
@@ -96,82 +112,32 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
 
   Widget _buildHeader(Citizen c) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Colors.teal.shade600, Colors.teal.shade400],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomRight: Radius.circular(28),
-          bottomLeft: Radius.circular(28),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        child: Row(
-          children: [
-            // Avatar دائرة
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person_rounded,
-                size: 40,
-                color: Colors.white.withOpacity(0.95),
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    c.nameAr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  if (c.nameEn.isNotEmpty)
-                    Text(
-                      c.nameEn,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone_android_rounded,
-                        size: 16,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        c.mobileNumber,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            child: const Icon(
+              Icons.person_outline,
+              size: 64,
+              color: Color.fromARGB(255, 47, 50, 47),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            c.nameAr,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -184,7 +150,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
             icon: Icons.verified_rounded,
             title: "البلاغات المنجزة",
             value: "${c.reportsCompletedCount}",
-            color: Colors.teal,
+            color: _primaryColor,
           ),
         ),
       ],
@@ -251,7 +217,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, size: 18, color: Colors.teal),
+                const Icon(Icons.info_outline, size: 18, color: _primaryColor),
                 const SizedBox(width: 6),
                 const Text(
                   "تفاصيل المواطن",
