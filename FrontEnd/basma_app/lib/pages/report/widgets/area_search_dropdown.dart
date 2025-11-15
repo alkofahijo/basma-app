@@ -1,6 +1,8 @@
 import 'package:basma_app/controllers/select_location_controller.dart';
 import 'package:flutter/material.dart';
 
+const Color _primaryColor = Color(0xFF008000);
+
 /// Custom area selector with search and "add new area" option.
 class AreaSearchDropdown extends StatelessWidget {
   final SelectLocationController controller;
@@ -15,18 +17,27 @@ class AreaSearchDropdown extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'المنطقة',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        // const Text(
+        //   'المنطقة',
+        //   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        // ),
         const SizedBox(height: 8),
         InkWell(
           onTap: () => _openAreaBottomSheet(context),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade400),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  // match gov/district shadow
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -41,7 +52,7 @@ class AreaSearchDropdown extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.arrow_drop_down),
+                Icon(Icons.arrow_drop_down, color: Colors.grey[800]),
               ],
             ),
           ),
@@ -54,6 +65,7 @@ class AreaSearchDropdown extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -102,10 +114,12 @@ class AreaSearchDropdown extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'ابحث عن المنطقة',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                       ),
                       onChanged: (val) {
                         setState(() => searchQuery = val.trim());
@@ -133,8 +147,19 @@ class AreaSearchDropdown extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
+                      alignment: Alignment.centerLeft,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
                         onPressed: () async {
                           Navigator.of(context).pop();
                           await _openAddAreaDialog(context);
@@ -170,6 +195,10 @@ class AreaSearchDropdown extends StatelessWidget {
           child: StatefulBuilder(
             builder: (context, setState) {
               return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
                 title: const Text('إضافة منطقة جديدة'),
                 content: SingleChildScrollView(
                   child: Column(
@@ -232,6 +261,10 @@ class AreaSearchDropdown extends StatelessWidget {
                     child: const Text('إلغاء'),
                   ),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                     onPressed: isSubmitting
                         ? null
                         : () async {

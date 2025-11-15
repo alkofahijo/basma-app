@@ -31,7 +31,12 @@ Future<void> main() async {
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
       ),
-      theme: ThemeData(scaffoldBackgroundColor: const Color(0xFFEFF1F1)),
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFEFF1F1),
+
+        chipTheme: ChipThemeData(showCheckmark: false),
+      ),
       home: const SplashScreen(),
     ),
   );

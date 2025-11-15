@@ -6,6 +6,7 @@ import 'package:basma_app/pages/custom_widgets.dart/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:basma_app/widgets/loading_center.dart';
 
 import '../../../controllers/register_initiative_controller.dart';
 import 'register_initiative_account_page.dart';
@@ -18,23 +19,27 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
     final controller = Get.put(RegisterInitiativeController());
     final picker = ImagePicker();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFEFF1F1),
-      appBar: AppBar(
-        title: const Text(
-          'تسجيل المبادرة',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Obx(() {
-        if (controller.isLoadingGovs.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (controller.loadError.isNotEmpty) {
-          return Center(
+    return Obx(() {
+      if (controller.isLoadingGovs.value) {
+        return const LoadingCenter();
+      }
+
+      if (controller.loadError.isNotEmpty) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFEFF1F1),
+          appBar: AppBar(
+            title: const Text(
+              'تسجيل المبادرة',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+          ),
+          body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -46,10 +51,25 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                 ),
               ],
             ),
-          );
-        }
+          ),
+        );
+      }
 
-        return Padding(
+      return Scaffold(
+        backgroundColor: const Color(0xFFEFF1F1),
+        appBar: AppBar(
+          title: const Text(
+            'تسجيل المبادرة',
+            style: TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: Padding(
           padding: const EdgeInsets.all(20),
           child: ListView(
             children: [
@@ -220,8 +240,8 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               ),
             ],
           ),
-        );
-      }),
-    );
+        ),
+      );
+    });
   }
 }

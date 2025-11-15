@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/report_models.dart';
 import '../../services/api_service.dart';
 
+const Color _primaryColor = Color(0xFF008000);
+
 class CompleteReportPage extends StatefulWidget {
   final ReportDetail report;
 
@@ -34,22 +36,17 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
   }
 
   Future<void> _submit() async {
-    if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("يرجى اختيار صورة بعد الإصلاح أولاً.")),
-      );
-      return;
-    }
+    if (_selectedImage == null || !_isConfirmed) return;
 
     setState(() => _loading = true);
 
     try {
       final bytes = await _selectedImage!.readAsBytes();
-      final imageUrl = await ApiService.uploadImage(bytes, "after.jpg");
+      final url = await ApiService.uploadImage(bytes, "after.jpg");
 
       await ApiService.completeReport(
         reportId: widget.report.id,
-        imageAfterUrl: imageUrl,
+        imageAfterUrl: url,
         note: _noteCtrl.text,
       );
 
@@ -75,217 +72,96 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Upload Photos and details after fixing an issue."),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          backgroundColor: _primaryColor,
+          centerTitle: true,
+          title: const Text(
+            "إكمال البلاغ",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 25,
+              color: Colors.white,
+            ),
+          ),
         ),
+
         body: SafeArea(
-          child: Column(
-            children: [
-              // ====== المحتوى الرئيسي مع Scroll ======
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    // عناوين قسم التحميل
-                    Text(
-                      "Upload After Photos",
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Show How The Area Looks Now.",
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "تحميل صور بعد إصلاح المشكلة",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // كارد الصور + أزرار المعرض/الكاميرا
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            if (_selectedImage != null)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.file(
-                                  _selectedImage!,
-                                  height: 230,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            else
-                              Container(
-                                height: 230,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                    width: 1.2,
-                                  ),
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topRight,
-                                    end: Alignment.bottomLeft,
-                                    colors: [
-                                      Colors.grey.shade100,
-                                      Colors.grey.shade200,
-                                    ],
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.photo_camera_outlined,
-                                      size: 52,
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      "لم يتم اختيار صورة بعد",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: _loading
-                                        ? null
-                                        : () => _pick(ImageSource.gallery),
-                                    icon: const Icon(
-                                      Icons.photo_library_outlined,
-                                    ),
-                                    label: const Text("اختيار من المعرض"),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: _loading
-                                        ? null
-                                        : () => _pick(ImageSource.camera),
-                                    icon: const Icon(Icons.camera_alt_outlined),
-                                    label: const Text("التقاط صورة"),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: ListView(
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        "تحميل صور بعد الإصلاح",
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // حقل الملاحظات
-                    Text(
-                      "ملاحظات بعد الإصلاح",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 6),
+                      Text(
+                        "اعرض كيف أصبح المكان الآن.",
+                        style: TextStyle(color: Colors.grey[600]),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _noteCtrl,
-                      maxLines: 4,
-                      textDirection: TextDirection.rtl,
-                      decoration: InputDecoration(
-                        hintText:
-                            "أضف أي تفاصيل أو ملاحظات إضافية بعد إصلاح المشكلة...",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                      ),
-                    ),
+                    ],
+                  ),
+                ),
 
-                    const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                _buildUploadBox(),
 
-                    // Checkbox التأكيد
-                    Container(
-                      decoration: BoxDecoration(
+                const SizedBox(height: 24),
+                Text(
+                  "ملاحظات بعد الإصلاح",
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: TextField(
+                    controller: _noteCtrl,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: "أضف أي تفاصيل قصيرة حول ما قمت به...",
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300),
+                        borderSide: BorderSide.none,
                       ),
-                      child: CheckboxListTile(
-                        value: _isConfirmed,
-                        onChanged: _loading
-                            ? null
-                            : (v) {
-                                setState(() {
-                                  _isConfirmed = v ?? false;
-                                });
-                              },
-                        title: const Text(
-                          "أؤكد أننا قمنا بحل المشكلة.\n"
-                          "I confirm that we have fixed the issue.",
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.all(14),
                     ),
-                  ],
+                  ),
                 ),
-              ),
 
-              // ====== الأزرار في الأسفل ======
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
+                const SizedBox(height: 16),
+
+                // ----- Checkbox (no container wrapper) -----
+                CheckboxListTile(
+                  value: _isConfirmed,
+                  activeColor: _primaryColor,
+                  onChanged: _loading
+                      ? null
+                      : (v) => setState(() => _isConfirmed = v ?? false),
+                  title: const Text("أؤكد أننا قمنا بحل المشكلة."),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
                 ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Row(
+
+                const SizedBox(height: 20),
+
+                // ----- Buttons (no background container) -----
+                Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
@@ -293,6 +169,8 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                             ? null
                             : () => Navigator.pop(context, false),
                         style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: _primaryColor),
+                          foregroundColor: _primaryColor,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -311,6 +189,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                             ? null
                             : _submit,
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -322,18 +201,131 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
                               )
-                            : const Text("تأكيد إكمال البلاغ"),
+                            : const Text(
+                                "تأكيد إكمال البلاغ",
+                                style: TextStyle(color: Colors.white),
+                              ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  //============================================================================
+  //                                UPLOAD BOX
+  //============================================================================
+
+  Widget _buildUploadBox() {
+    return GestureDetector(
+      onTap: _loading
+          ? null
+          : () => showModalBottomSheet(
+              context: context,
+              builder: (_) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.photo_library),
+                      title: const Text('اختيار من المعرض'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pick(ImageSource.gallery);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.camera_alt),
+                      title: const Text('التقاط صورة'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pick(ImageSource.camera);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      child: Container(
+        height: 220,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: _buildDashedBorder(),
+          color: Colors.white,
+        ),
+        child: _selectedImage == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(
+                    Icons.photo_camera_outlined,
+                    size: 52,
+                    color: Colors.black54, // dark gray
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "اضغط لرفع أو التقاط صورة",
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              )
+            : Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      _selectedImage!,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+
+                  // Delete icon
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: GestureDetector(
+                      onTap: _loading
+                          ? null
+                          : () => setState(() => _selectedImage = null),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(6),
+                        child: const Icon(Icons.close, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // ------- Dashed Border Painter -------
+  Border _buildDashedBorder() {
+    return Border.all(
+      color: Colors.green.withOpacity(0.5),
+      width: 1.4,
+      strokeAlign: BorderSide.strokeAlignInside,
+      style: BorderStyle.solid, // real dashed border using paint below
     );
   }
 }

@@ -17,7 +17,6 @@ class GuestFiltersCard extends StatelessWidget {
   final ValueChanged<int?> onAreaChanged;
   final ValueChanged<int?> onReportTypeChanged;
 
-  /// دالة تعطي أيقونة حسب كود نوع البلاغ
   final IconData Function(String) iconForReportType;
 
   const GuestFiltersCard({
@@ -39,157 +38,134 @@ class GuestFiltersCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ===== العنوان العلوي =====
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    // ignore: deprecated_member_use
-                    color: Colors.teal.withOpacity(0.1),
-                  ),
-                  child: const Icon(
-                    Icons.filter_alt_outlined,
-                    color: Colors.teal,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  "تصفية البلاغات",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                const Spacer(),
-                // زر واضح لمسح الفلاتر (UI فقط)
-                Text(
-                  "تصفية ذكية للموقع ونوع البلاغ",
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(999),
             ),
-            const SizedBox(height: 8),
-            const Divider(height: 18),
-            const SizedBox(height: 12),
-            // ===== المحافظة =====
-            _buildDropdown<int?>(
-              label: "المحافظة",
-              value: selectedGovernmentId,
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
-                ...governments.map(
-                  (g) => DropdownMenuItem<int?>(
-                    value: g.id,
-                    child: Text(g.nameAr),
-                  ),
+          ),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF039844).withOpacity(0.08),
                 ),
-              ],
-              onChanged: onGovernmentChanged,
-            ),
-            const SizedBox(height: 16),
-
-            // ===== اللواء =====
-            _buildDropdown<int?>(
-              label: "اللواء / القضاء",
-              value: selectedDistrictId,
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
-                ...districts.map(
-                  (d) => DropdownMenuItem<int?>(
-                    value: d.id,
-                    child: Text(d.nameAr),
-                  ),
-                ),
-              ],
-              onChanged: selectedGovernmentId == null
-                  ? null
-                  : onDistrictChanged,
-              hintDisabled: "اختر المحافظة أولاً",
-            ),
-            const SizedBox(height: 16),
-
-            // ===== المنطقة =====
-            _buildDropdown<int?>(
-              label: "المنطقة",
-              value: selectedAreaId,
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
-                ...areas.map(
-                  (a) => DropdownMenuItem<int?>(
-                    value: a.id,
-                    child: Text(a.nameAr),
-                  ),
-                ),
-              ],
-              onChanged: selectedDistrictId == null ? null : onAreaChanged,
-              hintDisabled: "اختر اللواء أولاً",
-            ),
-            const SizedBox(height: 16),
-
-            // ===== نوع البلاغ =====
-            _buildDropdown<int?>(
-              label: "نوع البلاغ",
-              value: selectedReportTypeId,
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
-                ...reportTypes.map(
-                  (t) => DropdownMenuItem<int?>(
-                    value: t.id,
-                    child: Row(
-                      children: [
-                        Icon(
-                          iconForReportType(t.code),
-                          size: 18,
-                          color: Colors.teal,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            t.nameAr,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: onReportTypeChanged,
-            ),
-
-            const SizedBox(height: 6),
-
-            // سطر صغير في الأسفل يوضّح عدد الفلاتر المفعّلة (اختياري)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _buildActiveFiltersText(),
-                style: TextStyle(
-                  fontSize: 11,
-                  // ignore: deprecated_member_use
-                  color: theme.colorScheme.primary.withOpacity(0.8),
+                child: const Icon(
+                  Icons.filter_list,
+                  color: Color(0xFF039844),
+                  size: 20,
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 10),
+              const Text(
+                "تصفية البلاغات",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 18),
+          const SizedBox(height: 12),
+
+          // المحافظة
+          _buildDropdown<int?>(
+            label: "المحافظة",
+            value: selectedGovernmentId,
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
+              ...governments.map(
+                (g) =>
+                    DropdownMenuItem<int?>(value: g.id, child: Text(g.nameAr)),
+              ),
+            ],
+            onChanged: onGovernmentChanged,
+          ),
+          const SizedBox(height: 14),
+
+          // اللواء
+          _buildDropdown<int?>(
+            label: "اللواء / القضاء",
+            value: selectedDistrictId,
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
+              ...districts.map(
+                (d) =>
+                    DropdownMenuItem<int?>(value: d.id, child: Text(d.nameAr)),
+              ),
+            ],
+            onChanged: selectedGovernmentId == null ? null : onDistrictChanged,
+            hintDisabled: "اختر المحافظة أولاً",
+          ),
+          const SizedBox(height: 14),
+
+          // المنطقة
+          _buildDropdown<int?>(
+            label: "المنطقة",
+            value: selectedAreaId,
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
+              ...areas.map(
+                (a) =>
+                    DropdownMenuItem<int?>(value: a.id, child: Text(a.nameAr)),
+              ),
+            ],
+            onChanged: selectedDistrictId == null ? null : onAreaChanged,
+            hintDisabled: "اختر اللواء أولاً",
+          ),
+          const SizedBox(height: 14),
+
+          // نوع البلاغ
+          _buildDropdown<int?>(
+            label: "نوع البلاغ",
+            value: selectedReportTypeId,
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('الكل')),
+              ...reportTypes.map(
+                (t) => DropdownMenuItem<int?>(
+                  value: t.id,
+                  child: Row(
+                    children: [
+                      Icon(
+                        iconForReportType(t.code),
+                        size: 18,
+                        color: const Color(0xFF039844),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(t.nameAr, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            onChanged: onReportTypeChanged,
+          ),
+          const SizedBox(height: 10),
+
+          // Align(
+          //   alignment: Alignment.centerLeft,
+          //   child: Text(
+          //     _buildActiveFiltersText(),
+          //     style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+          //   ),
+          // ),
+          // const SizedBox(height: 6),
+        ],
       ),
     );
   }
-
-  // ===== دالة مساعدة لبناء Dropdown جميل ومتكرر =====
 
   Widget _buildDropdown<T>({
     required String label,
@@ -231,18 +207,17 @@ class GuestFiltersCard extends StatelessWidget {
     );
   }
 
-  /// نص لطيف يوضّح عدد الفلاتر المستخدمة حالياً
-  String _buildActiveFiltersText() {
-    int count = 0;
-    if (selectedGovernmentId != null) count++;
-    if (selectedDistrictId != null) count++;
-    if (selectedAreaId != null) count++;
-    if (selectedReportTypeId != null) count++;
+  // String _buildActiveFiltersText() {
+  //   int count = 0;
+  //   if (selectedGovernmentId != null) count++;
+  //   if (selectedDistrictId != null) count++;
+  //   if (selectedAreaId != null) count++;
+  //   if (selectedReportTypeId != null) count++;
 
-    if (count == 0) {
-      return "جميع البلاغات معروضة بدون فلاتر.";
-    } else {
-      return "عدد الفلاتر المفعّلة: $count";
-    }
-  }
+  //   if (count == 0) {
+  //     return "جميع البلاغات معروضة بدون فلاتر.";
+  //   } else {
+  //     return "عدد الفلاتر المفعّلة: $count";
+  //   }
+  // }
 }

@@ -4,8 +4,6 @@ import 'package:basma_app/pages/landing_page.dart';
 import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:basma_app/pages/guest/guest_reports_list_page.dart';
 import 'package:basma_app/pages/report/select_location_page.dart';
-import 'package:basma_app/pages/profile/profile_page.dart';
-import 'package:basma_app/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,8 +18,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0; // 0 = الرئيسية, 1 = الملف الشخصي
-
   Future<void> _ensureLoggedIn() async {
     final sp = await SharedPreferences.getInstance();
     final token = sp.getString('token');
@@ -36,58 +32,6 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _ensureLoggedIn();
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text(
-              'تسجيل الخروج',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                ),
-                child: const Text('تسجيل الخروج'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      await ApiService.setToken(null);
-      final sp = await SharedPreferences.getInstance();
-      await sp.remove('user_type');
-      await sp.remove('citizen_id');
-      await sp.remove('initiative_id');
-
-      Get.offAll(() => LandingPage());
-    }
   }
 
   Widget _buildHomeTab(BuildContext context, Size size) {
@@ -160,14 +104,6 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(height: size.height * 0.03),
 
-          HomeScreenButton(
-            icon: Icons.logout,
-            title: 'تسجيل الخروج',
-            subtitle: 'تسجيل الخروج من الحساب الحالي.',
-            onTap: () => _logout(context),
-            color: const Color(0xFFFAD4D4),
-            iconColor: Colors.redAccent,
-          ),
           const SizedBox(height: 12),
         ],
       ),
@@ -181,7 +117,6 @@ class _HomePageState extends State<HomePage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFEFF1F1),
         appBar: AppBar(
           backgroundColor: const Color(0xFFEFF1F1),
           elevation: 0,
@@ -192,30 +127,8 @@ class _HomePageState extends State<HomePage> {
           centerTitle: true,
         ),
         body: Container(
-          color: Colors.white,
-          child: _currentIndex == 0
-              ? _buildHomeTab(context, size)
-              : const ProfilePage(),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          selectedItemColor: Colors.teal.shade700,
-          unselectedItemColor: Colors.grey.shade600,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'الرئيسية',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'الملف الشخصي',
-            ),
-          ],
+          color: const Color(0xFFEFF1F1),
+          child: _buildHomeTab(context, size),
         ),
       ),
     );

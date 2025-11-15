@@ -369,6 +369,8 @@ class ReportPublicSummary {
     );
   }
 
+  String? get typeNameAr => null;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'report_code': reportCode,

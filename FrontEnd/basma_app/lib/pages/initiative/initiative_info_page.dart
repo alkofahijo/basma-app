@@ -5,6 +5,8 @@ import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 
+const Color _primaryColor = Color(0xFF008000);
+
 class InitiativeInfoPage extends StatefulWidget {
   final int initiativeId;
 
@@ -60,11 +62,25 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F7F8),
+        backgroundColor: const Color(0xFFEFF1F1),
         appBar: AppBar(
-          title: const Text("بيانات المبادرة"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          backgroundColor: _primaryColor,
           elevation: 0,
-          backgroundColor: Colors.teal.shade600,
+          title: const Text(
+            "بيانات المبادرة",
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
         ),
         body: SafeArea(
           child: RefreshIndicator(
@@ -101,87 +117,38 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
 
   Widget _buildHeader(Initiative i) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Colors.teal.shade600, Colors.teal.shade400],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomRight: Radius.circular(28),
-          bottomLeft: Radius.circular(28),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-        child: Row(
-          children: [
-            // Logo / Avatar
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(35),
-                child: i.logoUrl != null && i.logoUrl!.isNotEmpty
-                    ? NetworkImageViewer(url: i.logoUrl!, height: 70)
-                    : Icon(
-                        Icons.volunteer_activism,
-                        size: 36,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    i.nameAr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(55),
+              child: i.logoUrl != null && i.logoUrl!.isNotEmpty
+                  ? NetworkImageViewer(url: i.logoUrl!, height: 110)
+                  : const Icon(
+                      Icons.volunteer_activism,
+                      size: 64,
+                      color: Color.fromARGB(255, 47, 50, 47),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  if (i.nameEn.isNotEmpty)
-                    Text(
-                      i.nameEn,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone_in_talk,
-                        size: 16,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        i.mobileNumber,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            i.nameAr,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -194,7 +161,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             icon: Icons.groups_rounded,
             title: "عدد الأعضاء",
             value: "${i.membersCount}",
-            color: Colors.indigo,
+            color: _primaryColor,
           ),
         ),
         const SizedBox(width: 12),
@@ -203,7 +170,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             icon: Icons.done_all_rounded,
             title: "البلاغات المنجزة",
             value: "${i.reportsCompletedCount}",
-            color: Colors.teal,
+            color: _primaryColor,
           ),
         ),
       ],
@@ -270,7 +237,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, size: 18, color: Colors.teal),
+                const Icon(Icons.info_outline, size: 18, color: _primaryColor),
                 const SizedBox(width: 6),
                 const Text(
                   "تفاصيل المبادرة",
@@ -308,7 +275,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
                 const Icon(
                   Icons.person_add_alt_1,
                   size: 18,
-                  color: Colors.teal,
+                  color: _primaryColor,
                 ),
                 const SizedBox(width: 6),
                 const Text(
@@ -334,19 +301,19 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.06),
+                  color: _primaryColor.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.link, size: 18, color: Colors.teal),
+                    const Icon(Icons.link, size: 18, color: _primaryColor),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         link,
                         style: const TextStyle(
                           fontSize: 13,
-                          color: Colors.teal,
+                          color: _primaryColor,
                           decoration: TextDecoration.underline,
                         ),
                         maxLines: 2,

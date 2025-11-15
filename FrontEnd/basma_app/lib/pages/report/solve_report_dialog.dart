@@ -115,7 +115,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [Colors.teal.shade400, Colors.teal.shade700],
+                  colors: [Color(0xFF004d00), Color(0xFF008000)],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -147,16 +147,12 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.04),
+                color: const Color.fromARGB(255, 0, 150, 10).withOpacity(0.04),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: Colors.teal.shade700,
-                  ),
+                  Icon(Icons.info_outline, size: 18, color: Color(0xFF008000)),
                   const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
@@ -215,7 +211,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
           ElevatedButton(
             onPressed: _loading ? null : _confirmSolve,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
+              backgroundColor: Color(0xFF008000),
               minimumSize: const Size(110, 40),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

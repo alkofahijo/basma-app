@@ -1,41 +1,43 @@
-// lib/pages/guest/guest_reports_list_page.dart
-
+import 'package:basma_app/widgets/loading_center.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/report_models.dart';
 import '../../services/api_service.dart';
 import '../report/report_details_page.dart';
+import 'package:basma_app/pages/profile/profile_page.dart';
 
 // custom widgets
-import 'custom_widgets/guest_main_tabs.dart';
 import 'custom_widgets/guest_status_tabs.dart';
 import 'custom_widgets/guest_filters_card.dart';
 import 'custom_widgets/guest_report_card.dart';
 
 class GuestReportsListPage extends StatefulWidget {
-  const GuestReportsListPage({super.key});
+  final String initialMainTab;
+
+  const GuestReportsListPage({super.key, this.initialMainTab = 'all'});
 
   @override
   State<GuestReportsListPage> createState() => _GuestReportsListPageState();
 }
 
 class _GuestReportsListPageState extends State<GuestReportsListPage> {
-  // هل المستخدم مسجّل دخول أم لا (لتفعيل تبويب "بلاغاتي")
+  // login state
   bool _isLoggedIn = false;
 
-  // التبويب الرئيسي: 'all' = كل البلاغات, 'mine' = بلاغاتي
+  // main tab: 'all' or 'mine'
   String _mainTab = 'all';
 
-  // تبويب الحالة: open / in_progress / completed
+  // status tab: 'open' / 'in_progress' / 'completed'
   String _statusTab = 'open';
 
-  // قائمة البلاغات
+  // reports
   List<ReportPublicSummary> _reports = [];
+  List<ReportPublicSummary> _filteredReports = [];
   bool _loading = true;
   String? _error;
 
-  // الفلاتر
+  // filters
   List<GovernmentOption> _governments = [];
   List<DistrictOption> _districts = [];
   List<AreaOption> _areas = [];
@@ -46,13 +48,16 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   int? _selectedAreaId;
   int? _selectedReportTypeId;
 
+  // search
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _mainTab = widget.initialMainTab;
     _checkLoginAndInit();
   }
 
-  /// التحقق من وجود توكن في التخزين (لتحديد حالة تسجيل الدخول)
   Future<void> _checkLoginAndInit() async {
     setState(() {
       _loading = true;
@@ -67,8 +72,11 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       setState(() {
         _isLoggedIn = loggedIn;
         if (!_isLoggedIn) {
-          // الضيف دائمًا على "كل البلاغات"
           _mainTab = 'all';
+        } else {
+          // if the page was requested to show 'mine' by default, ensure the
+          // status tab uses 'in_progress' (user's reports default view)
+          if (_mainTab == 'mine') _statusTab = 'in_progress';
         }
       });
 
@@ -82,7 +90,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
-  /// تحميل القوائم الثابتة (المحافظات / أنواع البلاغات) ثم تحميل البلاغات
   Future<void> _initFiltersAndLoad() async {
     try {
       final results = await Future.wait([
@@ -102,7 +109,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
-  /// تحويل تبويب الحالة إلى status_id
   int _statusIdForTab(String tab) {
     switch (tab) {
       case 'open':
@@ -116,7 +122,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
-  /// تحميل البلاغات بحسب التبويبات والفلاتر
   Future<void> _loadReports() async {
     setState(() {
       _loading = true;
@@ -130,7 +135,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
 
       if (isMyReports) {
-        // /reports/my
         list = await ApiService.listMyReports(
           statusId: statusId,
           governmentId: _selectedGovernmentId,
@@ -139,7 +143,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
           reportTypeId: _selectedReportTypeId,
         );
       } else {
-        // /reports/public
         list = await ApiService.listPublicReports(
           statusId: statusId,
           governmentId: _selectedGovernmentId,
@@ -151,43 +154,31 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
 
       setState(() {
         _reports = list;
-        _loading = false;
+        _searchQuery = "";
       });
+
+      _applySearchAndFilters();
     } catch (_) {
       setState(() {
         _reports = [];
+        _filteredReports = [];
         _loading = false;
         _error = 'تعذّر تحميل البلاغات، يرجى المحاولة لاحقاً.';
+      });
+    } finally {
+      setState(() {
+        _loading = false;
       });
     }
   }
 
-  /// تبديل التبويب الرئيسي (كل البلاغات / بلاغاتي)
-  void _switchMainTab(String tab) {
-    if (_mainTab == tab) return;
+  // ================== tabs switching ==================
 
-    setState(() {
-      _mainTab = tab;
-
-      // لو دخل على "بلاغاتي" لا نسمح أن تبقى الحالة "مفتوح"
-      if (_mainTab == 'mine' && _statusTab == 'open') {
-        _statusTab = 'in_progress';
-      }
-    });
-
-    _loadReports();
-  }
-
-  /// تبديل تبويب الحالة
   void _switchStatusTab(String tab) {
     if (_statusTab == tab) return;
 
     final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
-
-    // في "بلاغاتي" لا نسمح باختيار "مفتوح"
-    if (isMyReports && tab == 'open') {
-      return;
-    }
+    if (isMyReports && tab == 'open') return;
 
     setState(() {
       _statusTab = tab;
@@ -196,7 +187,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     _loadReports();
   }
 
-  // ========================= فلاتر =========================
+  // ================== filters ==================
 
   Future<void> _onGovernmentChanged(int? govId) async {
     setState(() {
@@ -252,7 +243,29 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     await _loadReports();
   }
 
-  // ========================= تنقّل =========================
+  // ================== search + filter client-side ==================
+
+  void _applySearchAndFilters() {
+    List<ReportPublicSummary> results = List.of(_reports);
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      results = results.where((r) {
+        bool match(String? s) => (s ?? "").toLowerCase().contains(q);
+        return match(r.governmentNameAr) ||
+            match(r.districtNameAr) ||
+            match(r.areaNameAr) ||
+            match(r.typeNameAr) ||
+            match(r.nameAr);
+      }).toList();
+    }
+
+    setState(() {
+      _filteredReports = results;
+    });
+  }
+
+  // ================== navigation ==================
 
   void _openDetails(int reportId) {
     Navigator.push(
@@ -261,7 +274,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     );
   }
 
-  // ========================= Helpers (UI) =========================
+  // ================== helpers ==================
 
   String _formatDate(DateTime? dt) {
     if (dt == null) return '';
@@ -319,6 +332,121 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
+  // ================== UI widgets ==================
+
+  Widget _buildSearchAndFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                onChanged: (value) {
+                  _searchQuery = value.trim();
+                  _applySearchAndFilters();
+                },
+                decoration: InputDecoration(
+                  hintText: 'ابحث عن بلاغ (محافظة، لواء، منطقة، نوع...)',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+
+                    // borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _openFiltersBottomSheet,
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.filter_list, color: Colors.black),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openFiltersBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: GuestFiltersCard(
+              governments: _governments,
+              districts: _districts,
+              areas: _areas,
+              reportTypes: _reportTypes,
+              selectedGovernmentId: _selectedGovernmentId,
+              selectedDistrictId: _selectedDistrictId,
+              selectedAreaId: _selectedAreaId,
+              selectedReportTypeId: _selectedReportTypeId,
+              onGovernmentChanged: (id) async {
+                await _onGovernmentChanged(id);
+                _applySearchAndFilters();
+              },
+              onDistrictChanged: (id) async {
+                await _onDistrictChanged(id);
+                _applySearchAndFilters();
+              },
+              onAreaChanged: (id) async {
+                await _onAreaChanged(id);
+                _applySearchAndFilters();
+              },
+              onReportTypeChanged: (id) async {
+                await _onReportTypeChanged(id);
+                _applySearchAndFilters();
+              },
+              iconForReportType: _iconForReportType,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -333,7 +461,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       );
     }
 
-    if (_reports.isEmpty) {
+    if (_filteredReports.isEmpty) {
       String msg;
       switch (_statusTab) {
         case 'open':
@@ -353,9 +481,9 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
 
     return ListView.builder(
-      itemCount: _reports.length,
+      itemCount: _filteredReports.length,
       itemBuilder: (_, index) {
-        final r = _reports[index];
+        final r = _filteredReports[index];
         return GuestReportCard(
           report: r,
           onTap: () => _openDetails(r.id),
@@ -367,57 +495,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     );
   }
 
-  PreferredSizeWidget? _buildAppBarBottom(bool isMyReports) {
-    if (_isLoggedIn) {
-      // مستخدم مسجّل دخول: سطران (بلاغاتي / كل البلاغات) + حالات
-      const double h = 150; // ارتفاع كافٍ لكل المحتوى بدون overflow
-      return PreferredSize(
-        preferredSize: const Size.fromHeight(h),
-        child: SizedBox(
-          height: h,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GuestMainTabs(
-                isLoggedIn: _isLoggedIn,
-                currentTab: _mainTab,
-                onTabChanged: _switchMainTab,
-              ),
-              const SizedBox(height: 10),
-              GuestStatusTabs(
-                currentStatusTab: _statusTab,
-                isMyReports: isMyReports,
-                onStatusChanged: _switchStatusTab,
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
-        ),
-      );
-    } else {
-      // ضيف: فقط تبويبات حالة البلاغ
-      const double h = 72;
-      return PreferredSize(
-        preferredSize: const Size.fromHeight(h),
-        child: SizedBox(
-          height: h,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GuestStatusTabs(
-                currentStatusTab: _statusTab,
-                isMyReports: false,
-                onStatusChanged: _switchStatusTab,
-              ),
-              const SizedBox(height: 4),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
@@ -425,38 +502,55 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F7F8),
+        backgroundColor: const Color(0xFFEFF1F1),
         appBar: AppBar(
-          backgroundColor: Color(0xFF008000),
+          backgroundColor: const Color(0xFF008000),
           elevation: 0,
 
-          // 🔹 إخفاء العنوان تماماً
-          title: const SizedBox.shrink(),
-          centerTitle: true,
-          bottom: _buildAppBarBottom(isMyReports),
-        ),
-        body: Column(
-          children: [
-            // كرت الفلاتر
-            GuestFiltersCard(
-              governments: _governments,
-              districts: _districts,
-              areas: _areas,
-              reportTypes: _reportTypes,
-              selectedGovernmentId: _selectedGovernmentId,
-              selectedDistrictId: _selectedDistrictId,
-              selectedAreaId: _selectedAreaId,
-              selectedReportTypeId: _selectedReportTypeId,
-              onGovernmentChanged: _onGovernmentChanged,
-              onDistrictChanged: _onDistrictChanged,
-              onAreaChanged: _onAreaChanged,
-              onReportTypeChanged: _onReportTypeChanged,
-              iconForReportType: _iconForReportType,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: const Text(
+            "تصفح البلاغات",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 25,
+              color: Colors.white,
             ),
-            const SizedBox(height: 4),
-            Expanded(child: _buildBody()),
+          ),
+          toolbarHeight: 65,
+          centerTitle: true,
+          actions: [
+            if (_isLoggedIn)
+              IconButton(
+                icon: const Icon(Icons.person_rounded, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfilePage()),
+                  );
+                },
+              ),
           ],
         ),
+        body: _loading
+            ? const Center(child: LoadingCenter())
+            : Column(
+                children: [
+                  _buildSearchAndFilterBar(),
+                  const SizedBox(height: 8),
+                  GuestStatusTabs(
+                    currentStatusTab: _statusTab,
+                    isMyReports: isMyReports,
+                    onStatusChanged: _switchStatusTab,
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(child: _buildBody()),
+                ],
+              ),
       ),
     );
   }

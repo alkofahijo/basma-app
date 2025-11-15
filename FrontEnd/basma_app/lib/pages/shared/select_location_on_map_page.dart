@@ -5,6 +5,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 
+const Color _primaryColor = Color(0xFF008000);
+
 class SelectLocationOnMapPage extends StatefulWidget {
   final double? initialLat;
   final double? initialLng;
@@ -116,8 +118,18 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("تحديد الموقع على الخريطة"),
-          backgroundColor: Colors.teal.shade600,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          title: const Text(
+            "تحديد الموقع على الخريطة",
+            style: TextStyle(color: Colors.white),
+          ),
+          centerTitle: true,
+          backgroundColor: _primaryColor,
         ),
         body: Column(
           children: [
@@ -147,7 +159,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                           child: const Icon(
                             Icons.location_on,
                             size: 40,
-                            color: Colors.red,
+                            color: _primaryColor,
                           ),
                         ),
                       ],
@@ -174,35 +186,40 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                 children: [
                   if (_selectedLatLng != null)
                     Container(
+                      height: 120,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: Colors.teal.withOpacity(0.05),
+                        color: _primaryColor.withOpacity(0.05),
                       ),
                       child: Text(
                         "الموقع المحدد:\n"
                         "خط العرض: ${_selectedLatLng!.latitude.toStringAsFixed(6)}\n"
                         "خط الطول: ${_selectedLatLng!.longitude.toStringAsFixed(6)}",
-                        style: const TextStyle(fontSize: 13),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          color: Colors.black,
+                        ),
                       ),
                     )
                   else
                     const Text(
                       "اضغط على الخريطة لاختيار موقع، أو استخدم زر تحديد موقعي.",
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                      style: TextStyle(fontSize: 17, color: Colors.black),
                     ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: ElevatedButton.icon(
                           onPressed: _gettingLocation
                               ? null
                               : _getCurrentLocation,
-                          style: OutlinedButton.styleFrom(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryColor,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -214,10 +231,17 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
+                                    color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.my_location),
-                          label: const Text("موقعي الحالي"),
+                              : const Icon(
+                                  Icons.my_location,
+                                  color: Colors.white,
+                                ),
+                          label: const Text(
+                            "موقعي الحالي",
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -225,7 +249,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                         child: ElevatedButton.icon(
                           onPressed: _onConfirm,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal.shade600,
+                            backgroundColor: _primaryColor,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

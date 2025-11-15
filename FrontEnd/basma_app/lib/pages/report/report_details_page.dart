@@ -13,6 +13,7 @@ import 'package:basma_app/pages/initiative/initiative_info_page.dart';
 import 'package:basma_app/pages/report/complete_report_page.dart';
 import 'package:basma_app/pages/report/solve_report_dialog.dart';
 import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 
@@ -58,6 +59,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   bool _loading = true;
 
   bool _isLoggedIn = false;
+  Map<String, dynamic>? _currentUser;
 
   @override
   void initState() {
@@ -74,6 +76,12 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       setState(() {
         _isLoggedIn = loggedIn;
       });
+
+      if (loggedIn) {
+        _currentUser = await AuthService.currentUser();
+      } else {
+        _currentUser = null;
+      }
 
       await _load();
     } catch (_) {
@@ -123,7 +131,24 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: Text(rep.nameAr)),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF008000),
+          title: Text(
+            "تفاصيل البلاغ",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 25,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
+          leading: IconButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+          ),
+        ),
         body: SafeArea(
           child: RefreshIndicator(
             onRefresh: _load,
@@ -134,9 +159,9 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 const SizedBox(height: 16),
                 _buildBasicInfoSection(rep),
                 const SizedBox(height: 16),
-                _buildLocationSection(rep),
-                const SizedBox(height: 16),
                 _buildImagesSection(rep),
+                const SizedBox(height: 16),
+                _buildLocationSection(rep),
                 const SizedBox(height: 16),
                 _buildReportingSection(rep),
                 if (rep.statusId == 4 || rep.statusId == 3) ...[
@@ -158,6 +183,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
   Widget _buildHeader(ReportDetail rep) {
     return Card(
+      color: Colors.white,
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -172,7 +198,10 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Colors.teal.shade400, Colors.teal.shade700],
+                  colors: [
+                    const Color.fromARGB(255, 38, 166, 51),
+                    const Color(0xFF008000),
+                  ],
                 ),
               ),
               child: const Icon(
@@ -240,8 +269,8 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
         );
       case 2:
         return _StatusStyle(
-          bg: Colors.red.shade50,
-          textColor: Colors.red.shade700,
+          bg: const Color.fromARGB(255, 188, 215, 243),
+          textColor: const Color.fromARGB(255, 4, 42, 129),
           label: statusNameAr ?? "جديد",
         );
       case 3:
@@ -271,35 +300,38 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     required List<Widget> children,
   }) {
     return Card(
-      elevation: 2,
+      elevation: 4,
+      color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.circle, size: 8, color: Colors.teal),
-                const SizedBox(width: 6),
-                Text(
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Color(0xFF008000).withOpacity(0.1),
+              ),
+              child: Center(
+                child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
+              ),
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
+              // const SizedBox(height: 4),
+              // Text(
+              //   subtitle,
+              //   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              // ),
             ],
             const SizedBox(height: 8),
-            const Divider(height: 16),
+            //const Divider(height: 16),
             ...children,
           ],
         ),
@@ -333,24 +365,52 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       title: "الموقع الجغرافي",
       subtitle: "بيانات المحافظة، اللواء، المنطقة والموقع.",
       children: [
-        InfoRow(
-          label: "المحافظة",
-          value: rep.governmentNameAr ?? "${rep.governmentId}",
+        // ===================== Row 1 =====================
+        Row(
+          children: [
+            Expanded(
+              child: InfoRow(
+                label: "المحافظة",
+                value: rep.governmentNameAr ?? "${rep.governmentId}",
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InfoRow(
+                label: "اللواء",
+                value: rep.districtNameAr ?? "${rep.districtId}",
+              ),
+            ),
+          ],
         ),
-        InfoRow(
-          label: "اللواء",
-          value: rep.districtNameAr ?? "${rep.districtId}",
+        const SizedBox(height: 10),
+
+        // ===================== Row 2 =====================
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: InfoRow(
+                label: "المنطقة",
+                value: rep.areaNameAr ?? "${rep.areaId}",
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InfoRow(
+                label: "اسم الموقع",
+                value: rep.locationNameAr ?? "${rep.locationId}",
+              ),
+            ),
+          ],
         ),
-        InfoRow(label: "المنطقة", value: rep.areaNameAr ?? "${rep.areaId}"),
-        InfoRow(
-          label: "اسم الموقع",
-          value: rep.locationNameAr ?? "${rep.locationId}",
-        ),
-        const SizedBox(height: 12),
+
+        const SizedBox(height: 16),
+
+        // ===================== Mini-map Section =====================
         if (hasCoordinates)
           Column(
             children: [
-              // ====== mini-map ======
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: SizedBox(
@@ -380,12 +440,10 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                             ),
                             width: 50,
                             height: 50,
-                            alignment: Alignment.center,
-                            // ✅ فقط أيقونة → لا Column → لا Overflow
                             child: const Icon(
                               Icons.location_on,
                               size: 36,
-                              color: Colors.red,
+                              color: Color.fromARGB(255, 4, 118, 36),
                             ),
                           ),
                         ],
@@ -394,12 +452,14 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+
               SizedBox(
-                width: double.infinity,
+                width: 300,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(
+                    Navigator.push(
+                      context,
                       MaterialPageRoute(
                         builder: (_) => ViewReportLocationPage(
                           lat: rep.locationLatitude!,
@@ -409,17 +469,21 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                       ),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade600,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  icon: const Icon(Icons.location_on, color: Colors.white),
+                  label: const Text(
+                    "عرض الموقع على الخريطة",
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  icon: const Icon(Icons.map_outlined, color: Colors.white),
-                  label: const Text(
-                    "عرض موقع البلاغ على الخريطة",
-                    style: TextStyle(color: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF008000),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
                 ),
               ),
@@ -437,14 +501,13 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   // ----- القسم: الصور -----
   Widget _buildImagesSection(ReportDetail rep) {
     return _buildSectionCard(
-      title: "الصور",
+      title: "صورة البلاغ",
       subtitle: "قبل وبعد معالجة المشكلة.",
       children: [
         const Text(
           "الصورة قبل:",
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
         ReportImageSection(title: "", rawUrl: rep.imageBeforeUrl),
         const SizedBox(height: 16),
         if (rep.imageAfterUrl != null && rep.imageAfterUrl!.isNotEmpty) ...[
@@ -452,13 +515,13 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
             "الصورة بعد:",
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 8),
           ReportImageSection(title: "", rawUrl: rep.imageAfterUrl),
-        ] else
-          Text(
-            "لم يتم رفع صورة بعد المعالجة حتى الآن.",
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-          ),
+        ],
+        // ] else
+        //   Text(
+        //     "لم يتم رفع صورة بعد المعالجة حتى الآن.",
+        //     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        //   ),
       ],
     );
   }
@@ -529,7 +592,8 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       }
 
       return Card(
-        elevation: 3,
+        elevation: 2,
+        color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -548,6 +612,8 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 },
                 icon: const Icon(Icons.login),
                 style: ElevatedButton.styleFrom(
+                  iconColor: Colors.white,
+                  backgroundColor: Color(0xFF008000),
                   padding: const EdgeInsets.all(14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -555,7 +621,11 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 ),
                 label: const Text(
                   "تسجيل الدخول لحل المشكلة",
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -576,37 +646,95 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
               _load();
             }
           },
-          icon: const Icon(Icons.handshake_outlined),
+          icon: const Icon(Icons.handshake_outlined, color: Colors.white),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.all(14),
-            backgroundColor: Colors.orange,
+            backgroundColor: const Color(0xFF008000),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
           ),
           label: const Text(
             "تبنّي البلاغ وحل المشكلة",
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: Colors.white,
+            ),
           ),
         );
 
       case 3:
-        return ElevatedButton.icon(
-          onPressed: () async {
-            final done = await Get.to(() => CompleteReportPage(report: rep));
-            if (done == true) _load();
-          },
-          icon: const Icon(Icons.check_circle_outline),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.all(14),
-            backgroundColor: Colors.green,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+        // Only the adopter (the user/initiative who adopted the report) should
+        // be able to complete it. Determine whether the current user matches
+        // the adoptedBy identity.
+        bool canComplete = false;
+        if (_currentUser != null &&
+            rep.adoptedById != null &&
+            rep.adoptedByType != null) {
+          final dynCitizenId = _currentUser!['citizen_id'];
+          final dynInitiativeId = _currentUser!['initiative_id'];
+
+          final int? myCitizenId = dynCitizenId == null
+              ? null
+              : int.tryParse(dynCitizenId.toString()) ?? dynCitizenId as int?;
+          final int? myInitiativeId = dynInitiativeId == null
+              ? null
+              : int.tryParse(dynInitiativeId.toString()) ??
+                    dynInitiativeId as int?;
+
+          if (rep.adoptedByType == 1 &&
+              myCitizenId != null &&
+              myCitizenId == rep.adoptedById) {
+            canComplete = true;
+          } else if (rep.adoptedByType == 2 &&
+              myInitiativeId != null &&
+              myInitiativeId == rep.adoptedById) {
+            canComplete = true;
+          }
+        }
+
+        if (canComplete) {
+          return ElevatedButton.icon(
+            onPressed: () async {
+              final done = await Get.to(() => CompleteReportPage(report: rep));
+              if (done == true) _load();
+            },
+            icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.all(14),
+              backgroundColor: const Color(0xFF008000),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
+            label: const Text(
+              "إتمام الحل ورفع الصور",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Colors.white,
+              ),
+            ),
+          );
+        }
+
+        // Not allowed to complete: show a simple informational card (no button)
+        return Card(
+          elevation: 2,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          label: const Text(
-            "إتمام الحل ورفع الصور",
-            style: TextStyle(color: Colors.white),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Text(
+              rep.adoptedByName != null
+                  ? 'هذا البلاغ متبنّى بواسطة ${rep.adoptedByName}. فقط الجهة المتبنية يمكنها إتمام البلاغ.'
+                  : 'هذا البلاغ متبنّى من قِبل جهة أخرى. فقط الجهة المتبنية يمكنها إتمام البلاغ.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+            ),
           ),
         );
 

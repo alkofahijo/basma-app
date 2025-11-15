@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/register_citizen_controller.dart';
 import '../../../models/location_models.dart';
+import 'package:basma_app/widgets/loading_center.dart';
 
 class RegisterCitizenPage extends StatelessWidget {
   const RegisterCitizenPage({super.key});
@@ -12,21 +13,21 @@ class RegisterCitizenPage extends StatelessWidget {
     final controller = Get.put(RegisterCitizenController());
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFEFF1F1),
-        centerTitle: true,
-        title: Image.asset(
-          "assets/images/logo-arabic-side.png",
-          height: size.height * 0.05,
-        ),
-      ),
-      body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const LoadingCenter();
+      }
 
-        return Padding(
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFEFF1F1),
+          centerTitle: true,
+          title: Image.asset(
+            "assets/images/logo-arabic-side.png",
+            height: size.height * 0.05,
+          ),
+        ),
+        body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: SingleChildScrollView(
             child: Column(
@@ -195,8 +196,8 @@ class RegisterCitizenPage extends StatelessWidget {
               ],
             ),
           ),
-        );
-      }),
-    );
+        ),
+      );
+    });
   }
 }
