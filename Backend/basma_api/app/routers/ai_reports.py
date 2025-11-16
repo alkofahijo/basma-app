@@ -18,6 +18,9 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 # نحمّل الـ model عند تشغيل التطبيق (in-memory singleton)
 classifier_service: Optional[ReportClassifierService] = None
 
+# Threshold للثقة (لو أقل → نعتبرها "أخرى")
+CONFIDENCE_THRESHOLD = 0.6  # جرّب بين 0.5 و 0.7 حسب النتائج الفعلية
+
 
 def get_classifier_service() -> ReportClassifierService:
     """
@@ -547,7 +550,7 @@ def generate_text_suggestions(
         )
 
     else:
-        # كود غير متوقع → نص عام
+        # كود غير متوقع أو "OTHERS" → نص عام
         title = "بلاغ عن تشوه بصري"
         desc = (
             f"يوجد تشوه بصري أو مشكلة في المظهر العام {location_text}. "
@@ -599,8 +602,20 @@ async def ai_analyze_image(
     dist_name_ar = dist.name_ar if dist else "غير محدد"
     area_name_ar = area.name_ar if area else "غير محدد"
 
+    # القيم الأساسية من الموديل
     report_type_name_ar = info.get("name_ar", "أخرى")
     report_type_code = info.get("code", "UNKNOWN")
+
+    # -------- Threshold على الثقة --------
+    # لو الثقة أقل من CONFIDENCE_THRESHOLD → نعتبرها "OTHERS" (id = 12 في DB)
+    if confidence < CONFIDENCE_THRESHOLD:
+        print(
+            f"[AI] Low confidence ({confidence:.3f}) → mapping to OTHERS (id=12). "
+            f"Original prediction: {report_type_code}"
+        )
+        report_type_id = 12  # OTHERS في جدول report_types
+        report_type_name_ar = "أخرى"
+        report_type_code = "OTHERS"
 
     suggested_title, suggested_desc = generate_text_suggestions(
         report_type_code,

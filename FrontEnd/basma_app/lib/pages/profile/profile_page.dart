@@ -1,21 +1,23 @@
 // lib/pages/profile/profile_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:basma_app/models/citizen_models.dart';
 import 'package:basma_app/models/initiative_models.dart';
+import 'package:basma_app/pages/on_start/landing_page.dart';
+import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 import 'package:basma_app/services/api_service.dart';
-import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:basma_app/pages/guest/guest_reports_list_page.dart';
-import 'package:basma_app/pages/landing_page.dart';
 import 'package:basma_app/services/auth_service.dart';
+import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:basma_app/widgets/info_row.dart';
-import 'package:basma_app/widgets/network_image_viewer.dart';
 import 'package:basma_app/widgets/loading_center.dart';
-import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
-import 'package:flutter/services.dart';
+import 'package:basma_app/widgets/network_image_viewer.dart';
 
 const Color _primaryColor = Color(0xFF008000);
+const Color _pageBackground = Color(0xFFEFF1F1);
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -38,7 +40,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  /// تحويل ديناميكي إلى int بأمان (مثل ما عملته في SolveReportDialog)
   int? _parseInt(dynamic value) {
     if (value == null) return null;
     if (value is int) return value;
@@ -76,11 +77,11 @@ class _ProfilePageState extends State<ProfilePage> {
           return;
         }
 
-        final c = await ApiService.getCitizen(citizenId);
+        final citizen = await ApiService.getCitizen(citizenId);
         if (!mounted) return;
         setState(() {
           _userType = 'citizen';
-          _citizen = c;
+          _citizen = citizen;
           _initiative = null;
           _loading = false;
         });
@@ -95,11 +96,11 @@ class _ProfilePageState extends State<ProfilePage> {
           return;
         }
 
-        final i = await ApiService.getInitiative(initiativeId);
+        final initiative = await ApiService.getInitiative(initiativeId);
         if (!mounted) return;
         setState(() {
           _userType = 'initiative';
-          _initiative = i;
+          _initiative = initiative;
           _citizen = null;
           _loading = false;
         });
@@ -117,58 +118,6 @@ class _ProfilePageState extends State<ProfilePage> {
         _loading = false;
       });
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const LoadingCenter();
-
-    Widget bodyContent;
-    if (_err != null) {
-      bodyContent = Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            _err!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.redAccent),
-          ),
-        ),
-      );
-    } else if (_userType == 'citizen' && _citizen != null) {
-      bodyContent = _buildCitizenProfile(_citizen!);
-    } else if (_userType == 'initiative' && _initiative != null) {
-      bodyContent = _buildInitiativeProfile(_initiative!);
-    } else {
-      bodyContent = const Center(
-        child: Text("لم يتم العثور على بيانات الملف الشخصي."),
-      );
-    }
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFEFF1F1),
-        appBar: AppBar(
-          backgroundColor: _primaryColor,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: const Text(
-            'الملف الشخصي',
-            style: TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: bodyContent,
-      ),
-    );
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -224,13 +173,66 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
+    Widget bodyContent;
+
+    if (_loading) {
+      bodyContent = const LoadingCenter();
+    } else if (_err != null) {
+      bodyContent = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            _err!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      );
+    } else if (_userType == 'citizen' && _citizen != null) {
+      bodyContent = _buildCitizenProfile(_citizen!);
+    } else if (_userType == 'initiative' && _initiative != null) {
+      bodyContent = _buildInitiativeProfile(_initiative!);
+    } else {
+      bodyContent = const Center(
+        child: Text("لم يتم العثور على بيانات الملف الشخصي."),
+      );
+    }
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _pageBackground,
+        appBar: AppBar(
+          backgroundColor: _primaryColor,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'الملف الشخصي',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: bodyContent,
+      ),
+    );
+  }
+
   // ============================================================
   // CITIZEN PROFILE
   // ============================================================
 
   Widget _buildCitizenProfile(Citizen c) {
     return Container(
-      color: const Color(0xFFEFF1F1),
+      color: _pageBackground,
       child: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -244,32 +246,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    // Details card with edit icon inside
-                    // _buildCitizenInfoSection(c),
                     _buildCitizenInfoSection(c),
                     const SizedBox(height: 16),
                     _buildCitizenStatsRow(c),
-
-                    // Stats (reports completed)
                     const SizedBox(height: 30),
-                    // My reports button
-                    // HomeScreenButton(
-                    //   icon: Icons.list_alt,
-                    //   title: 'بلاغاتي',
-                    //   subtitle: "عرض بلاغاتي التي قيد التنفيذ او المنجزة",
-                    //   onTap: () {
-                    //     Get.to(
-                    //       () => const GuestReportsListPage(
-                    //         initialMainTab: 'mine',
-                    //       ),
-                    //     );
-                    //   },
-                    //   color: const Color(0xFFCAF2DB),
-                    //   iconColor: const Color.fromARGB(255, 19, 106, 32),
-                    // ),
-                    const SizedBox(height: 20),
-                    // Logout at the bottom
-                    const SizedBox(height: 10),
                     SizedBox(
                       width: 250,
                       child: ElevatedButton.icon(
@@ -301,7 +281,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildCitizenHeader(Citizen c) {
     return Container(
-      // color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
         children: [
@@ -389,11 +368,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  // Put the "بلاغاتي" action inside the stat card
                   HomeScreenButton(
                     icon: Icons.list_alt,
                     title: 'بلاغاتي',
-                    subtitle: "عرض بلاغاتي التي قيد التنفيذ او المنجزة",
+                    subtitle: "عرض بلاغاتي التي قيد التنفيذ أو المنجزة",
                     onTap: () {
                       Get.to(
                         () =>
@@ -425,11 +403,7 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.info_outline,
-                  size: 18,
-                  color: Color(0xFF008000),
-                ),
+                const Icon(Icons.info_outline, size: 18, color: _primaryColor),
                 const SizedBox(width: 6),
                 const Expanded(
                   child: Text(
@@ -465,7 +439,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: _primaryColor,
-
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
@@ -591,7 +564,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildInitiativeProfile(Initiative i) {
     return Container(
-      color: const Color(0xFFEFF1F1),
+      color: _pageBackground,
       child: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -605,14 +578,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    // Details card with edit icon
                     _buildInitiativeInfoSection(i),
                     const SizedBox(height: 16),
-                    // Stats: members + reports
                     _buildInitiativeStatsRow(i),
                     const SizedBox(height: 12),
-                    // Logout button (match citizen style) centered
-                    const SizedBox(height: 10),
                     Center(
                       child: SizedBox(
                         width: 250,
@@ -645,7 +614,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildInitiativeHeader(Initiative i) {
-    // Use the same header style as citizen: centered avatar and Arabic name
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
@@ -684,10 +652,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildInitiativeStatsRow(Initiative i) {
-    // Stack both cards vertically so they take full width and match citizen sizing.
     return Column(
       children: [
-        // Members + join link card
         Card(
           color: Colors.white,
           elevation: 3,
@@ -741,7 +707,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Join link section (merged into the members card)
                 if (i.joinFormLink != null && i.joinFormLink!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -778,7 +743,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.link, color: Colors.green),
+                          const Icon(Icons.link, color: Colors.green),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -790,7 +755,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Icon(Icons.copy, size: 18, color: Colors.green),
+                          const Icon(Icons.copy, size: 18, color: Colors.green),
                         ],
                       ),
                     ),
@@ -801,7 +766,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         const SizedBox(height: 12),
-        // Reports completed card with 'بلاغاتي' inside
         Card(
           color: Colors.white,
           elevation: 3,
@@ -948,6 +912,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final nameEnCtrl = TextEditingController(text: i.nameEn);
     final mobileCtrl = TextEditingController(text: i.mobileNumber);
     final joinFormCtrl = TextEditingController(text: i.joinFormLink ?? "");
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -1052,11 +1017,13 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
 
-    if (saved == true) await _loadProfile();
+    if (saved == true) {
+      await _loadProfile();
+    }
   }
 
   // ============================================================
-  // CHANGE PASSWORD DIALOG  (citizen + initiative)
+  // CHANGE PASSWORD (citizen + initiative)
   // ============================================================
 
   Future<void> _showChangePasswordDialog() async {
@@ -1158,7 +1125,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               return;
                             }
 
-                            // confirmation
                             final confirm = await showDialog<bool>(
                               context: ctx,
                               builder: (cctx) => Directionality(
@@ -1235,10 +1201,4 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
   }
-
-  // ============================================================
-  // COMMON STAT CARD
-  // ============================================================
-
-  // (stat card helper removed; cards are inlined to match citizen layout exactly)
 }
