@@ -1,4 +1,5 @@
 # app/routers/ai_reports.py
+
 from typing import Optional, Tuple, Dict, Any
 
 import httpx
@@ -20,12 +21,14 @@ classifier_service: Optional[ReportClassifierService] = None
 
 def get_classifier_service() -> ReportClassifierService:
     """
-    إرجاع خدمة تصنيف البلاغات (singleton)
+    إرجاع خدمة تصنيف البلاغات (singleton) باستخدام ResNet18 (11 كلاس).
+    تأكد أن ملف app/models/report_classifier.pth موجود
+    وهو نفس الملف الناتج من تدريبك (مثل resnet18_classification_11cls_best.pth).
     """
     global classifier_service
     if classifier_service is None:
         classifier_service = ReportClassifierService(
-            model_path="app/models/report_classifier.pt"
+            model_path="app/models/report_classifier.pth"
         )
     return classifier_service
 
@@ -80,7 +83,7 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
         "lon": lon,
         "zoom": 16,
         "addressdetails": 1,
-        "accept-language": "ar,en",  # نحاول نرجّع عربي قدر الإمكان
+        "accept-language": "ar,en",
     }
     headers = {
         "User-Agent": "basma-app/1.0",
@@ -93,7 +96,6 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
             resp.raise_for_status()
             return resp.json()
     except httpx.HTTPError as e:
-        # خطأ من خدمة تحديد الموقع
         raise HTTPException(
             status_code=502,
             detail="خدمة تحديد الموقع الجغرافي غير متاحة حالياً.",
@@ -109,11 +111,7 @@ def _clean_admin_name(value: str) -> str:
         return ""
     value = value.strip()
 
-    remove_tokens = [
-        "Governorate",
-        "District",
-        "Municipality",
-    ]
+    remove_tokens = ["Governorate", "District", "Municipality"]
     for t in remove_tokens:
         value = value.replace(t, "")
     value = value.strip()
@@ -130,38 +128,49 @@ def _clean_area_name(value: str) -> str:
         return ""
     value = value.strip()
 
-    remove_tokens = [
-        "ناحية",
-        "لواء",
-        "قضاء",
-        "بلدية",
-        "مدينة",
-    ]
+    remove_tokens = ["ناحية", "لواء", "قضاء", "بلدية", "مدينة"]
     for t in remove_tokens:
         value = value.replace(t, "")
 
-    # إزالة الفراغات الزائدة
     value = " ".join(value.split())
     return value
 
 
 def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
     """
-    استخراج القيم بالضبط كما طلبت:
+    استخراج القيم من رد Nominatim:
 
-      gov_name   → من address["state"]          (مثال: إربد)
-      dist_name  → من address["state_district"] (مثال: لواء قصبة إربد)
-      area_name  → من address["county"]         (مثال: حوارة)
-      loc_name   → من geo["display_name"]       (مثال: بشرى, حوارة, لواء قصبة إربد, إربد, 21141, الأردن)
+      gov_name   → من address["state"]                (مثال: إربد)
+      dist_name  → من address["state_district"]
+                    أو fallback إلى address["county"] (مثال: لواء قصبة إربد)
+      area_name  → أولوية:
+                      1) address["village"]           (مثال: كفر سوم / المزار)
+                      2) address["neighbourhood"]     (مثال: المنارة)
+                      3) address["suburb"]
+                      4) address["city"]
+                      5) address["county"]
+      loc_name   → من geo["display_name"]
     """
     address = geo.get("address", {}) or {}
 
-    gov_name = address.get("state", "")  # المحافظة
-    dist_name = address.get("state_district", "")  # اللواء / القضاء
-    area_name = address.get("county", "")  # البلدة / المنطقة (مثل حوارة)
-    loc_name = geo.get("display_name", "")  # نص كامل للموقع
+    gov_name = address.get("state") or ""
 
-    return gov_name or "", dist_name or "", area_name or "", loc_name or ""
+    # لو موجود state_district نستخدمه، وإلا نحاول county
+    dist_name = address.get("state_district") or address.get("county") or ""
+
+    # أولوية استخراج اسم الحي/المنطقة
+    area_name = (
+        address.get("village")
+        or address.get("neighbourhood")
+        or address.get("suburb")
+        or address.get("city")
+        or address.get("county")
+        or ""
+    )
+
+    loc_name = geo.get("display_name") or ""
+
+    return gov_name, dist_name, area_name, loc_name
 
 
 # ---------- Endpoint: Resolve Location ----------
@@ -175,7 +184,6 @@ async def ai_resolve_location(
     lat = payload.latitude
     lon = payload.longitude
 
-    # استدعاء خدمة الـ reverse geocoding
     geo = await reverse_geocode(lat, lon)
 
     gov_raw, dist_raw, area_raw, loc_raw = extract_components(geo)
@@ -208,7 +216,7 @@ async def ai_resolve_location(
     if not area_name:
         area_name = "منطقة بدون اسم"
 
-    # --------- Government: ابحث أو أنشئ (باستخدام SQL خام لضمان name_en) ---------
+    # --------- Government ---------
     try:
         gov = (
             db.query(models.Government)
@@ -218,7 +226,6 @@ async def ai_resolve_location(
 
         if not gov:
             print("Creating new Government:", gov_name)
-            # نفترض أن جدول governments فيه name_ar, name_en, is_active
             db.execute(
                 text(
                     """
@@ -233,7 +240,6 @@ async def ai_resolve_location(
             )
             db.commit()
 
-            # إعادة القراءة عبر ORM
             gov = (
                 db.query(models.Government)
                 .filter(models.Government.name_ar == gov_name)
@@ -254,7 +260,7 @@ async def ai_resolve_location(
             detail="حدث خطأ أثناء حفظ بيانات المحافظة.",
         ) from e
 
-    # --------- District: ابحث أو أنشئ (باستخدام SQL خام لضمان name_en) ---------
+    # --------- District ---------
     try:
         dist = (
             db.query(models.District)
@@ -282,7 +288,6 @@ async def ai_resolve_location(
             )
             db.commit()
 
-            # إعادة القراءة عبر ORM
             dist = (
                 db.query(models.District)
                 .filter(
@@ -306,7 +311,7 @@ async def ai_resolve_location(
             detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء.",
         ) from e
 
-    # --------- Area (البلدة مثل حوارة): ابحث أو أنشئ ---------
+    # --------- Area ---------
     area = (
         db.query(models.Area)
         .filter(
@@ -319,14 +324,13 @@ async def ai_resolve_location(
     if not area:
         try:
             print(
-                "Creating new Area (town/village):",
+                "Creating new Area (town/village/neighbourhood):",
                 area_name,
                 "| gov_id:",
                 gov.id,
                 "| district_id:",
                 dist.id,
             )
-            # NOTE: هنا SQL حسب سكيمتك الفعلية، عدّل الأعمدة لو DB مختلف
             db.execute(
                 text(
                     """
@@ -356,7 +360,7 @@ async def ai_resolve_location(
             print("Error while creating Area:", e)
             raise HTTPException(
                 status_code=500,
-                detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/القرية).",
+                detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
             ) from e
 
     if not area:
@@ -365,7 +369,7 @@ async def ai_resolve_location(
             detail="فشل إنشاء أو قراءة بيانات المنطقة (Area) من قاعدة البيانات.",
         )
 
-    # --------- Location (name_ar = display_name): ابحث أو أنشئ ---------
+    # --------- Location ---------
     location_obj: Optional[models.Location] = None
 
     if loc_name:
@@ -417,10 +421,7 @@ async def ai_resolve_location(
         except SQLAlchemyError as e:
             db.rollback()
             print("Error while creating Location:", e)
-            # لا نكسر الطلب كامل؛ فقط نرجع بدون location
             location_obj = None
-
-    # --------- Response ---------
 
     location_response: Optional[LocationPoint] = None
     if location_obj:
@@ -455,51 +456,102 @@ async def ai_resolve_location(
 
 
 def generate_text_suggestions(
+    report_type_code: str,
     report_type_name_ar: str,
     gov_name_ar: str,
     dist_name_ar: str,
     area_name_ar: str,
 ) -> Tuple[str, str]:
     """
-    توليد بسيط (rule-based) لعناوين ووصف، يمكن لاحقاً استبداله بنموذج لغوي.
+    توليد عناوين وأوصاف مقترحة بناءً على code (GRAFFITI, POTHOLES, ...)
+    مع استخدام الاسم العربي الجديد من جدولك.
     """
     location_text = f"في منطقة {area_name_ar} / {dist_name_ar} / {gov_name_ar}"
 
-    if report_type_name_ar == "نظافة":
-        title = "بلاغ عن مشكلة نظافة"
+    if report_type_code == "GRAFFITI":
+        title = "بلاغ عن كتابة على الجدران"
         desc = (
-            f"يوجد تراكم للنفايات أو تشوه بصري متعلق بالنظافة {location_text}. "
-            "نرجو معالجة المشكلة ورفع النفايات وتحسين مظهر المكان."
+            f"توجد كتابة على الجدران أو رسومات غرافيتي {location_text}. "
+            "نرجو إزالة الكتابات وتنظيف الجدران لتحسين المظهر العام."
         )
-    elif report_type_name_ar == "حُفر":
-        title = "بلاغ عن حُفر في الشارع"
+
+    elif report_type_code == "FADED_SIGNAGE":
+        title = "بلاغ عن لافتة باهتة"
         desc = (
-            f"توجد حُفر أو تلف في الشارع {location_text} "
-            "مما يعرّض المركبات والمارة للخطر. نرجو صيانة الطريق."
+            f"توجد لافتة طرق أو لوحة إرشادية باهتة يصعب قراءتها {location_text}. "
+            "نرجو إعادة طلاء اللافتة أو استبدالها لتحسين وضوح المعلومات."
         )
-    elif report_type_name_ar == "أرصفة":
-        title = "بلاغ عن مشكلة في الأرصفة"
+
+    elif report_type_code == "POTHOLES":
+        title = "بلاغ عن حفر في الشارع"
         desc = (
-            f"يوجد تلف أو عوائق في الأرصفة {location_text} "
-            "مما يعيق حركة المشاة. نرجو صيانة وتحسين الأرصفة."
+            f"توجد حفر أو تلف في سطح الطريق {location_text} "
+            "مما يعرّض المركبات والمارة للخطر. نرجو صيانة الطريق ومعالجة الحفر."
         )
-    elif report_type_name_ar == "جدران":
-        title = "بلاغ عن تشوه بصري في الجدران"
+
+    elif report_type_code == "GARBAGE":
+        title = "بلاغ عن نفايات وتشوه بصري"
         desc = (
-            f"يوجد تشوه بصري في الجدران {location_text} "
-            "مثل كتابات عشوائية أو تلف في الجدار. نرجو معالجته."
+            f"يوجد تراكم للنفايات أو مخلفات متناثرة {location_text}. "
+            "نرجو إزالة النفايات وتنظيف الموقع وتحسين مظهر المنطقة."
         )
-    elif report_type_name_ar == "زراعة":
-        title = "بلاغ عن مشكلة في الزراعة والتشجير"
+
+    elif report_type_code == "CONSTRUCTION_ROAD":
+        title = "بلاغ عن طريق قيد الإنشاء"
         desc = (
-            f"يوجد نقص أو تلف في المساحات الخضراء أو الأشجار {location_text}. "
-            "نرجو إعادة تشجير وتحسين المنظر العام."
+            f"يوجد طريق قيد الإنشاء أو أعمال حفريات {location_text} "
+            "قد تسبب إزعاجاً أو خطراً للمارة والمركبات. نرجو تنظيم الموقع "
+            "وتأمينه ووضع لوحات تحذيرية واضحة."
         )
-    else:  # أخرى
+
+    elif report_type_code == "BROKEN_SIGNAGE":
+        title = "بلاغ عن لافتة مكسورة"
+        desc = (
+            f"توجد لافتة طرق أو لوحة إرشادية مكسورة أو متضررة {location_text}. "
+            "نرجو إصلاح اللافتة أو استبدالها للحفاظ على سلامة الطريق وشكل المدينة."
+        )
+
+    elif report_type_code == "BAD_STREETLIGHT":
+        title = "بلاغ عن إنارة طريق تالفة"
+        desc = (
+            f"توجد أعمدة إنارة أو مصابيح تالفة أو لا تعمل {location_text}. "
+            "نرجو إصلاح الإنارة لتحسين الرؤية ليلاً وتعزيز السلامة."
+        )
+
+    elif report_type_code == "BAD_BILLBOARD":
+        title = "بلاغ عن لوحة إعلانات تالفة"
+        desc = (
+            f"توجد لوحة إعلانات تالفة أو مهملة {location_text}. "
+            "نرجو صيانة اللوحة أو إزالتها إن كانت مهجورة لتحسين المنظر العام."
+        )
+
+    elif report_type_code == "SAND_ON_ROAD":
+        title = "بلاغ عن أتربة على الطريق"
+        desc = (
+            f"يوجد تراكم للأتربة أو الرمال على سطح الطريق {location_text} "
+            "مما قد يسبب انزلاق المركبات وخطر على السلامة. نرجو إزالة الأتربة وتنظيف الطريق."
+        )
+
+    elif report_type_code == "CLUTTER_SIDEWALK":
+        title = "بلاغ عن رصيف غير صالح للمشي"
+        desc = (
+            f"يوجد رصيف غير صالح للمشي أو توجد عوائق ومخلفات على الرصيف {location_text} "
+            "مما يعيق حركة المشاة، خاصة كبار السن وذوي الإعاقة. نرجو إزالة العوائق وتنظيم الرصيف."
+        )
+
+    elif report_type_code == "UNKEPT_FACADE":
+        title = "بلاغ عن واجهة مبنى سيئة المظهر"
+        desc = (
+            f"توجد واجهة مبنى سيئة المظهر أو مهملة أو مليئة بالتشوهات البصرية {location_text}. "
+            "نرجو صيانة الواجهة وتحسين مظهرها بما يليق بالمنطقة."
+        )
+
+    else:
+        # كود غير متوقع → نص عام
         title = "بلاغ عن تشوه بصري"
         desc = (
-            f"يوجد تشوه بصري أو مشكلة عامة {location_text}. "
-            "نرجو التحقق من البلاغ ومعالجة المشكلة."
+            f"يوجد تشوه بصري أو مشكلة في المظهر العام {location_text}. "
+            "نرجو التحقق من البلاغ ومعالجة المشكلة حسب نوعها."
         )
 
     return title, desc
@@ -518,13 +570,12 @@ async def ai_analyze_image(
     clf: ReportClassifierService = Depends(get_classifier_service),
 ):
     """
-    يستقبل صورة من المستخدم، يمررها على نموذج التصنيف،
+    يستقبل صورة من المستخدم، يمررها على نموذج التصنيف ResNet18 (11 كلاس)،
     ثم يرجّع:
       - نوع التشوه (report_type_id + الاسم بالعربي)
       - درجة الثقة
       - عنوان ووصف مقترحين حسب نوع البلاغ والموقع (إن وجد).
     """
-    # تحميل الصورة كـ bytes
     image_bytes = await file.read()
     if not image_bytes:
         raise HTTPException(status_code=400, detail="ملف الصورة فارغ.")
@@ -533,12 +584,13 @@ async def ai_analyze_image(
     try:
         report_type_id, confidence, info = clf.predict(image_bytes)
     except Exception as e:
+        print("AI analyze-image error:", e)
         raise HTTPException(
             status_code=500,
             detail="حدث خطأ أثناء تحليل الصورة.",
         ) from e
 
-    # أخذ أسماء عربية للموقع (إن تم تمريرها)
+    # أسماء عربية للموقع (إن تم تمرير IDs)
     gov = db.query(models.Government).get(gov_id) if gov_id else None
     dist = db.query(models.District).get(dist_id) if dist_id else None
     area = db.query(models.Area).get(area_id) if area_id else None
@@ -547,10 +599,11 @@ async def ai_analyze_image(
     dist_name_ar = dist.name_ar if dist else "غير محدد"
     area_name_ar = area.name_ar if area else "غير محدد"
 
-    # info["name_ar"] يفترض أن النموذج يرجع اسم نوع البلاغ بالعربي
     report_type_name_ar = info.get("name_ar", "أخرى")
+    report_type_code = info.get("code", "UNKNOWN")
 
     suggested_title, suggested_desc = generate_text_suggestions(
+        report_type_code,
         report_type_name_ar,
         gov_name_ar,
         dist_name_ar,

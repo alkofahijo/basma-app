@@ -3,7 +3,7 @@
 import 'package:basma_app/pages/landing_page.dart';
 import 'package:basma_app/pages/custom_widgets.dart/home_screen_button.dart';
 import 'package:basma_app/pages/guest/guest_reports_list_page.dart';
-import 'package:basma_app/pages/report/select_location_page.dart';
+// import 'package:basma_app/pages/report/select_location_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -68,9 +68,9 @@ class _HomePageState extends State<HomePage> {
           // === الزر الجديد: بلاغ بالذكاء الاصطناعي ===
           HomeScreenButton(
             icon: Icons.auto_awesome_outlined,
-            title: ' تقديم بلاغ بالذكاء الاصطناعي',
+            title: ' تقديم بلاغ',
             subtitle:
-                'يتم تحديد موقعك الحالي و عنوان ونوع ووصف التشوه البصري تلقائياً .',
+                'يتم تحديد موقعك الحالي و عنوان ونوع ووصف التشوه البصري تلقائيا بالذكاء الاصطناعي .',
             onTap: () {
               Get.to(() => const CreateReportWithAiPage());
             },
@@ -79,19 +79,18 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(height: size.height * 0.03),
 
-          // البلاغ اليدوي السابق
-          HomeScreenButton(
-            icon: Icons.camera_alt_outlined,
-            title: 'تقديم بلاغ جديد',
-            subtitle: "اختيار  الموقع وادخال بيانات التشوه البصري ",
-            onTap: () {
-              Get.to(() => const SelectLocationPage());
-            },
-            color: const Color(0xFFCAE6F2),
-            iconColor: const Color.fromARGB(255, 10, 62, 104),
-          ),
-          SizedBox(height: size.height * 0.03),
-
+          // // البلاغ اليدوي السابق
+          // HomeScreenButton(
+          //   icon: Icons.camera_alt_outlined,
+          //   title: 'تقديم بلاغ جديد',
+          //   subtitle: "اختيار  الموقع وادخال بيانات التشوه البصري ",
+          //   onTap: () {
+          //     Get.to(() => const SelectLocationPage());
+          //   },
+          //   color: const Color(0xFFCAE6F2),
+          //   iconColor: const Color.fromARGB(255, 10, 62, 104),
+          // ),
+          // SizedBox(height: size.height * 0.03),
           HomeScreenButton(
             icon: Icons.assignment,
             title: 'تصفح البلاغات',

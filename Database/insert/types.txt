@@ -1,7 +1,31 @@
-1	cleanliness	نظافة	Cleanliness
-2	potholes	حُفر	Potholes
-3	sidewalks	أرصفة	Sidewalks
-4	walls	جدران	Walls
-5	planting	زراعة	Planting
-6	other	أخرى	Other
-			
+USE `basmadb`;
+
+INSERT INTO `report_types`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(1, 'cleanliness', 'نظافة', 'Cleanliness');
+
+INSERT INTO `report_types`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(2, 'potholes', 'حُفر', 'Potholes');
+
+INSERT INTO `report_types`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(3, 'sidewalks', 'أرصفة', 'Sidewalks');
+
+INSERT INTO `report_types`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(4, 'walls', 'جدران', 'Walls');
+
+INSERT INTO `report_types`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(5, 'planting', 'زراعة', 'Planting');
+
+INSERT INTO `report_types`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(6, 'other', 'أخرى', 'Other');

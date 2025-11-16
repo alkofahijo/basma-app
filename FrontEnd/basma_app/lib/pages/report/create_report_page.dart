@@ -121,11 +121,12 @@ class _CreateReportPageState extends State<CreateReportPage> {
       source: ImageSource.camera,
       imageQuality: 90,
     );
-    if (img != null)
+    if (img != null) {
       setState(() {
         _beforeImage = img;
         _imageErrorMessage = null;
       });
+    }
   }
 
   Future<void> _pickFromGallery() async {
@@ -133,11 +134,12 @@ class _CreateReportPageState extends State<CreateReportPage> {
       source: ImageSource.gallery,
       imageQuality: 90,
     );
-    if (img != null)
+    if (img != null) {
       setState(() {
         _beforeImage = img;
         _imageErrorMessage = null;
       });
+    }
   }
 
   void _showImageSourceSheet() {

@@ -1,3 +1,4 @@
+USE `basmadb`;
 CREATE TABLE `districts` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `government_id` int unsigned NOT NULL,

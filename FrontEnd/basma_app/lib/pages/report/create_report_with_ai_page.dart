@@ -966,7 +966,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   ],
                 ),
                 child: DropdownButtonFormField<ReportTypeOption>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   items: _types
                       .map(
                         (t) => DropdownMenuItem<ReportTypeOption>(

@@ -189,6 +189,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               height: 48,
@@ -223,9 +224,14 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // const SizedBox(height: 4),
+                  // Text(
+                  //   "  ${rep.reportCode}",
+                  //   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  // ),
                   const SizedBox(height: 4),
                   Text(
-                    "رمز البلاغ: ${rep.reportCode}",
+                    "  ${_formatDateTime(rep.reportedAt)}",
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                   ),
                 ],

@@ -1,3 +1,4 @@
+USE `basmadb`;
 CREATE TABLE `locations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `area_id` int unsigned NOT NULL,

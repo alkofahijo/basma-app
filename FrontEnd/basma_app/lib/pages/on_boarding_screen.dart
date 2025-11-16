@@ -104,7 +104,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     controller: _controller,
                     count: onboardingData.length,
                     effect: const ExpandingDotsEffect(
-                      activeDotColor: Color(0xFF008000),
+                      activeDotColor: Color(0xFF039844),
                       dotColor: Colors.grey,
                       dotHeight: 8,
                       dotWidth: 8,
@@ -117,7 +117,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     height: size.height * 0.06,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF008000),
+                        backgroundColor: const Color(0xFF039844),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),

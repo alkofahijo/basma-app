@@ -118,19 +118,19 @@ class GuestReportCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
 
-                    if (report.descriptionAr != null &&
-                        report.descriptionAr!.isNotEmpty)
-                      Text(
-                        report.descriptionAr!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
+                    // if (report.descriptionAr != null &&
+                    //     report.descriptionAr!.isNotEmpty)
+                    //   Text(
+                    //     report.descriptionAr!,
+                    //     maxLines: 2,
+                    //     overflow: TextOverflow.ellipsis,
+                    //     style: TextStyle(
+                    //       fontSize: 12.5,
+                    //       color: Colors.grey.shade800,
+                    //     ),
+                    //   ),
 
-                    const SizedBox(height: 4),
+                    // const SizedBox(height: 4),
 
                     // Text(
                     //   'رمز البلاغ: ${report.reportCode}',

@@ -1,0 +1,30 @@
+give me  the full MySQL script  for insert in this table : 
+
+INSERT INTO `basmadb`.`report_types`
+(`id`,
+`code`,
+`name_ar`,
+`name_en`)
+VALUES
+(<{id: }>,
+<{code: }>,
+<{name_ar: }>,
+<{name_en: }>);
+
+
+for this following data : 
+
+
+
+1 	GRAFFITI		             كتابة على الجدران 
+2 	FADED SIGNAGE			لافتة باهتة
+3 	POTHOLES			حفر
+4 	GARBAGE				نفايات
+5 	CONSTRUCTION ROAD		طريق قيد الإنشاء
+6 	BROKEN_SIGNAGE			لافتة مكسورة
+7 	BAD STREETLIGHT			إنارة طريق تالفة
+8 	BAD BILLBOARD			لوحة إعلانات تالفة
+9 	SAND ON ROAD			أتربة على الطريق
+10 	CLUTTER_SIDEWALK	             رصيف غير صالح للمشي
+11 	UNKEPT_FACADE			واجهة مبنى سيئة المظهر
+12	      Others							أخرى

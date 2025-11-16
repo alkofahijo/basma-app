@@ -1,3 +1,4 @@
+USE `basmadb`;
 CREATE TABLE `report_types` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(50) COLLATE utf8mb4_bin NOT NULL,

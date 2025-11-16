@@ -1,27 +1,131 @@
-1	2	1	البارحة	Al-Barha	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-2	2	1	بيت راس	Beit Ras	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-3	2	1	المغير	Al-Mughayir	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-4	2	1	علعال	Al-Alaal	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-5	2	1	حكما	Hakma	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-6	2	1	فوعرة	Fouara	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-7	2	1	كفر جايز	Kafr Jayz	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-8	2	1	مرو	Maru	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-9	2	1	تقبل	Taqabal	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-10	2	1	أسعرة	Asarah	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-11	2	1	أم الجدايل	Umm al-Jadayel	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-12	2	1	مدينة إربد	Irbid City	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-13	2	1	كفر يوبا	Kafr Yuba	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-14	2	1	زحر	Zahar	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-15	2	1	بيت يافا	Beit Yafa	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-16	2	1	دوقرة	Duqra	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-17	2	1	ججين	Jajeen	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-18	2	1	الوصفية	Al-Wasfiyah	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-19	2	1	جمحة	Jumha	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-20	2	1	ناطفة	Natfa	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-21	2	1	هام	Haam	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-22	2	1	كفر رحتا	Kafr Rahta	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-23	2	1	وسوم	Wasum	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-24	2	1	حور	Hoor	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-25	2	1	حوارة	Hawara	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-26	2	1	بشرى	Bushra	1	2025-11-08 13:38:58	2025-11-14 08:45:27
-							
+USE `basmadb`;
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(1, 2, 1, 'البارحة', 'Al-Barha', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(2, 2, 1, 'بيت راس', 'Beit Ras', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(3, 2, 1, 'المغير', 'Al-Mughayir', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(4, 2, 1, 'علعال', 'Al-Alaal', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(5, 2, 1, 'حكما', 'Hakma', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(6, 2, 1, 'فوعرة', 'Fouara', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(7, 2, 1, 'كفر جايز', 'Kafr Jayz', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(8, 2, 1, 'مرو', 'Maru', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(9, 2, 1, 'تقبل', 'Taqabal', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(10, 2, 1, 'أسعرة', 'Asarah', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(11, 2, 1, 'أم الجدايل', 'Umm al-Jadayel', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(12, 2, 1, 'مدينة إربد', 'Irbid City', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(13, 2, 1, 'كفر يوبا', 'Kafr Yuba', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(14, 2, 1, 'زحر', 'Zahar', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(15, 2, 1, 'بيت يافا', 'Beit Yafa', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(16, 2, 1, 'دوقرة', 'Duqra', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(17, 2, 1, 'ججين', 'Jajeen', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(18, 2, 1, 'الوصفية', 'Al-Wasfiyah', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(19, 2, 1, 'جمحة', 'Jumha', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(20, 2, 1, 'ناطفة', 'Natfa', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(21, 2, 1, 'هام', 'Haam', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(22, 2, 1, 'كفر رحتا', 'Kafr Rahta', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(23, 2, 1, 'وسوم', 'Wasum', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(24, 2, 1, 'حور', 'Hoor', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(25, 2, 1, 'حوارة', 'Hawara', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
+
+INSERT INTO `areas`
+(`id`, `government_id`, `district_id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(26, 2, 1, 'بشرى', 'Bushra', 1, '2025-11-08 13:38:58', '2025-11-14 08:45:27');
