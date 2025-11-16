@@ -134,13 +134,13 @@ class ReportClassifierService:
 
         self.model = backbone.to(self.device)
 
-        # تحميل الأوزان من الملف
+        # تحميل الأوزان من الملف (state_dict)
         state_dict = torch.load(model_path, map_location=self.device)
         self.model.load_state_dict(state_dict)
         self.model.eval()
 
         # -------------------------
-        # 4. الـ transforms (نفس التدريب)
+        # 4. الـ transforms (نفس التدريب في الـ val/test)
         # -------------------------
         self.transform = transforms.Compose(
             [

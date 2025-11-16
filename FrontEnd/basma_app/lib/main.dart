@@ -1,7 +1,6 @@
-// lib/main.dart
-import 'package:basma_app/pages/splash_screen.dart';
+import 'package:basma_app/pages/on_start/splash_screen.dart';
+import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ⬅️ for SystemChrome & SystemUiOverlayStyle
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,14 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Make the status bar green (global default)
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.green, // background of status bar on Android
-      statusBarIconBrightness: Brightness.light, // white icons (Android)
-      statusBarBrightness: Brightness.dark, // for iOS
-    ),
-  );
+  // ✅ إعداد شريط الحالة/التنقل الأخضر للتطبيق كله
+  AppSystemUi.applyGreen();
 
   final sp = await SharedPreferences.getInstance();
   final token = sp.getString('token');

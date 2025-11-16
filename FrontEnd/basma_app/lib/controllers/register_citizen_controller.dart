@@ -1,4 +1,4 @@
-import 'package:basma_app/pages/auth/reg_success.dart';
+import 'package:basma_app/pages/auth/Registeration/shared/reg_success.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';

@@ -1,4 +1,13 @@
 .venv/
 Backend/.venv.rar
-
 Backend/basma_api/.venv/
+
+# Ignore uploaded images
+
+Backend/basma_api/app/static/uploads/
+
+# Ignore Python cache
+
+Backend/basma_api/app/__pycache__/
+Backend/basma_api/app/ml/__pycache__/
+Backend/basma_api/app/routers/__pycache__/
