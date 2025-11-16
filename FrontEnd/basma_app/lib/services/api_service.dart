@@ -23,6 +23,10 @@ class ResolvedLocation {
   final int areaId;
   final String areaNameAr;
 
+  /// اختياري: لو الـ backend رجّع location
+  final int? locationId;
+  final String? locationNameAr;
+
   ResolvedLocation({
     required this.governmentId,
     required this.governmentNameAr,
@@ -30,16 +34,22 @@ class ResolvedLocation {
     required this.districtNameAr,
     required this.areaId,
     required this.areaNameAr,
+    this.locationId,
+    this.locationNameAr,
   });
 
   factory ResolvedLocation.fromJson(Map<String, dynamic> json) {
+    final loc = json['location'];
+
     return ResolvedLocation(
-      governmentId: json['government']['id'],
-      governmentNameAr: json['government']['name_ar'],
-      districtId: json['district']['id'],
-      districtNameAr: json['district']['name_ar'],
-      areaId: json['area']['id'],
-      areaNameAr: json['area']['name_ar'],
+      governmentId: json['government']['id'] as int,
+      governmentNameAr: json['government']['name_ar'] as String,
+      districtId: json['district']['id'] as int,
+      districtNameAr: json['district']['name_ar'] as String,
+      areaId: json['area']['id'] as int,
+      areaNameAr: json['area']['name_ar'] as String,
+      locationId: loc != null ? loc['id'] as int? : null,
+      locationNameAr: loc != null ? loc['name_ar'] as String? : null,
     );
   }
 }
@@ -61,11 +71,11 @@ class AiSuggestion {
 
   factory AiSuggestion.fromJson(Map<String, dynamic> json) {
     return AiSuggestion(
-      reportTypeId: json['report_type_id'],
-      reportTypeNameAr: json['report_type_name_ar'],
+      reportTypeId: json['report_type_id'] as int,
+      reportTypeNameAr: json['report_type_name_ar'] as String,
       confidence: (json['confidence'] as num).toDouble(),
-      suggestedTitle: json['suggested_title'],
-      suggestedDescription: json['suggested_description'],
+      suggestedTitle: json['suggested_title'] as String,
+      suggestedDescription: json['suggested_description'] as String,
     );
   }
 }
@@ -442,7 +452,7 @@ class ApiService {
       throw HttpException("Upload failed: $body");
     }
 
-    return jsonDecode(body)["url"];
+    return jsonDecode(body)["url"] as String;
   }
 
   // -------------------------------------------------------------
@@ -654,7 +664,7 @@ class ApiService {
     if (resp.statusCode != 200) {
       throw Exception('فشل في تحديد الموقع (${resp.statusCode}): ${resp.body}');
     }
-    final data = jsonDecode(resp.body);
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
     return ResolvedLocation.fromJson(data);
   }
 
@@ -683,7 +693,7 @@ class ApiService {
     if (resp.statusCode != 200) {
       throw Exception('فشل في تحليل الصورة (${resp.statusCode}): ${resp.body}');
     }
-    final data = jsonDecode(resp.body);
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
     return AiSuggestion.fromJson(data);
   }
 }

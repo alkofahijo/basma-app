@@ -1,13 +1,64 @@
-1	عمان	Amman	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-2	إربد	Irbid	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-3	البلقاء	Balqa	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-4	الزرقاء	Zarqa	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-5	المفرق	Mafraq	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-6	جرش	Jerash	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-7	عجلون	Ajloun	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-8	مادبا	Madaba	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-9	الكرك	Karak	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-10	الطفيلة	Tafilah	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-11	معان	Ma'an	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-12	العقبة	Aqaba	1	2025-11-08 13:31:11	2025-11-08 13:31:11
-					
+-- Use the correct database
+USE `basmadb`;
+
+-- 1) Insert rows into governments table
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(1, 'عمان',    'Amman',   1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(2, 'إربد',    'Irbid',   1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(3, 'البلقاء', 'Balqa',   1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(4, 'الزرقاء', 'Zarqa',   1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(5, 'المفرق',  'Mafraq',  1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(6, 'جرش',     'Jerash',  1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(7, 'عجلون',   'Ajloun',  1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(8, 'مادبا',   'Madaba',  1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(9, 'الكرك',   'Karak',   1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(10, 'الطفيلة', 'Tafilah', 1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(11, 'معان',   'Ma''an',  1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');
+
+INSERT INTO `governments`
+(`id`, `name_ar`, `name_en`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(12, 'العقبة', 'Aqaba',   1, '2025-11-08 13:31:11', '2025-11-08 13:31:11');

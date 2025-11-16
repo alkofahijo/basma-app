@@ -1,3 +1,4 @@
+USE `basmadb`;
 CREATE TABLE `reports` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `report_code` varchar(100) COLLATE utf8mb4_bin NOT NULL,
@@ -37,3 +38,47 @@ CREATE TABLE `reports` (
   CONSTRAINT `reports_ibfk_6` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `reports_ibfk_7` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+
+-----------------------------
+Trigger : 
+
+
+USE basmadb;
+DELIMITER $$
+
+CREATE DEFINER=`root`@`localhost` TRIGGER `trg_reports_set_reported_by_name`
+BEFORE INSERT ON `reports`
+FOR EACH ROW
+BEGIN
+    DECLARE v_name_ar VARCHAR(200);
+
+    -- لو الـ SELECT ما رجّع صف، ما نبغى التريغر يرمي خطأ
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_name_ar = NULL;
+
+    -- لو في user_id و reported_by_name فاضي/NULL، نعبّيه تلقائياً
+    IF NEW.user_id IS NOT NULL
+       AND (NEW.reported_by_name IS NULL OR NEW.reported_by_name = '') THEN
+
+        -- نجلب الاسم بالعربي حسب نوع المستخدم
+        SELECT 
+            CASE 
+                WHEN u.user_type = 3 THEN c.name_ar      -- مواطن
+                WHEN u.user_type = 2 THEN i.name_ar      -- مبادرة
+                ELSE NULL
+            END
+        INTO v_name_ar
+        FROM users u
+        LEFT JOIN citizens   c ON c.id = u.citizen_id
+        LEFT JOIN initiatives i ON i.id = u.initiative_id
+        WHERE u.id = NEW.user_id
+        LIMIT 1;
+
+        -- لو لقينا اسم بالعربي، نحطه في reported_by_name
+        IF v_name_ar IS NOT NULL THEN
+            SET NEW.reported_by_name = v_name_ar;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

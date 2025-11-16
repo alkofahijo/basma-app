@@ -1,3 +1,4 @@
+USE `basmadb`;
 DELIMITER $$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_set_reports_status_1_to_2`()
 BEGIN

@@ -1,5 +1,21 @@
-1	under_review	قيد المراجعة	Under Review
-2	open	مفتوح	Open
-3	in_progress	قيد التنفيذ	In Progress
-4	completed	مكتمل	Completed
-			
+USE `basmadb`;
+
+INSERT INTO `report_status`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(1, 'under_review', 'قيد المراجعة', 'Under Review');
+
+INSERT INTO `report_status`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(2, 'open', 'مفتوح', 'Open');
+
+INSERT INTO `report_status`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(3, 'in_progress', 'قيد التنفيذ', 'In Progress');
+
+INSERT INTO `report_status`
+(`id`, `code`, `name_ar`, `name_en`)
+VALUES
+(4, 'completed', 'مكتمل', 'Completed');

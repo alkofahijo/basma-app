@@ -1,4 +1,6 @@
-SELECT * FROM basmadb.v_location_hierarchy;CREATE TABLE `areas` (
+USE `basmadb`;
+
+CREATE TABLE `areas` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `government_id` int unsigned NOT NULL,
   `district_id` int unsigned NOT NULL,
