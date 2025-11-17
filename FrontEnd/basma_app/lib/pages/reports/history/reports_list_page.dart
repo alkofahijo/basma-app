@@ -1,9 +1,10 @@
 // lib/pages/reports/browse/guest_reports_list_page.dart
 
-import 'package:basma_app/pages/profile/profile_page.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,7 +16,7 @@ import 'widgets/reports_status_tabs.dart';
 import 'widgets/reports_filters_card.dart';
 import 'widgets/reports_card_item.dart';
 
-const Color _primaryColor = Color(0xFF008000);
+// use central primary color
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class GuestReportsListPage extends StatefulWidget {
@@ -513,52 +514,46 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     return Scaffold(
       backgroundColor: _pageBackground,
       appBar: AppBar(
-        backgroundColor: _primaryColor,
+        leading: _isLoggedIn
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+        backgroundColor: kPrimaryColor,
         systemOverlayStyle: AppSystemUi.green,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "تصفح البلاغات",
-          style: TextStyle(
+        title: Text(
+          isMyReports ? 'بلاغاتي' : 'تصفح البلاغات',
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
             color: Colors.white,
           ),
         ),
         centerTitle: true,
-        actions: [
-          if (_isLoggedIn)
-            IconButton(
-              icon: const Icon(Icons.person_rounded, color: Colors.white),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfilePage()),
-                );
-              },
-            ),
-        ],
+        actions: [],
         toolbarHeight: 60,
       ),
       body: SafeArea(
-        child: _loading
-            ? const LoadingCenter()
-            : Column(
-                children: [
-                  _buildSearchAndFilterBar(),
-                  const SizedBox(height: 8),
-                  GuestStatusTabs(
-                    currentStatusTab: _statusTab,
-                    isMyReports: isMyReports,
-                    onStatusChanged: _switchStatusTab,
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(child: _buildBody()),
-                ],
-              ),
+        child: Column(
+          children: [
+            _buildSearchAndFilterBar(),
+            const SizedBox(height: 8),
+            GuestStatusTabs(
+              currentStatusTab: _statusTab,
+              isMyReports: isMyReports,
+              onStatusChanged: _switchStatusTab,
+            ),
+            const SizedBox(height: 6),
+            Expanded(child: _loading ? const LoadingCenter() : _buildBody()),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BasmaBottomNavPage(
+        currentIndex: isMyReports ? 1 : -1,
       ),
     );
   }

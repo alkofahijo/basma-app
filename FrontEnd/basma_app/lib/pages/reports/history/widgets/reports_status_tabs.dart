@@ -1,3 +1,4 @@
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class GuestStatusTabs extends StatelessWidget {
@@ -22,47 +23,36 @@ class GuestStatusTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // const Icon(
-          //   Icons.timeline_outlined,
-          //   size: 20,
-          //   color: Color(0xFF039844),
-          // ),
-          // const SizedBox(width: 8),
-          Expanded(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                if (!isMyReports)
-                  _buildChip(
-                    label: 'جديد',
-                    selected: _isOpenTab,
-                    color: Colors.green.shade600,
-                    onTap: () => onStatusChanged('open'),
-                  ),
+    return Row(
+      children: [
+        Expanded(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            children: [
+              if (!isMyReports)
                 _buildChip(
-                  label: 'قيد العمل',
-                  selected: _isInProgressTab,
-                  color: Colors.orange.shade600,
-                  onTap: () => onStatusChanged('in_progress'),
+                  label: 'جديد',
+                  selected: _isOpenTab,
+                  color: kPrimaryColor,
+                  onTap: () => onStatusChanged('open'),
                 ),
-                _buildChip(
-                  label: 'مكتمل',
-                  selected: _isCompletedTab,
-                  color: Colors.blue.shade600,
-                  onTap: () => onStatusChanged('completed'),
-                ),
-              ],
-            ),
+              _buildChip(
+                label: 'قيد العمل',
+                selected: _isInProgressTab,
+                color: kPrimaryColor,
+                onTap: () => onStatusChanged('in_progress'),
+              ),
+              _buildChip(
+                label: 'مكتمل',
+                selected: _isCompletedTab,
+                color: kPrimaryColor,
+                onTap: () => onStatusChanged('completed'),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -72,28 +62,26 @@ class GuestStatusTabs extends StatelessWidget {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return SizedBox(
-      child: ChoiceChip(
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
         ),
-        selected: selected,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        selectedColor: color,
-        backgroundColor: Colors.white,
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : Colors.grey.shade800,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: selected ? color : Colors.grey.shade300),
-        ),
-        onSelected: (_) => onTap(),
       ),
+      selected: selected,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      selectedColor: color,
+      backgroundColor: Colors.white,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : Colors.grey.shade800,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: selected ? color : Colors.grey.shade300),
+      ),
+      onSelected: (_) => onTap(),
     );
   }
 }

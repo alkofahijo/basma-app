@@ -6,8 +6,8 @@ import 'package:basma_app/models/citizen_models.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
-const Color _primaryColor = Color(0xFF008000);
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class CitizenInfoPage extends StatefulWidget {
@@ -63,7 +63,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          backgroundColor: _primaryColor,
+          backgroundColor: kPrimaryColor,
           elevation: 0,
           title: const Text(
             "بيانات المواطن",
@@ -153,7 +153,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
             icon: Icons.verified_rounded,
             title: "البلاغات المنجزة",
             value: "${c.reportsCompletedCount}",
-            color: _primaryColor,
+            color: kPrimaryColor,
           ),
         ),
       ],
@@ -167,6 +167,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
     required Color color,
   }) {
     return Card(
+      color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -211,6 +212,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
 
   Widget _buildInfoSection(Citizen c) {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -220,7 +222,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
           children: [
             Row(
               children: const [
-                Icon(Icons.info_outline, size: 18, color: _primaryColor),
+                Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                 SizedBox(width: 6),
                 Text(
                   "تفاصيل المواطن",

@@ -7,8 +7,8 @@ import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
 import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
-const Color _primaryColor = Color(0xFF008000);
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class InitiativeInfoPage extends StatefulWidget {
@@ -64,7 +64,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          backgroundColor: _primaryColor,
+          backgroundColor: kPrimaryColor,
           elevation: 0,
           title: const Text(
             "بيانات المبادرة",
@@ -157,26 +157,11 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
   }
 
   Widget _buildStatsRow(Initiative i) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.groups_rounded,
-            title: "عدد الأعضاء",
-            value: "${i.membersCount}",
-            color: _primaryColor,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.done_all_rounded,
-            title: "البلاغات المنجزة",
-            value: "${i.reportsCompletedCount}",
-            color: _primaryColor,
-          ),
-        ),
-      ],
+    return _buildStatCard(
+      icon: Icons.done_all_rounded,
+      title: "البلاغات المنجزة",
+      value: "${i.reportsCompletedCount}",
+      color: kPrimaryColor,
     );
   }
 
@@ -187,6 +172,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
     required Color color,
   }) {
     return Card(
+      color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -231,6 +217,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
 
   Widget _buildInfoSection(Initiative i) {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -240,7 +227,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
           children: [
             Row(
               children: const [
-                Icon(Icons.info_outline, size: 18, color: _primaryColor),
+                Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                 SizedBox(width: 6),
                 Text(
                   "تفاصيل المبادرة",
@@ -266,6 +253,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
 
   Widget _buildJoinSection(String link) {
     return Card(
+      color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
@@ -275,7 +263,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
           children: [
             Row(
               children: const [
-                Icon(Icons.person_add_alt_1, size: 18, color: _primaryColor),
+                Icon(Icons.person_add_alt_1, size: 18, color: kPrimaryColor),
                 SizedBox(width: 6),
                 Text(
                   "الانضمام إلى المبادرة",
@@ -292,19 +280,19 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.06),
+                color: kPrimaryColor.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.link, size: 18, color: _primaryColor),
+                  const Icon(Icons.link, size: 18, color: kPrimaryColor),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       link,
                       style: const TextStyle(
                         fontSize: 13,
-                        color: _primaryColor,
+                        color: kPrimaryColor,
                         decoration: TextDecoration.underline,
                       ),
                       maxLines: 2,

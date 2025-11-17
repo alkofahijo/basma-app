@@ -9,6 +9,7 @@ import 'package:basma_app/pages/reports/history/widgets/adopt_report_dialog.dart
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:flutter/material.dart';
@@ -19,8 +20,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/report_image_section.dart';
 import '../widgets/view_location_page.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
 
-const Color _primaryColor = Color(0xFF008000);
+// use central primary color
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 String _formatDateTime(DateTime? dt) {
@@ -33,6 +35,37 @@ String _formatDateTime(DateTime? dt) {
   final mm = dt.minute.toString().padLeft(2, '0');
 
   return "$y-$m-$d $hh:$mm";
+}
+
+// Top-level custom info row used only for the location section so it can be styled separately
+class _LocationInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _LocationInfoRow({Key? key, required this.label, required this.value})
+    : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 15),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _StatusStyle {
@@ -131,7 +164,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     return Scaffold(
       backgroundColor: _pageBackground,
       appBar: AppBar(
-        backgroundColor: _primaryColor,
+        backgroundColor: kPrimaryColor,
         systemOverlayStyle: AppSystemUi.green,
         title: const Text(
           "تفاصيل البلاغ",
@@ -182,6 +215,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 ),
               ),
       ),
+      bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 1),
     );
   }
 
@@ -205,7 +239,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 gradient: const LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Color.fromARGB(255, 38, 166, 51), _primaryColor],
+                  colors: [Color.fromARGB(255, 38, 166, 51), kPrimaryColor],
                 ),
               ),
               child: const Icon(
@@ -315,17 +349,12 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: _primaryColor.withOpacity(0.08),
-              ),
-              child: Center(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+              child: Text(
+                "$title :",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -368,129 +397,131 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
     return _buildSectionCard(
       title: "الموقع الجغرافي",
-      subtitle: "بيانات المحافظة، اللواء، المنطقة والموقع.",
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          textDirection: TextDirection.rtl, // هنا المهم لعرضها مثل الصورة
           children: [
-            Expanded(
-              child: InfoRow(
-                label: "المحافظة",
-                value: rep.governmentNameAr ?? "${rep.governmentId}",
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InfoRow(
-                label: "اللواء",
-                value: rep.districtNameAr ?? "${rep.districtId}",
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: InfoRow(
-                label: "المنطقة",
-                value: rep.areaNameAr ?? "${rep.areaId}",
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InfoRow(
-                label: "اسم الموقع",
-                value: rep.locationNameAr ?? "${rep.locationId}",
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (hasCoordinates)
-          Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: SizedBox(
-                  height: 180,
-                  width: double.infinity,
-                  child: FlutterMap(
-                    options: MapOptions(
-                      initialCenter: LatLng(
-                        rep.locationLatitude!,
-                        rep.locationLongitude!,
-                      ),
-                      initialZoom: 15,
-                      maxZoom: 18,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.example.basma_app',
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: LatLng(
-                              rep.locationLatitude!,
-                              rep.locationLongitude!,
-                            ),
-                            width: 50,
-                            height: 50,
-                            child: const Icon(
-                              Icons.location_on,
-                              size: 36,
-                              color: Color.fromARGB(255, 4, 118, 36),
-                            ),
+            // ---------- الخريطة ---------- //
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 150,
+                height: 150,
+                color: Colors.grey.shade200,
+                child: hasCoordinates
+                    ? FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(
+                            rep.locationLatitude!,
+                            rep.locationLongitude!,
+                          ),
+                          initialZoom: 15,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.example.basma_app',
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(
+                                  rep.locationLatitude!,
+                                  rep.locationLongitude!,
+                                ),
+                                width: 50,
+                                height: 50,
+                                child: const Icon(
+                                  Icons.location_on,
+                                  size: 40,
+                                  color: Color(0xFF008000),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 300,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ViewReportLocationPage(
-                          lat: rep.locationLatitude!,
-                          lng: rep.locationLongitude!,
-                          locationName: rep.locationNameAr,
+                      )
+                    : const Center(
+                        child: Text(
+                          "لا توجد إحداثيات",
+                          style: TextStyle(color: Colors.grey),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.location_on, color: Colors.white),
-                  label: const Text(
-                    "عرض الموقع على الخريطة",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                ),
               ),
-            ],
-          )
-        else
-          Text(
-            "لا توجد إحداثيات محفوظة لهذا البلاغ.",
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
+            ),
+            const SizedBox(width: 14),
+            // ---------- النصوص ---------- //
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _LocationInfoRow(
+                    label: "المحافظة:",
+                    value: rep.governmentNameAr ?? "---",
+                  ),
+                  const SizedBox(height: 6),
+                  _LocationInfoRow(
+                    label: "اللواء:",
+                    value: rep.districtNameAr ?? "---",
+                  ),
+                  const SizedBox(height: 6),
+                  _LocationInfoRow(
+                    label: "المنطقة:",
+                    value: rep.areaNameAr ?? "---",
+                  ),
+                  const SizedBox(height: 6),
+                  _LocationInfoRow(
+                    label: "اسم الموقع:",
+                    value: rep.locationNameAr ?? "---",
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ---------- زر عرض الخريطة ---------- //
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 160,
+                      child: ElevatedButton(
+                        onPressed: hasCoordinates
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ViewReportLocationPage(
+                                      lat: rep.locationLatitude!,
+                                      lng: rep.locationLongitude!,
+                                      locationName: rep.locationNameAr,
+                                    ),
+                                  ),
+                                );
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          padding: const EdgeInsets.all(14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          "عرض على الخريطة",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -498,22 +529,12 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   // ----- القسم: الصور -----
   Widget _buildImagesSection(ReportDetail rep) {
     return _buildSectionCard(
-      title: "صورة البلاغ",
-      subtitle: "قبل وبعد معالجة المشكلة.",
+      title: "صور البلاغ",
       children: [
-        const Text(
-          "الصورة قبل:",
-          style: TextStyle(fontWeight: FontWeight.w600),
+        BeforeAfterImages(
+          beforeUrl: rep.imageBeforeUrl,
+          afterUrl: rep.imageAfterUrl,
         ),
-        ReportImageSection(title: "", rawUrl: rep.imageBeforeUrl),
-        const SizedBox(height: 16),
-        if (rep.imageAfterUrl != null && rep.imageAfterUrl!.isNotEmpty) ...[
-          const Text(
-            "الصورة بعد:",
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          ReportImageSection(title: "", rawUrl: rep.imageAfterUrl),
-        ],
       ],
     );
   }
@@ -604,7 +625,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 },
                 icon: const Icon(Icons.login, color: Colors.white),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: kPrimaryColor,
                   padding: const EdgeInsets.all(14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -641,7 +662,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
           icon: const Icon(Icons.handshake_outlined, color: Colors.white),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.all(14),
-            backgroundColor: _primaryColor,
+            backgroundColor: kPrimaryColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -685,7 +706,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
             icon: const Icon(Icons.check_circle_outline, color: Colors.white),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.all(14),
-              backgroundColor: _primaryColor,
+              backgroundColor: kPrimaryColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),

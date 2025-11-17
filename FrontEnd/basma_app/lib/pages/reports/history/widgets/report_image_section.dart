@@ -1,69 +1,99 @@
+import 'package:basma_app/pages/reports/history/widgets/zoomable_image.dart';
 import 'package:flutter/material.dart';
-import 'package:basma_app/widgets/network_image_viewer.dart';
 
-/// 🔥 عدّل هذا الـ baseUrl حسب بيئة السيرفر:
-/// - Android Emulator:  http://10.0.2.2:8000
-/// - iOS Simulator / Web / نفس الجهاز: http://127.0.0.1:8000 أو IP حقيقي
 const String kApiBaseUrl = 'http://10.0.2.2:8000';
 
-class ReportImageSection extends StatelessWidget {
-  final String title;
-  final String? rawUrl;
+class BeforeAfterImages extends StatelessWidget {
+  final String? beforeUrl;
+  final String? afterUrl;
 
-  const ReportImageSection({
+  const BeforeAfterImages({
     super.key,
-    required this.title,
-    required this.rawUrl,
+    required this.beforeUrl,
+    required this.afterUrl,
   });
 
-  String? _buildImageUrl(String? rawPath) {
-    if (rawPath == null || rawPath.isEmpty) return null;
-
-    // لو الـ API رجّع URL كامل
-    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
-      return rawPath;
-    }
-
-    // لو رجع مسار نسبي مثل /static/uploads/xxx.jpg
-    if (rawPath.startsWith('/')) {
-      return '$kApiBaseUrl$rawPath';
-    }
-
-    // أي مسار نسبي بدون / في البداية
-    return '$kApiBaseUrl/$rawPath';
+  String? _resolve(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return '$kApiBaseUrl$raw';
+    return '$kApiBaseUrl/$raw';
   }
 
   @override
   Widget build(BuildContext context) {
-    final resolvedUrl = _buildImageUrl(rawUrl);
+    final before = _resolve(beforeUrl);
+    final after = _resolve(afterUrl);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        if (resolvedUrl != null)
-          // نستفيد من الـ NetworkImageViewer الموجود عندك أصلاً
-          NetworkImageViewer(url: resolvedUrl)
-        else
-          Container(
-            width: double.infinity,
-            height: 160,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // ------------------ BEFORE ------------------
+              Expanded(child: _buildCard("الصورة قبل", before)),
+
+              const SizedBox(width: 12),
+
+              // ------------------ AFTER (optional) ------------------
+              Expanded(
+                child: after == null
+                    ? Opacity(
+                        opacity: 0, // invisible placeholder
+                        child: _buildCard("", null),
+                      )
+                    : _buildCard("الصورة بعد", after),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(String title, String? url) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
             ),
-            child: const Icon(
-              Icons.image_not_supported,
-              size: 40,
-              color: Colors.grey,
+
+          ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(14)),
+            child: Container(
+              height: 180,
+              width: double.infinity,
+              color: Colors.grey.shade200,
+              child: url == null
+                  ? const SizedBox()
+                  : ZoomableImage(imageUrl: url),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

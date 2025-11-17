@@ -5,10 +5,12 @@ import 'dart:io';
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
 
-const Color _primaryColor = Color(0xFF008000);
+// use central primary color
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class CompleteReportPage extends StatefulWidget {
@@ -73,6 +75,126 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
     }
   }
 
+  Future<bool?> _showConfirmCompleteDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 24,
+            ),
+            contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            titlePadding: const EdgeInsets.only(top: 16),
+            backgroundColor: Colors.white,
+            title: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF004d00), kPrimaryColor],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "تأكيد إتمام البلاغ",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                const Text(
+                  "بتأكيد إتمام البلاغ، سيُسجَّل البلاغ كمكتمل وسيتم حفظ صور الإكمال."
+                  " تأكد من أن الصور والملاحظات تعكس الحل النهائي.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(
+                      255,
+                      0,
+                      150,
+                      10,
+                    ).withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          "تأكد أنك قادر على متابعة البلاغ بعد اكتماله ومراجعة الصور المرفوعة.",
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actionsPadding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              top: 4,
+            ),
+            actionsAlignment: MainAxisAlignment.spaceBetween,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                ),
+                child: const Text("إلغاء"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  minimumSize: const Size(110, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  "تأكيد الإتمام",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showImageSourceSheet() {
     if (_loading) return;
 
@@ -105,7 +227,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
   }
 
   Border _buildBorder() {
-    return Border.all(color: _primaryColor.withOpacity(0.5), width: 1.4);
+    return Border.all(color: kPrimaryColor.withOpacity(0.5), width: 1.4);
   }
 
   Widget _buildUploadBox() {
@@ -183,7 +305,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context, false),
         ),
-        backgroundColor: _primaryColor,
+        backgroundColor: kPrimaryColor,
         systemOverlayStyle: AppSystemUi.green,
         centerTitle: true,
         title: const Text(
@@ -250,7 +372,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
               const SizedBox(height: 16),
               CheckboxListTile(
                 value: _isConfirmed,
-                activeColor: _primaryColor,
+                activeColor: kPrimaryColor,
                 onChanged: _loading
                     ? null
                     : (v) => setState(() => _isConfirmed = v ?? false),
@@ -267,8 +389,8 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                           ? null
                           : () => Navigator.pop(context, false),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _primaryColor),
-                        foregroundColor: _primaryColor,
+                        side: const BorderSide(color: kPrimaryColor),
+                        foregroundColor: kPrimaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -283,9 +405,15 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                       onPressed:
                           (!_isConfirmed || _selectedImage == null || _loading)
                           ? null
-                          : _submit,
+                          : () async {
+                              final confirmed =
+                                  await _showConfirmCompleteDialog();
+                              if (confirmed == true) {
+                                await _submit();
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryColor,
+                        backgroundColor: kPrimaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -312,6 +440,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
           ),
         ),
       ),
+      bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 1),
     );
   }
 }

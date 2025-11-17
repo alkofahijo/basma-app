@@ -1,5 +1,6 @@
 import 'package:basma_app/pages/on_start/splash_screen.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
@@ -42,7 +43,10 @@ class MyApp extends StatelessWidget {
         child: child ?? const SizedBox.shrink(),
       ),
       theme: ThemeData(
+        fontFamily: 'Cairo',
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: kPrimaryColor),
+        primaryColor: kPrimaryColor,
         scaffoldBackgroundColor: const Color(0xFFEFF1F1),
         chipTheme: const ChipThemeData(showCheckmark: false),
       ),

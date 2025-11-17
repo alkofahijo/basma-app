@@ -4,13 +4,14 @@ import 'dart:convert';
 
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-const Color _primaryColor = Color(0xFF008000);
+// use central primary color
 
 class SelectLocationOnMapPage extends StatefulWidget {
   final double? initialLat;
@@ -482,7 +483,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: _primaryColor.withOpacity(0.04),
+          color: kPrimaryColor.withOpacity(0.04),
         ),
         child: const Row(
           children: [
@@ -542,7 +543,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: _primaryColor.withOpacity(0.05),
+        color: kPrimaryColor.withOpacity(0.05),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,7 +553,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: _primaryColor,
+              color: kPrimaryColor,
             ),
           ),
           const SizedBox(height: 6),
@@ -610,7 +611,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: _primaryColor,
+        backgroundColor: kPrimaryColor,
         systemOverlayStyle: AppSystemUi.green,
       ),
       body: Column(
@@ -645,7 +646,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                             child: const Icon(
                               Icons.location_on,
                               size: 40,
-                              color: _primaryColor,
+                              color: kPrimaryColor,
                             ),
                           ),
                         ],
@@ -698,7 +699,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                               ? null
                               : _getCurrentLocation,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
+                            backgroundColor: kPrimaryColor,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -730,7 +731,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
                               ? null
                               : _onConfirm,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
+                            backgroundColor: kPrimaryColor,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

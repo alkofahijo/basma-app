@@ -1,4 +1,5 @@
 import 'package:basma_app/pages/on_start/landing_page.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -31,7 +32,7 @@ class LoginPage extends StatelessWidget {
             const Text(
               'تسجيل الدخول إلى حسابك',
               style: TextStyle(
-                color: Color(0xFF008000),
+                color: kPrimaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 32,
               ),
@@ -164,7 +165,7 @@ class LoginPage extends StatelessWidget {
                       ? null
                       : controller.login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF008000),
+                    backgroundColor: kPrimaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -195,7 +196,7 @@ class LoginPage extends StatelessWidget {
                       'إنشاء حساب',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                        color: kPrimaryColor,
                       ),
                     ),
                   ),

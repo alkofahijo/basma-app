@@ -23,7 +23,6 @@ class LandingPage extends StatelessWidget {
         ),
         child: Center(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'اختر إجراءك!',
@@ -60,8 +59,7 @@ class LandingPage extends StatelessWidget {
               HomeScreenButton(
                 icon: Icons.person_outline,
                 title: 'تسجيل الدخول',
-                subtitle:
-                    'تسجيل الدخول كمواطن او كمبادرة للتبليغ عن او حل مشكلة تشوه بصري',
+                subtitle: 'تسجيل الدخول للتبليغ عن او حل مشكلة تشوه بصري',
                 onTap: () {
                   Get.to(() => LoginPage());
                 },

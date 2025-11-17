@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import '../../../../models/report_models.dart';
 
-/// 🔥 عدّل هذا الـ baseUrl ليناسب بيئتك
-/// Android Emulator: http://10.0.2.2:8000
-/// iOS / same machine: http://127.0.0.1:8000
 const String kApiBaseUrl = 'http://10.0.2.2:8000';
 
 class GuestReportCard extends StatelessWidget {
@@ -23,176 +21,187 @@ class GuestReportCard extends StatelessWidget {
     required this.statusNameAr,
   });
 
-  String? _buildImageUrl(String? rawPath) {
-    if (rawPath == null || rawPath.isEmpty) return null;
-    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
-      return rawPath;
+  String? _img(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return '$kApiBaseUrl$raw';
+    return '$kApiBaseUrl/$raw';
+  }
+
+  /// ICON BASED ON CATEGORY TYPE (from your API)
+  IconData _iconForCategory(String? code) {
+    switch (code) {
+      case 'cleanliness':
+        return Icons.cleaning_services_outlined;
+      case 'potholes':
+        return Icons.warning_amber_outlined;
+      case 'sidewalks':
+        return Icons.directions_walk;
+      case 'walls':
+        return Icons.crop_landscape;
+      case 'planting':
+        return Icons.local_florist;
+      default:
+        return Icons.category_outlined;
     }
-    if (rawPath.startsWith('/')) {
-      return '$kApiBaseUrl$rawPath';
-    }
-    return '$kApiBaseUrl/$rawPath';
   }
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = _buildImageUrl(report.imageBeforeUrl);
+    final imageUrl = _img(report.imageBeforeUrl);
 
     return Card(
       color: Colors.white,
-      shadowColor: Colors.black12.withOpacity(0.9),
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      elevation: 1.2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 12,
+      shadowColor: Colors.black12,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
+          padding: const EdgeInsets.all(14),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // الصورة
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: imageUrl != null
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.image_not_supported),
-                        )
-                      : Container(
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.image, size: 36),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 180,
+                      height: 115,
+                      color: Colors.grey.shade200,
+                      child: imageUrl != null
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const Icon(Icons.image_not_supported),
+                            )
+                          : const Icon(Icons.image, size: 40),
+                    ),
+                  ),
 
-              // المعلومات
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // العنوان + الحالة
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            report.nameAr,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 90.0),
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 10,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: statusColor(
                               report.statusId,
-                            ).withOpacity(0.1),
+                            ).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             statusNameAr(report.statusId),
                             style: TextStyle(
-                              color: statusColor(report.statusId),
+                              fontSize: 11.5,
                               fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // if (report.descriptionAr != null &&
-                    //     report.descriptionAr!.isNotEmpty)
-                    //   Text(
-                    //     report.descriptionAr!,
-                    //     maxLines: 2,
-                    //     overflow: TextOverflow.ellipsis,
-                    //     style: TextStyle(
-                    //       fontSize: 12.5,
-                    //       color: Colors.grey.shade800,
-                    //     ),
-                    //   ),
-
-                    // const SizedBox(height: 4),
-
-                    // Text(
-                    //   'رمز البلاغ: ${report.reportCode}',
-                    //   style: TextStyle(
-                    //     fontSize: 11.5,
-                    //     color: Colors.grey.shade700,
-                    //   ),
-                    // ),
-                    if (report.governmentNameAr != null)
-                      Text(
-                        'الموقع: ${report.governmentNameAr ?? ''}'
-                        '${report.districtNameAr != null ? ' - ${report.districtNameAr}' : ''}'
-                        '${report.areaNameAr != null ? ' - ${report.areaNameAr}' : ''}',
-                        style: const TextStyle(fontSize: 11.5),
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    if (report.reportedAt != null)
-                      Text(
-                        'تاريخ البلاغ: ${formatDate(report.reportedAt)}',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: onTap,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF039844),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 6,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Container(
-                          width: 120,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(25),
-                            color: const Color(0xFFCAF2DB),
-                          ),
-                          child: Center(
-                            child: const Text(
-                              'عرض التفاصيل',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              color: statusColor(report.statusId),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 27),
+                      Row(
+                        children: [
+                          Icon(
+                            _iconForCategory(report.typeCode),
+                            color: kPrimaryColor,
+                            size: 40,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            report.typeNameAr ?? "اخرى",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 30,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              /// RIGHT SIDE CONTENT
+              const SizedBox(height: 8),
+
+              Text(
+                report.nameAr,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
+
+              /// LOCATION
+              if (report.governmentNameAr != null)
+                Text(
+                  "${report.governmentNameAr ?? ''} - "
+                  "${report.districtNameAr ?? ''} - "
+                  "${report.areaNameAr ?? ''}",
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+              // const SizedBox(height: 6),
+
+              /// DATE — ONLY DATE
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "تاريخ البلاغ: ${formatDate(report.reportedAt)}",
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+
+                  /// VIEW DETAILS BUTTON
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 150,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCAF2DB),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: onTap,
+                        child: const Text(
+                          "عرض التفاصيل",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
