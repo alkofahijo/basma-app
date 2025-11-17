@@ -126,7 +126,7 @@ class RegisterCitizenPage extends StatelessWidget {
                 Obx(
                   () => DropdownButtonFormField<Government>(
                     hint: const Text('اختر محافظتك'),
-                    value: controller.gov.value,
+                    initialValue: controller.gov.value,
                     items: controller.govs
                         .map(
                           (g) =>

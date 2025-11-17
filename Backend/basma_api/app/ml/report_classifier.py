@@ -2,69 +2,41 @@
 
 from __future__ import annotations
 
-import io
-from typing import Tuple, Dict, Any, Optional
+import os
+import tempfile
+from typing import Tuple, Dict, Any, Optional, List
 
-import torch
-from torch import nn
-from torchvision import models, transforms
-from PIL import Image
+from inference_sdk import InferenceHTTPClient
 
 
 class ReportClassifierService:
     """
-    خدمة تصنيف البلاغات باستخدام ResNet18 مدرَّب على 11 فئة:
+    خدمة تصنيف البلاغات باستخدام Roboflow Inference Server (workflow مخصص).
 
-      1  GRAFFITI            كتابة على الجدران
-      2  FADED_SIGNAGE       لافتة باهتة
-      3  POTHOLES            حفر
-      4  GARBAGE             نفايات
-      5  CONSTRUCTION_ROAD   طريق قيد الإنشاء
-      6  BROKEN_SIGNAGE      لافتة مكسورة
-      7  BAD_STREETLIGHT     إنارة طريق تالفة
-      8  BAD_BILLBOARD       لوحة إعلانات تالفة
-      9  SAND_ON_ROAD        أتربة على الطريق
-      10 CLUTTER_SIDEWALK    رصيف غير صالح للمشي
-      11 UNKEPT_FACADE       واجهة مبنى سيئة المظهر
-
-    توقيع الدالة predict:
+    تبقى واجهة `predict` كما هي:
         predict(image_bytes: bytes) -> (report_type_id: int, confidence: float, info: dict)
 
     حيث:
-      - report_type_id: يطابق العمود id في جدولك (1..11)
-      - confidence: أعلى احتمال (softmax)
+      - report_type_id: يطابق العمود id في جدول report_types (1..11, 12 لـ "OTHERS")
+      - confidence: أعلى قيمة ثقة للكلاس المختار بعد تجميع كل الـ predictions.
       - info: dict يحتوي على:
             - "code": الكود الإنجليزي للكلاس (GRAFFITI, POTHOLES, ...)
             - "name_ar": التسمية بالعربي
             - "name_en": التسمية بالإنجليزي
-            - "pred_idx": رقم الفئة (0..10)
+            - "model_class_id": class_id القادم من الـ workflow (إن وجد)
     """
 
-    def __init__(self, model_path: str, device: Optional[str] = None) -> None:
-        # -------------------------
-        # 1. الجهاز (CPU / GPU)
-        # -------------------------
-        if device is not None:
-            self.device = torch.device(device)
-        else:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # -------------------------
-        # 2. تعريف الكلاسات (نفس ترتيب التدريب)
-        # -------------------------
-        self.class_codes = [
-            "GRAFFITI",
-            "FADED_SIGNAGE",
-            "POTHOLES",
-            "GARBAGE",
-            "CONSTRUCTION_ROAD",
-            "BROKEN_SIGNAGE",
-            "BAD_STREETLIGHT",
-            "BAD_BILLBOARD",
-            "SAND_ON_ROAD",
-            "CLUTTER_SIDEWALK",
-            "UNKEPT_FACADE",
-        ]
+    def __init__(
+        self,
+        api_url: str,
+        api_key: str,
+        workspace_name: str,
+        workflow_id: str,
+    ) -> None:
+        # عميل Roboflow Inference
+        self.client = InferenceHTTPClient(api_url=api_url, api_key=api_key)
+        self.workspace_name = workspace_name
+        self.workflow_id = workflow_id
 
         # الأسماء العربية كما في جدولك
         self.class_name_ar: Dict[str, str] = {
@@ -79,6 +51,7 @@ class ReportClassifierService:
             "SAND_ON_ROAD": "أتربة على الطريق",
             "CLUTTER_SIDEWALK": "رصيف غير صالح للمشي",
             "UNKEPT_FACADE": "واجهة مبنى سيئة المظهر",
+            "OTHERS": "أخرى",
         }
 
         # الأسماء الإنجليزية كما في جدولك
@@ -94,9 +67,10 @@ class ReportClassifierService:
             "SAND_ON_ROAD": "Sand/dust on road",
             "CLUTTER_SIDEWALK": "Cluttered sidewalk",
             "UNKEPT_FACADE": "Unkept facade",
+            "OTHERS": "Others",
         }
 
-        # IDs من جدولك (1..11)
+        # IDs من جدولك (1..11) + 12 لـ OTHERS
         self.report_type_ids: Dict[str, int] = {
             "GRAFFITI": 1,
             "FADED_SIGNAGE": 2,
@@ -109,61 +83,135 @@ class ReportClassifierService:
             "SAND_ON_ROAD": 9,
             "CLUTTER_SIDEWALK": 10,
             "UNKEPT_FACADE": 11,
+            "OTHERS": 12,
         }
-
-        # -------------------------
-        # 3. بناء الموديل (ResNet18)
-        # -------------------------
-        try:
-            # torchvision >= 0.13 تقريبًا
-            weights = models.ResNet18_Weights.IMAGENET1K_V1
-            backbone = models.resnet18(weights=weights)
-        except AttributeError:
-            # لو نسخة قديمة
-            backbone = models.resnet18(pretrained=True)
-
-        num_features = backbone.fc.in_features
-
-        # رأس تصنيف (output = 11 كلاس)
-        backbone.fc = nn.Sequential(
-            nn.Linear(num_features, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, len(self.class_codes)),
-        )
-
-        self.model = backbone.to(self.device)
-
-        # تحميل الأوزان من الملف (state_dict)
-        state_dict = torch.load(model_path, map_location=self.device)
-        self.model.load_state_dict(state_dict)
-        self.model.eval()
-
-        # -------------------------
-        # 4. الـ transforms (نفس التدريب في الـ val/test)
-        # -------------------------
-        self.transform = transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225],
-                ),
-            ]
-        )
 
     # -------------------------
     # Helpers
     # -------------------------
 
-    def _preprocess(self, image_bytes: bytes) -> torch.Tensor:
+    def _run_workflow(self, image_bytes: bytes) -> Any:
         """
-        يحوّل bytes إلى Tensor جاهز للموديل (1, 3, 224, 224)
+        حفظ الصورة مؤقتاً على القرص ثم إرسالها إلى الـ workflow
+        كما في المثال:
+
+            images={ "image": "YOUR_IMAGE.jpg" }
         """
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        tensor = self.transform(image).unsqueeze(0).to(self.device)
-        return tensor
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp.write(image_bytes)
+                tmp.flush()
+                tmp_path = tmp.name
+
+            result = self.client.run_workflow(
+                workspace_name=self.workspace_name,
+                workflow_id=self.workflow_id,
+                images={"image": tmp_path},
+                use_cache=True,
+            )
+            return result
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    # لا نريد كسر التنفيذ إذا فشل حذف الملف المؤقت
+                    pass
+
+    @staticmethod
+    def _extract_predictions(result: Any) -> List[Dict[str, Any]]:
+        """
+        استخراج قائمة الـ predictions من رد الـ workflow.
+
+        نتوقع شكلاً مشابهاً لـ:
+        [
+          {
+            "predictions": {
+              "image": {...},
+              "predictions": [ {..}, {..}, ... ]
+            }
+          }
+        ]
+        """
+        root = result
+        if isinstance(root, list):
+            if not root:
+                return []
+            root = root[0]
+
+        if not isinstance(root, dict):
+            return []
+
+        preds_container = root.get("predictions") or root.get("result") or root
+        if not isinstance(preds_container, dict):
+            return []
+
+        preds_list = preds_container.get("predictions")
+        if not isinstance(preds_list, list):
+            return []
+
+        return preds_list
+
+    @staticmethod
+    def _aggregate_predictions(
+        predictions: List[Dict[str, Any]]
+    ) -> Tuple[str, float, Optional[int]]:
+        """
+        - لو توجد أكثر من prediction نختار الكلاس الأكثر تكراراً.
+        - في حال التعادل في عدد التكرار نختار الكلاس ذو أعلى confidence.
+
+        يرجع:
+          (selected_class_code, best_confidence, model_class_id)
+        """
+        if not predictions:
+            return "OTHERS", 0.0, None
+
+        stats: Dict[str, Dict[str, Any]] = {}
+        for p in predictions:
+            label = p.get("class")
+            if not label:
+                continue
+
+            try:
+                conf = float(p.get("confidence", 0.0))
+            except (TypeError, ValueError):
+                conf = 0.0
+
+            model_class_id = p.get("class_id")
+
+            if label not in stats:
+                stats[label] = {
+                    "count": 0,
+                    "best_conf": 0.0,
+                    "best_class_id": None,
+                }
+
+            stats[label]["count"] += 1
+            if conf > stats[label]["best_conf"]:
+                stats[label]["best_conf"] = conf
+                stats[label]["best_class_id"] = model_class_id
+
+        if not stats:
+            return "OTHERS", 0.0, None
+
+        best_label: Optional[str] = None
+        best_count = -1
+        best_conf_at_tie = -1.0
+
+        for label, s in stats.items():
+            count = s["count"]
+            conf = s["best_conf"]
+            if count > best_count or (count == best_count and conf > best_conf_at_tie):
+                best_label = label
+                best_count = count
+                best_conf_at_tie = conf
+
+        if best_label is None:
+            return "OTHERS", 0.0, None
+
+        best_class_id = stats[best_label]["best_class_id"]
+        return best_label, float(best_conf_at_tie), best_class_id
 
     # -------------------------
     # Public API
@@ -171,34 +219,31 @@ class ReportClassifierService:
 
     def predict(self, image_bytes: bytes) -> Tuple[int, float, Dict[str, Any]]:
         """
-        تشغيل الموديل على صورة واحدة (bytes).
+        تشغيل الـ workflow على صورة واحدة (bytes).
 
         يرجع:
-          - report_type_id (int)  → يطابق جدولك (1..11)
-          - confidence (float)    → أعلى احتمال (softmax)
-          - info (dict)           → يحتوي على code, name_ar, name_en, pred_idx
+          - report_type_id (int)  → يطابق جدولك (1..11, 12)
+          - confidence (float)    → أعلى ثقة للكلاس المختار
+          - info (dict)           → يحتوي على code, name_ar, name_en, model_class_id
         """
-        x = self._preprocess(image_bytes)
+        result = self._run_workflow(image_bytes)
+        predictions = self._extract_predictions(result)
 
-        with torch.no_grad():
-            logits = self.model(x)[0]  # (num_classes,)
-            probs = torch.softmax(logits, dim=0)
-            conf, pred_idx = torch.max(probs, dim=0)
+        class_code, confidence, model_class_id = self._aggregate_predictions(predictions)
 
-        pred_idx_int = int(pred_idx.item())
-        confidence = float(conf.item())
+        # لو الكود غير معروف نعتبره OTHERS
+        if class_code not in self.report_type_ids:
+            class_code = "OTHERS"
 
-        # مأخوذ من نفس ترتيب التدريب
-        class_code = self.class_codes[pred_idx_int]
+        report_type_id = self.report_type_ids[class_code]
         name_ar = self.class_name_ar[class_code]
         name_en = self.class_name_en[class_code]
-        report_type_id = self.report_type_ids[class_code]
 
         info: Dict[str, Any] = {
             "code": class_code,
             "name_ar": name_ar,
             "name_en": name_en,
-            "pred_idx": pred_idx_int,
+            "model_class_id": model_class_id,
         }
 
         return report_type_id, confidence, info

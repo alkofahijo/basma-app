@@ -166,7 +166,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
 
               Obx(
                 () => DropdownButtonFormField<Government>(
-                  value: controller.selectedGov.value,
+                  initialValue: controller.selectedGov.value,
                   hint: const Text('اختر محافظتك'),
                   items: controller.governments
                       .map(
