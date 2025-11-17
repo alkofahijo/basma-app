@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Dict, Any
 
 import httpx
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -15,23 +15,31 @@ from app.ml.report_classifier import ReportClassifierService
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
-# نحمّل الـ model عند تشغيل التطبيق (in-memory singleton)
+# نحمّل الـ model / الخدمة عند تشغيل التطبيق (in-memory singleton)
 classifier_service: Optional[ReportClassifierService] = None
 
 # Threshold للثقة (لو أقل → نعتبرها "أخرى")
 CONFIDENCE_THRESHOLD = 0.6  # جرّب بين 0.5 و 0.7 حسب النتائج الفعلية
 
+# إعدادات خادم الـ Inference (Roboflow)
+INFERENCE_API_URL = "http://localhost:9001"
+INFERENCE_API_KEY = "VnX7BllCuY4lmeCk4yDm"
+INFERENCE_WORKSPACE_NAME = "ahmad-i1hsy"
+INFERENCE_WORKFLOW_ID = "custom-workflow"
+
 
 def get_classifier_service() -> ReportClassifierService:
     """
-    إرجاع خدمة تصنيف البلاغات (singleton) باستخدام ResNet18 (11 كلاس).
-    تأكد أن ملف app/models/report_classifier.pth موجود
-    وهو نفس الملف الناتج من تدريبك (مثل resnet18_classification_11cls_best.pth).
+    إرجاع خدمة تصنيف البلاغات (singleton) التي تتصل بخادم Roboflow Inference
+    وتنفّذ workflow مخصّص لإرجاع نوع التشوّه البصري.
     """
     global classifier_service
     if classifier_service is None:
         classifier_service = ReportClassifierService(
-            model_path="app/models/report_classifier.pth"
+            api_url=INFERENCE_API_URL,
+            api_key=INFERENCE_API_KEY,
+            workspace_name=INFERENCE_WORKSPACE_NAME,
+            workflow_id=INFERENCE_WORKFLOW_ID,
         )
     return classifier_service
 
@@ -68,6 +76,9 @@ class AnalyzeImageResponse(BaseModel):
     report_type_id: int
     report_type_name_ar: str
     confidence: float
+    # هذه الحقول اختيارية لإرجاع class_id و class كما في استجابة الـ workflow
+    class_id: Optional[int] = None
+    class_name: Optional[str] = Field(None, alias="class")
     suggested_title: str
     suggested_description: str
 
@@ -573,7 +584,7 @@ async def ai_analyze_image(
     clf: ReportClassifierService = Depends(get_classifier_service),
 ):
     """
-    يستقبل صورة من المستخدم، يمررها على نموذج التصنيف ResNet18 (11 كلاس)،
+    يستقبل صورة من المستخدم، يرسلها إلى Roboflow Inference workflow لتحليلها،
     ثم يرجّع:
       - نوع التشوه (report_type_id + الاسم بالعربي)
       - درجة الثقة
@@ -583,7 +594,7 @@ async def ai_analyze_image(
     if not image_bytes:
         raise HTTPException(status_code=400, detail="ملف الصورة فارغ.")
 
-    # ML prediction
+    # ML prediction عبر خادم الـ Inference
     try:
         report_type_id, confidence, info = clf.predict(image_bytes)
     except Exception as e:
@@ -602,9 +613,10 @@ async def ai_analyze_image(
     dist_name_ar = dist.name_ar if dist else "غير محدد"
     area_name_ar = area.name_ar if area else "غير محدد"
 
-    # القيم الأساسية من الموديل
+    # القيم الأساسية من الـ workflow
     report_type_name_ar = info.get("name_ar", "أخرى")
     report_type_code = info.get("code", "UNKNOWN")
+    model_class_id = info.get("model_class_id")
 
     # -------- Threshold على الثقة --------
     # لو الثقة أقل من CONFIDENCE_THRESHOLD → نعتبرها "OTHERS" (id = 12 في DB)
@@ -616,6 +628,7 @@ async def ai_analyze_image(
         report_type_id = 12  # OTHERS في جدول report_types
         report_type_name_ar = "أخرى"
         report_type_code = "OTHERS"
+        model_class_id = 12
 
     suggested_title, suggested_desc = generate_text_suggestions(
         report_type_code,
@@ -629,6 +642,8 @@ async def ai_analyze_image(
         report_type_id=report_type_id,
         report_type_name_ar=report_type_name_ar,
         confidence=confidence,
+        class_id=model_class_id,
+        class_name=report_type_code,
         suggested_title=suggested_title,
         suggested_description=suggested_desc,
     )

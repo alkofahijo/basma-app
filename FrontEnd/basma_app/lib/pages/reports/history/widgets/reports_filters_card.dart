@@ -202,7 +202,7 @@ class _GuestFiltersCardState extends State<GuestFiltersCard> {
 
     return DropdownButtonFormField<T>(
       key: key,
-      value: value,
+      initialValue: value,
       isExpanded: true,
       items: items,
       onChanged: onChanged,

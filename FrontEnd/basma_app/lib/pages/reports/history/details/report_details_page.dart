@@ -42,8 +42,7 @@ class _LocationInfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _LocationInfoRow({Key? key, required this.label, required this.value})
-    : super(key: key);
+  const _LocationInfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

@@ -2,7 +2,6 @@
 import 'package:basma_app/pages/on_start/home_page.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginController extends GetxController {
   var email = ''.obs;
@@ -19,8 +18,6 @@ class LoginController extends GetxController {
     try {
       isLoading.value = true;
       await ApiService.login(email.value.trim(), password.value);
-      final sp = await SharedPreferences.getInstance();
-      print("TOKEN = ${sp.getString("token")}");
 
       // ✅ امسح كل المسارات السابقة وروّح لـ HomePage
       Get.offAll(() => const HomePage());
