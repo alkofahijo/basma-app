@@ -8,15 +8,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:basma_app/models/citizen_models.dart';
 import 'package:basma_app/models/initiative_models.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
-import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
-import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
-const Color _primaryColor = Color(0xFF008000);
+// use central primary color
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class ProfilePage extends StatefulWidget {
@@ -127,6 +127,7 @@ class _ProfilePageState extends State<ProfilePage> {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -205,12 +206,9 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Scaffold(
         backgroundColor: _pageBackground,
         appBar: AppBar(
-          backgroundColor: _primaryColor,
+          backgroundColor: kPrimaryColor,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+
           title: const Text(
             'الملف الشخصي',
             style: TextStyle(
@@ -222,6 +220,7 @@ class _ProfilePageState extends State<ProfilePage> {
           centerTitle: true,
         ),
         body: bodyContent,
+        bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 3),
       ),
     );
   }
@@ -248,7 +247,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     _buildCitizenInfoSection(c),
                     const SizedBox(height: 16),
-                    _buildCitizenStatsRow(c),
                     const SizedBox(height: 30),
                     SizedBox(
                       width: 250,
@@ -311,86 +309,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildCitizenStatsRow(Citizen c) {
-    return Row(
-      children: [
-        Expanded(
-          child: Card(
-            color: Colors.white,
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: _primaryColor.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.verified_rounded,
-                          color: _primaryColor,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "البلاغات المنجزة",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "${c.reportsCompletedCount}",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: _primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  HomeScreenButton(
-                    icon: Icons.list_alt,
-                    title: 'بلاغاتي',
-                    subtitle: "عرض بلاغاتي التي قيد التنفيذ أو المنجزة",
-                    onTap: () {
-                      Get.to(
-                        () =>
-                            const GuestReportsListPage(initialMainTab: 'mine'),
-                      );
-                    },
-                    color: const Color(0xFFCAF2DB),
-                    iconColor: const Color.fromARGB(255, 19, 106, 32),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildCitizenInfoSection(Citizen c) {
     return Card(
       color: Colors.white,
@@ -403,7 +321,7 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, size: 18, color: _primaryColor),
+                const Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                 const SizedBox(width: 6),
                 const Expanded(
                   child: Text(
@@ -413,7 +331,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 IconButton(
                   onPressed: _editCitizenProfile,
-                  icon: const Icon(Icons.edit, color: _primaryColor),
+                  icon: const Icon(Icons.edit, color: kPrimaryColor),
                   tooltip: 'تعديل',
                 ),
               ],
@@ -428,6 +346,10 @@ class _ProfilePageState extends State<ProfilePage> {
             InfoRow(label: "الاسم بالعربية", value: c.nameAr),
             InfoRow(label: "الاسم بالإنجليزية", value: c.nameEn),
             InfoRow(label: "رقم الهاتف", value: c.mobileNumber),
+            InfoRow(
+              label: "عدد البلاغات المنجزة",
+              value: c.reportsCompletedCount.toString(),
+            ),
             const SizedBox(height: 12),
             Center(
               child: SizedBox(
@@ -438,8 +360,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   label: const Text("تغيير كلمة المرور"),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: _primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: kPrimaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -512,7 +434,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: kPrimaryColor,
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
@@ -580,8 +502,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     _buildInitiativeInfoSection(i),
                     const SizedBox(height: 16),
-                    _buildInitiativeStatsRow(i),
-                    const SizedBox(height: 12),
+
                     Center(
                       child: SizedBox(
                         width: 250,
@@ -651,194 +572,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildInitiativeStatsRow(Initiative i) {
-    return Column(
-      children: [
-        Card(
-          color: Colors.white,
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.groups_rounded,
-                        color: _primaryColor,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "عدد الأعضاء",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${i.membersCount}",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: _primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (i.joinFormLink != null && i.joinFormLink!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    "رابط الانضمام للمبادرة",
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "يمكنك التقدّم للانضمام للمبادرة عبر الرابط التالي:",
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () async {
-                      final url = i.joinFormLink!;
-                      await Clipboard.setData(ClipboardData(text: url));
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('تم نسخ الرابط إلى الحافظة'),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFFAF1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.shade100),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.link, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              i.joinFormLink!,
-                              style: const TextStyle(
-                                color: Colors.green,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.copy, size: 18, color: Colors.green),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          color: Colors.white,
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.done_all_rounded,
-                        color: _primaryColor,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "البلاغات المنجزة",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${i.reportsCompletedCount}",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: _primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                HomeScreenButton(
-                  icon: Icons.list_alt,
-                  title: 'بلاغاتي',
-                  subtitle: 'عرض بلاغاتي',
-                  onTap: () {
-                    Get.to(
-                      () => const GuestReportsListPage(initialMainTab: 'mine'),
-                    );
-                  },
-                  color: const Color(0xFFCAF2DB),
-                  iconColor: const Color.fromARGB(255, 19, 106, 32),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildInitiativeInfoSection(Initiative i) {
     return Card(
       color: Colors.white,
@@ -861,7 +594,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 IconButton(
                   onPressed: _editInitiativeProfile,
-                  icon: const Icon(Icons.edit, color: _primaryColor),
+                  icon: const Icon(Icons.edit, color: kPrimaryColor),
                   tooltip: 'تعديل',
                 ),
               ],
@@ -876,6 +609,14 @@ class _ProfilePageState extends State<ProfilePage> {
             InfoRow(label: "اسم المبادرة", value: i.nameAr),
             InfoRow(label: "الاسم بالإنجليزية", value: i.nameEn),
             InfoRow(label: "رقم الهاتف", value: i.mobileNumber),
+            InfoRow(
+              label: "عدد البلاغات المنجزة",
+              value: i.reportsCompletedCount.toString(),
+            ),
+            InfoRow(
+              label: "رابط نموذج الانضمام",
+              value: i.joinFormLink ?? "غير متوفر",
+            ),
             const SizedBox(height: 12),
             Center(
               child: SizedBox(
@@ -889,8 +630,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: _primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: kPrimaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -973,7 +714,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: kPrimaryColor,
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
@@ -1095,7 +836,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
+                      backgroundColor: kPrimaryColor,
                       foregroundColor: Colors.white,
                     ),
                     onPressed: saving
@@ -1145,7 +886,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                     ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _primaryColor,
+                                        backgroundColor: kPrimaryColor,
                                         foregroundColor: Colors.white,
                                       ),
                                       onPressed: () =>

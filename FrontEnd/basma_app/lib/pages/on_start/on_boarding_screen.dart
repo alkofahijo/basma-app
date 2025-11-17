@@ -2,6 +2,7 @@ import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({super.key});
@@ -17,18 +18,18 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   final List<Map<String, String>> onboardingData = [
     {
       "image": "assets/images/on-boarding-1.png",
-      "title": "أبلغ عن التلوث البصري بسهولة",
-      "subtitle": "التقط وأرسل الموقع في ثوانٍ.",
+      "title": "أبلغ عن المخالفات البصرية بدقة",
+      "subtitle": "التقط الصورة وحدّد الموقع خلال لحظات.",
     },
     {
       "image": "assets/images/on-boarding-2.png",
-      "title": "فرق الصيانة سريعة الاستجابة",
-      "subtitle": "نعمل معًا لتحسين مدينتنا للجميع.",
+      "title": "متابعة فورية وإجراءات سريعة",
+      "subtitle": "الجهات المختصة تتعامل مع بلاغك بكل كفاءة.",
     },
     {
       "image": "assets/images/on-boarding-3.png",
-      "title": "مدينة أنظف وأكثر خضرة",
-      "subtitle": "نبني غدًا مستدامًا.",
+      "title": "نحو بيئة أجمل ومستدامة",
+      "subtitle": "مشاركتك تصنع فرقًا في تحسين بلدنا.",
     },
   ];
 
@@ -96,8 +97,8 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 SmoothPageIndicator(
                   controller: _controller,
                   count: onboardingData.length,
-                  effect: const ExpandingDotsEffect(
-                    activeDotColor: Color(0xFF039844),
+                  effect: ExpandingDotsEffect(
+                    activeDotColor: kPrimaryColor,
                     dotColor: Colors.grey,
                     dotHeight: 8,
                     dotWidth: 8,
@@ -110,7 +111,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                   height: size.height * 0.06,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF039844),
+                      backgroundColor: kPrimaryColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),

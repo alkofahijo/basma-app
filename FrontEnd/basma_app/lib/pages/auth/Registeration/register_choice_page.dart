@@ -46,7 +46,7 @@ class RegisterChoicePage extends StatelessWidget {
               HomeScreenButton(
                 icon: Icons.person,
                 title: 'مواطن',
-                subtitle: 'أنت فرد',
+                subtitle: 'انت مستخدم عادي',
                 onTap: () {
                   Get.to(() => RegisterCitizenPage());
                 },
@@ -56,8 +56,8 @@ class RegisterChoicePage extends StatelessWidget {
               SizedBox(height: size.height * 0.03),
               HomeScreenButton(
                 icon: Icons.business,
-                title: 'مبادرة',
-                subtitle: 'تمثل مبادرة/منظمة',
+                title: 'مبادرة/بلدية',
+                subtitle: 'تمثل مبادرة او بلدية',
                 onTap: () {
                   Get.to(() => RegisterInitiativeInfoPage());
                 },

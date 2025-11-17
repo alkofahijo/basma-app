@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
 /// مكان واحد نعرّف فيه شكل شريط الحالة وشريط التنقل
 class AppSystemUi {
-  static const SystemUiOverlayStyle green = SystemUiOverlayStyle(
-    statusBarColor: Colors.green,
+  static final SystemUiOverlayStyle green = SystemUiOverlayStyle(
+    statusBarColor: kPrimaryColor,
     statusBarIconBrightness: Brightness.light, // أيقونات بيضاء (Android)
     statusBarBrightness: Brightness.dark, // نص غامق في iOS
     systemNavigationBarColor: Color(0xFFEFF1F1),

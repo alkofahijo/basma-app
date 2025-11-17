@@ -1,3 +1,4 @@
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:basma_app/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +35,7 @@ class RegisterCitizenPage extends StatelessWidget {
                   child: Text(
                     'التسجيل كمواطن',
                     style: TextStyle(
-                      color: const Color(0xFF008000),
+                      color: kPrimaryColor,
                       fontWeight: FontWeight.bold,
                       fontSize: size.width * 0.08,
                     ),
@@ -177,7 +178,7 @@ class RegisterCitizenPage extends StatelessWidget {
                           ? controller.submit
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF008000),
+                        backgroundColor: kPrimaryColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),

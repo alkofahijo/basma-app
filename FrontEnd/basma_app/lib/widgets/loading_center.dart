@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
 class LoadingCenter extends StatefulWidget {
   const LoadingCenter({super.key});
@@ -30,7 +31,7 @@ class _LoadingCenterState extends State<LoadingCenter>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFEFF1F1),
       body: Center(
         child: SizedBox(
           width: 150,
@@ -66,7 +67,7 @@ class _LoadingCenterState extends State<LoadingCenter>
 class _CirclePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    const primaryColor = Color(0xFF039844);
+    const primaryColor = kPrimaryColor;
 
     final paint = Paint()
       ..color = primaryColor

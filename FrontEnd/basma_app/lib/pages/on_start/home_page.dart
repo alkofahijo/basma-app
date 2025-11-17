@@ -5,6 +5,7 @@ import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:basma_app/widgets/custom_option_button.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 
 import '../reports/new/new_report_page.dart'; // عدّل المسار لو مختلف عندك
@@ -77,30 +78,26 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(height: size.height * 0.08),
 
-          // === بلاغ بالذكاء الاصطناعي ===
-          HomeScreenButton(
-            icon: Icons.auto_awesome_outlined,
-            title: 'تقديم بلاغ',
-            subtitle:
-                'يتم تحديد موقعك الحالي وعنوان ونوع ووصف التشوه البصري تلقائيًا بالذكاء الاصطناعي.',
-            onTap: () {
-              Get.to(() => const CreateReportWithAiPage());
-            },
-            color: const Color(0xFFE3D7FF),
-            iconColor: const Color(0xFF5C2D91),
-          ),
-          SizedBox(height: size.height * 0.03),
-
-          // زر تصفح البلاغات
           HomeScreenButton(
             icon: Icons.assignment,
             title: 'تصفح البلاغات',
             subtitle: 'عرض البلاغات المتاحة في المناطق المختلفة.',
             onTap: () {
-              Get.to(() => const GuestReportsListPage());
+              Get.offAll(() => const GuestReportsListPage());
             },
             color: const Color(0xFFCAF2DB),
             iconColor: const Color.fromARGB(255, 19, 106, 32),
+          ),
+          SizedBox(height: size.height * 0.03),
+          HomeScreenButton(
+            icon: Icons.camera_alt_outlined,
+            title: 'تقديم بلاغ',
+            subtitle: 'تقديم بلاغ عن تشوه بصري\n في منطقتك.',
+            onTap: () {
+              Get.to(() => const CreateReportWithAiPage());
+            },
+            color: const Color(0xFFCAE6F2),
+            iconColor: const Color.fromARGB(255, 10, 62, 104),
           ),
           SizedBox(height: size.height * 0.03),
 
@@ -127,6 +124,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: const Color(0xFFEFF1F1),
         appBar: const BasmaAppBar(),
         body: _buildHomeTab(context, size),
+        bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 0),
       ),
     );
   }

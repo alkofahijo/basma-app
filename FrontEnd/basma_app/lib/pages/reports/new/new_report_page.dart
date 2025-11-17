@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,10 +17,11 @@ import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/pages/reports/new/widgets/success_page.dart';
 import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
 
 import 'widgets/select_location_page.dart';
 
-const Color _primaryColor = Color(0xFF008000);
+// use central primary color from theme
 
 class CreateReportWithAiPage extends StatefulWidget {
   const CreateReportWithAiPage({super.key});
@@ -257,6 +259,17 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
+                children: const [
+                  Icon(Icons.camera_alt, size: 18, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text(
+                    'اختر مصدر الصورة',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
                 children: [
                   Expanded(
                     child: InkWell(
@@ -489,13 +502,10 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          "إنشاء بلاغ بالذكاء الاصطناعي",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("إنشاء بلاغ ", style: TextStyle(color: Colors.white)),
         elevation: 0,
         centerTitle: true,
-        backgroundColor: _primaryColor,
+        backgroundColor: kPrimaryColor,
         systemOverlayStyle: AppSystemUi.green,
       ),
       body: _loadingLocation
@@ -525,6 +535,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 ),
               ),
             ),
+      bottomNavigationBar: const BasmaBottomNavPage(currentIndex: -1),
     );
   }
 
@@ -552,7 +563,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 ),
               ),
               child: const Icon(
-                Icons.auto_awesome_outlined,
+                Icons.camera_alt_outlined,
                 color: Colors.white,
                 size: 28,
               ),
@@ -563,7 +574,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "إنشاء بلاغ بالذكاء الاصطناعي",
+                    "إنشاء بلاغ",
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: 4),
@@ -606,9 +617,6 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
   Widget _buildLocationCard() {
     final r = _resolvedLocation;
-    final locText = r == null
-        ? "لم يتم تحديد الموقع"
-        : "${r.governmentNameAr} / ${r.districtNameAr} / ${r.areaNameAr}";
 
     return Card(
       color: Colors.white,
@@ -620,41 +628,134 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: [
-                const Icon(Icons.place_outlined, size: 18, color: Colors.green),
-                const SizedBox(width: 6),
-                const Text(
+              children: const [
+                Icon(Icons.place_outlined, size: 18, color: Colors.green),
+                SizedBox(width: 6),
+                Text(
                   "الموقع الحالي",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 4,
-                    ),
-                  ),
-                  onPressed: _changeLocationManually,
-                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-                  label: const Text("تعديل", style: TextStyle(fontSize: 12)),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              locText,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              "الموقع الذي سيتم إرسال البلاغ منه. يمكنك تغييره يدوياً إذا لزم الأمر.",
+              style: const TextStyle(fontSize: 12, color: Colors.black),
             ),
-            if (_currentLatLng != null) ...[
-              const SizedBox(height: 6),
+            const SizedBox(height: 17),
+            if (r == null)
               Text(
-                "Lat: ${_currentLatLng!.latitude.toStringAsFixed(6)}, "
-                "Lng: ${_currentLatLng!.longitude.toStringAsFixed(6)}",
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                "لم يتم تحديد الموقع",
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              )
+            else ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 2.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            const Text(
+                              'المحافظة : ',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              r.governmentNameAr,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            const Text(
+                              'اللواء : ',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              r.districtNameAr,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            const Text(
+                              'المنطقة : ',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              r.areaNameAr,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 6,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: _changeLocationManually,
+                      icon: const Icon(
+                        Icons.edit_location_alt_outlined,
+                        size: 16,
+                      ),
+                      label: const Text(
+                        "تعديل",
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+
+              // move the edit button below the location details
+              // Align(
+              //   alignment: Alignment.centerLeft,
+              //   child: ElevatedButton.icon(
+              //     style: ElevatedButton.styleFrom(
+              //       backgroundColor: _primaryColor,
+              //       foregroundColor: Colors.white,
+              //       padding: const EdgeInsets.symmetric(
+              //         horizontal: 18,
+              //         vertical: 6,
+              //       ),
+              //       shape: RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(16),
+              //       ),
+              //     ),
+              //     onPressed: _changeLocationManually,
+              //     icon: const Icon(Icons.edit_location_alt_outlined, size: 16),
+              //     label: const Text("تعديل", style: TextStyle(fontSize: 13)),
+              //   ),
+              // ),
             ],
           ],
         ),
@@ -724,125 +825,80 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 ),
               ),
 
-            // منطقة الرفع
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade400),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: _analyzingImage || _sending
-                          ? null
-                          : _showImageSourceSheet,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                size: 20,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'رفع صورة البلاغ',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+            // منطقة الرفع (نفس ستايل صفحة إكمال البلاغ)
+            GestureDetector(
+              onTap: _analyzingImage || _sending ? null : _showImageSourceSheet,
+              child: Container(
+                width: double.infinity,
+                height: 220,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: kPrimaryColor.withOpacity(0.5),
+                    width: 1.4,
                   ),
-                  const SizedBox(width: 12),
-                  _imageFile != null
-                      ? Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.grey.shade200,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  File(_imageFile!.path),
-                                  width: 48,
-                                  height: 48,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: -6,
-                              right: -6,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: _analyzingImage || _sending
-                                    ? null
-                                    : () => _safeSetState(() {
-                                        _imageFile = null;
-                                        _imageErrorMessage = null;
-                                        _aiSuggestion = null;
-                                      }),
-                                icon: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.close, size: 18),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey.shade100,
-                            border: Border.all(color: Colors.grey.shade300),
+                  color: Colors.white,
+                ),
+                child: _imageFile == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(
+                            Icons.photo_camera_outlined,
+                            size: 52,
+                            color: Colors.black54,
                           ),
-                        ),
-                ],
+                          SizedBox(height: 12),
+                          Text(
+                            "اضغط لرفع أو التقاط صورة",
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      )
+                    : Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.file(
+                              File(_imageFile!.path),
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            child: GestureDetector(
+                              onTap: _analyzingImage || _sending
+                                  ? null
+                                  : () => _safeSetState(() {
+                                      _imageFile = null;
+                                      _imageErrorMessage = null;
+                                      _aiSuggestion = null;
+                                    }),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(6),
+                                child: const Icon(Icons.close, size: 18),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
 
-            if (_imageFile != null) ...[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.file(
-                  File(_imageFile!.path),
-                  height: 190,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ],
+            // preview moved into the upload box above to avoid duplication
             const SizedBox(height: 10),
 
             if (_analyzingImage)
@@ -1047,7 +1103,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       child: ElevatedButton(
         onPressed: _sending ? null : _submit,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryColor,
+          backgroundColor: kPrimaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
