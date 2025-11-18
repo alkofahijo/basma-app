@@ -23,9 +23,9 @@ CONFIDENCE_THRESHOLD = 0.6  # جرّب بين 0.5 و 0.7 حسب النتائج �
 
 # إعدادات خادم الـ Inference (Roboflow)
 INFERENCE_API_URL = "http://localhost:9001"
-INFERENCE_API_KEY = "VnX7BllCuY4lmeCk4yDm"
+INFERENCE_API_KEY = "CuuXFiPJOg9d38qSabF2"
 INFERENCE_WORKSPACE_NAME = "ahmad-i1hsy"
-INFERENCE_WORKFLOW_ID = "custom-workflow"
+INFERENCE_WORKFLOW_ID = "image-analyize"
 
 
 def get_classifier_service() -> ReportClassifierService:
@@ -37,9 +37,9 @@ def get_classifier_service() -> ReportClassifierService:
     if classifier_service is None:
         classifier_service = ReportClassifierService(
             api_url=INFERENCE_API_URL,
-            api_key=INFERENCE_API_KEY,
             workspace_name=INFERENCE_WORKSPACE_NAME,
             workflow_id=INFERENCE_WORKFLOW_ID,
+            api_key=INFERENCE_API_KEY
         )
     return classifier_service
 

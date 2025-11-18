@@ -60,9 +60,11 @@ class _BasmaBottomNavPageState extends State<BasmaBottomNavPage> {
     if (!_isLoggedIn) return const SizedBox.shrink();
 
     return Container(
-      height: 80,
+      height: 100,
+      padding: EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(22),
           topRight: Radius.circular(22),

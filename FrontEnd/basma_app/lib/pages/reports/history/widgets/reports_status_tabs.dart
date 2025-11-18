@@ -1,13 +1,12 @@
-import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
+/// تابات حالة البلاغات (جديد / قيد العمل / مكتمل)
+/// - currentStatusTab: 'open' / 'in_progress' / 'completed'
+/// - isMyReports: في حالة "بلاغاتي" لا نظهر تبويب "جديد"
 class GuestStatusTabs extends StatelessWidget {
-  /// 'open' / 'in_progress' / 'completed'
   final String currentStatusTab;
-
-  /// هل نحن في تبويب "بلاغاتي"؟
   final bool isMyReports;
-
   final ValueChanged<String> onStatusChanged;
 
   const GuestStatusTabs({
@@ -17,71 +16,152 @@ class GuestStatusTabs extends StatelessWidget {
     required this.onStatusChanged,
   });
 
-  bool get _isOpenTab => currentStatusTab == 'open';
-  bool get _isInProgressTab => currentStatusTab == 'in_progress';
-  bool get _isCompletedTab => currentStatusTab == 'completed';
+  bool get _isOpenSelected => currentStatusTab == 'open';
+  bool get _isInProgressSelected => currentStatusTab == 'in_progress';
+  bool get _isCompletedSelected => currentStatusTab == 'completed';
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 12,
-            children: [
-              if (!isMyReports)
-                _buildChip(
-                  label: 'جديد',
-                  selected: _isOpenTab,
-                  color: kPrimaryColor,
-                  onTap: () => onStatusChanged('open'),
-                ),
-              _buildChip(
-                label: 'قيد العمل',
-                selected: _isInProgressTab,
-                color: kPrimaryColor,
-                onTap: () => onStatusChanged('in_progress'),
-              ),
-              _buildChip(
-                label: 'مكتمل',
-                selected: _isCompletedTab,
-                color: kPrimaryColor,
-                onTap: () => onStatusChanged('completed'),
-              ),
-            ],
-          ),
+    final List<_StatusTabConfig> tabs = [];
+
+    if (!isMyReports) {
+      tabs.add(
+        _StatusTabConfig(
+          key: 'open',
+          label: 'جديد',
+          icon: Icons.fiber_new_outlined,
+          isSelected: _isOpenSelected,
+          onTap: () => onStatusChanged('open'),
         ),
-      ],
+      );
+    }
+
+    tabs.addAll([
+      _StatusTabConfig(
+        key: 'in_progress',
+        label: 'قيد العمل',
+        icon: Icons.autorenew_rounded,
+        isSelected: _isInProgressSelected,
+        onTap: () => onStatusChanged('in_progress'),
+      ),
+      _StatusTabConfig(
+        key: 'completed',
+        label: 'مكتمل',
+        icon: Icons.check_circle_outline,
+        isSelected: _isCompletedSelected,
+        onTap: () => onStatusChanged('completed'),
+      ),
+    ]);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: tabs
+              .map((tab) => Expanded(child: _StatusTabButton(config: tab)))
+              .toList(),
+        ),
+      ),
     );
   }
+}
 
-  Widget _buildChip({
-    required String label,
-    required bool selected,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12.5,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+/// إعدادات كل تاب
+class _StatusTabConfig {
+  final String key;
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  _StatusTabConfig({
+    required this.key,
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+}
+
+/// زر تاب واحد بشكل Segmented Control
+class _StatusTabButton extends StatelessWidget {
+  final _StatusTabConfig config;
+
+  const _StatusTabButton({required this.config});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool selected = config.isSelected;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: config.onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              height: 42,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: selected
+                    ? LinearGradient(
+                        colors: [
+                          kPrimaryColor,
+                          kPrimaryColor.withOpacity(0.85),
+                        ],
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                      )
+                    : null,
+                color: selected ? null : Colors.transparent,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    config.icon,
+                    size: 18,
+                    color: selected ? Colors.white : Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      config.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: selected ? Colors.white : Colors.grey.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
-      selected: selected,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      selectedColor: color,
-      backgroundColor: Colors.white,
-      labelStyle: TextStyle(
-        color: selected ? Colors.white : Colors.grey.shade800,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: selected ? color : Colors.grey.shade300),
-      ),
-      onSelected: (_) => onTap(),
     );
   }
 }

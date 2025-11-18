@@ -8,7 +8,7 @@ import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 
-import '../reports/new/new_report_page.dart'; // عدّل المسار لو مختلف عندك
+import '../reports/new/new_report_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -78,6 +78,21 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(height: size.height * 0.08),
 
+          // زر تقديم بلاغ
+          HomeScreenButton(
+            icon: Icons.camera_alt_outlined,
+            title: 'تقديم بلاغ',
+            subtitle: 'تقديم بلاغ عن تشوّه بصري\nفي منطقتك.',
+            onTap: () {
+              Get.to(() => CreateReportWithAiPage());
+            },
+            color: const Color(0xFFCAE6F2),
+            iconColor: const Color.fromARGB(255, 10, 62, 104),
+          ),
+
+          SizedBox(height: size.height * 0.03),
+
+          // زر تصفح البلاغات
           HomeScreenButton(
             icon: Icons.assignment,
             title: 'تصفح البلاغات',
@@ -88,19 +103,8 @@ class _HomePageState extends State<HomePage> {
             color: const Color(0xFFCAF2DB),
             iconColor: const Color.fromARGB(255, 19, 106, 32),
           ),
-          SizedBox(height: size.height * 0.03),
-          HomeScreenButton(
-            icon: Icons.camera_alt_outlined,
-            title: 'تقديم بلاغ',
-            subtitle: 'تقديم بلاغ عن تشوه بصري\n في منطقتك.',
-            onTap: () {
-              Get.to(() => const CreateReportWithAiPage());
-            },
-            color: const Color(0xFFCAE6F2),
-            iconColor: const Color.fromARGB(255, 10, 62, 104),
-          ),
-          SizedBox(height: size.height * 0.03),
 
+          SizedBox(height: size.height * 0.03),
           const SizedBox(height: 12),
         ],
       ),

@@ -1,8 +1,8 @@
-// lib/pages/report/solve_report_dialog.dart
-
 import 'package:flutter/material.dart';
-import '../../../../services/api_service.dart';
-import '../../../../services/auth_service.dart';
+
+import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/auth_service.dart';
+import 'package:basma_app/theme/app_colors.dart';
 
 class SolveReportDialog extends StatefulWidget {
   final int reportId;
@@ -14,19 +14,23 @@ class SolveReportDialog extends StatefulWidget {
 }
 
 class _SolveReportDialogState extends State<SolveReportDialog> {
-  bool _loading = false;
+  bool _isSubmitting = false;
   String? _errorMessage;
 
-  /// تحويل ديناميكي إلى int بأمان
   int? _parseInt(dynamic value) {
     if (value == null) return null;
     if (value is int) return value;
     return int.tryParse(value.toString());
   }
 
-  Future<void> _confirmSolve() async {
-    setState(() {
-      _loading = true;
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
+
+  Future<void> _confirmAdoptReport() async {
+    _safeSetState(() {
+      _isSubmitting = true;
       _errorMessage = null;
     });
 
@@ -34,47 +38,46 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
       final user = await AuthService.currentUser();
 
       if (user == null) {
-        setState(() {
+        _safeSetState(() {
           _errorMessage = "الرجاء تسجيل الدخول من جديد.";
-          _loading = false;
+          _isSubmitting = false;
         });
         return;
       }
 
-      // نوع المستخدم من الـ JWT: "citizen" أو "initiative"
-      final String type = (user["type"] ?? "").toString().trim();
+      final String userType = (user["type"] ?? "").toString().trim();
 
       int? adoptedByType; // 1: citizen, 2: initiative
       int? adoptedById;
 
-      if (type == "citizen") {
+      if (userType == "citizen") {
         adoptedByType = 1;
         adoptedById = _parseInt(user["citizen_id"]);
 
         if (adoptedById == null) {
-          setState(() {
+          _safeSetState(() {
             _errorMessage =
                 "لم يتم العثور على هوية المواطن، يرجى إعادة تسجيل الدخول.";
-            _loading = false;
+            _isSubmitting = false;
           });
           return;
         }
-      } else if (type == "initiative") {
+      } else if (userType == "initiative") {
         adoptedByType = 2;
         adoptedById = _parseInt(user["initiative_id"]);
 
         if (adoptedById == null) {
-          setState(() {
+          _safeSetState(() {
             _errorMessage =
                 "لم يتم العثور على هوية المبادرة، يرجى إعادة تسجيل الدخول.";
-            _loading = false;
+            _isSubmitting = false;
           });
           return;
         }
       } else {
-        setState(() {
+        _safeSetState(() {
           _errorMessage = "نوع مستخدم غير صالح لاعتماد البلاغ.";
-          _loading = false;
+          _isSubmitting = false;
         });
         return;
       }
@@ -88,9 +91,9 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _errorMessage = "فشل اعتماد البلاغ، حاول مرة أخرى.\n$e";
-        _loading = false;
+        _isSubmitting = false;
       });
     }
   }
@@ -108,14 +111,13 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // دائرة الأيقونة
             Container(
               width: 60,
               height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [Color(0xFF004d00), Color(0xFF008000)],
+                  colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.8)],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -147,12 +149,12 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 0, 150, 10).withOpacity(0.04),
+                color: kPrimaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 18, color: Color(0xFF008000)),
+                  Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                   const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
@@ -204,20 +206,22 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
         actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
           TextButton(
-            onPressed: _loading ? null : () => Navigator.pop(context, false),
+            onPressed: _isSubmitting
+                ? null
+                : () => Navigator.pop(context, false),
             style: TextButton.styleFrom(foregroundColor: Colors.grey.shade700),
             child: const Text("إلغاء"),
           ),
           ElevatedButton(
-            onPressed: _loading ? null : _confirmSolve,
+            onPressed: _isSubmitting ? null : _confirmAdoptReport,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF008000),
+              backgroundColor: kPrimaryColor,
               minimumSize: const Size(110, 40),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: _loading
+            child: _isSubmitting
                 ? const SizedBox(
                     width: 20,
                     height: 20,

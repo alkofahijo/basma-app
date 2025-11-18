@@ -3,17 +3,19 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:basma_app/theme/app_system_ui.dart';
-import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/theme/app_colors.dart';
+
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
+
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/pages/reports/new/widgets/success_page.dart';
 import 'package:basma_app/widgets/loading_center.dart';
@@ -21,8 +23,7 @@ import 'package:basma_app/widgets/basma_bottom_nav.dart';
 
 import 'widgets/select_location_page.dart';
 
-// use central primary color from theme
-
+/// صفحة إنشاء بلاغ تشوّه بصري باستخدام الذكاء الاصطناعي
 class CreateReportWithAiPage extends StatefulWidget {
   const CreateReportWithAiPage({super.key});
 
@@ -31,87 +32,95 @@ class CreateReportWithAiPage extends StatefulWidget {
 }
 
 class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
-  final _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  /// حارس التحقق من أن المستخدم مسجّل دخول
-  bool _checkingAuth = true;
+  // --- Auth Guard & Loading Flags ---
+  bool _isCheckingAuth = true;
 
-  bool _loadingLocation = true;
-  bool _analyzingImage = false;
-  bool _sending = false;
-  String? _errorMessage;
+  bool _isLocationLoading = true;
+  bool _isImageAnalyzing = false;
+  bool _isSubmitting = false;
+
+  String? _generalErrorMessage;
   String? _imageErrorMessage;
 
+  // --- Location ---
   ResolvedLocation? _resolvedLocation;
-  LatLng? _currentLatLng;
+  LatLng? _currentLocation;
 
-  final TextEditingController _titleCtrl = TextEditingController();
-  final TextEditingController _descCtrl = TextEditingController();
-  final TextEditingController _noteCtrl = TextEditingController();
+  // --- Text Controllers ---
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
 
-  final ImagePicker _picker = ImagePicker();
-  XFile? _imageFile;
+  // --- Image & AI Suggestion ---
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? _selectedImageFile;
   AiSuggestion? _aiSuggestion;
 
-  // أنواع البلاغ + النوع المختار (باستخدام ReportTypeOption)
-  List<ReportTypeOption> _types = [];
-  ReportTypeOption? _selectedType;
-  bool _loadingTypes = false;
-  String? _typesError;
+  // --- Report Types ---
+  List<ReportTypeOption> _reportTypes = [];
+  ReportTypeOption? _selectedReportType;
+  bool _isReportTypesLoading = false;
+  String? _reportTypesErrorMessage;
 
   @override
   void initState() {
     super.initState();
-    _checkAuthGuard();
+    _runAuthGuard();
   }
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
-    _descCtrl.dispose();
-    _noteCtrl.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
-  /// Safe setState wrapper that checks `mounted`
+  // ========= Helpers =========
+
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
   }
 
-  /// حارس التحقق من تسجيل الدخول
-  Future<void> _checkAuthGuard() async {
+  // ========= Auth Guard =========
+
+  Future<void> _runAuthGuard() async {
     try {
       final user = await AuthService.currentUser();
-
       if (!mounted) return;
 
       if (user == null) {
-        // مستخدم ضيف → رجوع إلى صفحة البداية وإغلاق جميع الصفحات
+        // المستخدم ضيف → نرجع لصفحة الهبوط
         Get.offAll(() => const LandingPage());
-      } else {
-        // مسجّل دخول → نسمح بالصفحة ونبدأ تحميل الموقع وأنواع البلاغ
-        _safeSetState(() {
-          _checkingAuth = false;
-        });
-        _initLocation();
-        _loadReportTypes();
+        return;
       }
+
+      _safeSetState(() {
+        _isCheckingAuth = false;
+      });
+
+      // بعد التأكد من تسجيل الدخول:
+      await _initCurrentLocation();
+      await _loadReportTypes();
     } catch (_) {
       if (!mounted) return;
-      // في حال أي خطأ، نعامل المستخدم كضيف
       Get.offAll(() => const LandingPage());
     }
   }
 
-  Future<void> _initLocation() async {
+  // ========= Location =========
+
+  Future<void> _initCurrentLocation() async {
     _safeSetState(() {
-      _loadingLocation = true;
-      _errorMessage = null;
+      _isLocationLoading = true;
+      _generalErrorMessage = null;
     });
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw Exception("يرجى تفعيل خدمة الموقع (GPS) في الجهاز.");
       }
@@ -120,170 +129,186 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         throw Exception(
           "تم رفض صلاحية الموقع. الرجاء السماح بها من إعدادات الجهاز.",
         );
       }
 
-      final pos = await Geolocator.getCurrentPosition(
+      final Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      _currentLatLng = LatLng(pos.latitude, pos.longitude);
 
-      // استدعاء backend لتحديد المحافظة/اللواء/المنطقة
-      final resolved = await ApiService.resolveLocationByLatLng(
-        pos.latitude,
-        pos.longitude,
+      _currentLocation = LatLng(position.latitude, position.longitude);
+
+      final resolvedLocation = await ApiService.resolveLocationByLatLng(
+        position.latitude,
+        position.longitude,
       );
 
       _safeSetState(() {
-        _resolvedLocation = resolved;
-        _loadingLocation = false;
+        _resolvedLocation = resolvedLocation;
+        _isLocationLoading = false;
       });
     } catch (e) {
       _safeSetState(() {
-        _errorMessage = e.toString();
-        _loadingLocation = false;
+        _generalErrorMessage = e.toString();
+        _isLocationLoading = false;
       });
     }
   }
 
-  Future<void> _loadReportTypes() async {
+  Future<void> _changeLocationFromMap() async {
+    final LatLng? selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SelectLocationOnMapPage(
+          initialLat: _currentLocation?.latitude,
+          initialLng: _currentLocation?.longitude,
+        ),
+      ),
+    );
+
+    if (selected == null) return;
+
     _safeSetState(() {
-      _loadingTypes = true;
-      _typesError = null;
+      _currentLocation = selected;
+      _isLocationLoading = true;
+      _aiSuggestion = null;
+      _selectedReportType = null;
+      _generalErrorMessage = null;
     });
 
     try {
-      // هذه ترجع List<ReportTypeOption>
+      final resolved = await ApiService.resolveLocationByLatLng(
+        selected.latitude,
+        selected.longitude,
+      );
+
+      _safeSetState(() {
+        _resolvedLocation = resolved;
+        _isLocationLoading = false;
+      });
+    } catch (e) {
+      _safeSetState(() {
+        _generalErrorMessage = e.toString();
+        _isLocationLoading = false;
+      });
+    }
+  }
+
+  // ========= Report Types =========
+
+  Future<void> _loadReportTypes() async {
+    _safeSetState(() {
+      _isReportTypesLoading = true;
+      _reportTypesErrorMessage = null;
+    });
+
+    try {
       final types = await ApiService.listReportTypes();
       _safeSetState(() {
-        _types = types;
-        _loadingTypes = false;
+        _reportTypes = types;
+        _isReportTypesLoading = false;
 
-        // إذا كان لدينا اقتراح مسبق من الذكاء الاصطناعي، اختر نوع البلاغ المطابق له
+        // في حال كان عندنا اقتراح سابق من الذكاء الاصطناعي
         if (_aiSuggestion != null) {
-          final match = _types
+          final match = _reportTypes
               .where((t) => t.id == _aiSuggestion!.reportTypeId)
               .toList();
           if (match.isNotEmpty) {
-            _selectedType = match.first;
+            _selectedReportType = match.first;
           }
         }
       });
     } catch (e) {
       _safeSetState(() {
-        _loadingTypes = false;
-        _typesError = "فشل تحميل أنواع البلاغ: $e";
+        _isReportTypesLoading = false;
+        _reportTypesErrorMessage = "فشل تحميل أنواع البلاغ: $e";
       });
     }
   }
 
-  Future<void> _changeLocationManually() async {
-    // فتح صفحة الخريطة لاختيار موقع يدوي
-    final LatLng? result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SelectLocationOnMapPage(
-          initialLat: _currentLatLng?.latitude,
-          initialLng: _currentLatLng?.longitude,
-        ),
-      ),
-    );
+  // ========= Image Picking & AI Analysis =========
 
-    if (result != null) {
-      _safeSetState(() {
-        _currentLatLng = result;
-        _loadingLocation = true;
-        _aiSuggestion = null; // إعادة ضبط الاقتراحات القديمة
-        _selectedType = null; // إعادة ضبط نوع البلاغ
-      });
-      // إعادة استدعاء resolve-location
-      try {
-        final resolved = await ApiService.resolveLocationByLatLng(
-          result.latitude,
-          result.longitude,
-        );
-        _safeSetState(() {
-          _resolvedLocation = resolved;
-          _loadingLocation = false;
-        });
-      } catch (e) {
-        _safeSetState(() {
-          _errorMessage = e.toString();
-          _loadingLocation = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _pickImage(bool fromCamera) async {
+  Future<void> _pickImage({required bool fromCamera}) async {
     try {
-      final img = await _picker.pickImage(
+      final pickedImage = await _imagePicker.pickImage(
         source: fromCamera ? ImageSource.camera : ImageSource.gallery,
         imageQuality: 90,
       );
-      if (img == null) return;
+
+      if (pickedImage == null) return;
 
       _safeSetState(() {
-        _imageFile = img;
-        _aiSuggestion = null; // reset
-        _selectedType = null;
-        _errorMessage = null;
+        _selectedImageFile = pickedImage;
+        _aiSuggestion = null;
+        _selectedReportType = null;
         _imageErrorMessage = null;
-        _titleCtrl.clear();
-        _descCtrl.clear();
-        _noteCtrl.clear();
+        _generalErrorMessage = null;
+
+        _titleController.clear();
+        _descriptionController.clear();
+        _notesController.clear();
       });
 
       await _analyzeImageWithAi();
     } catch (e) {
       _safeSetState(() {
-        _errorMessage = "حدث خطأ أثناء اختيار الصورة: $e";
+        _generalErrorMessage = "حدث خطأ أثناء اختيار الصورة: $e";
       });
     }
   }
 
-  void _showImageSourceSheet() {
+  void _showImageSourceBottomSheet() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
-                children: const [
-                  Icon(Icons.camera_alt, size: 18, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text(
+                children: [
+                  Icon(
+                    Icons.camera_alt_outlined,
+                    size: 20,
+                    color: kPrimaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
                     'اختر مصدر الصورة',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _pickImage(true);
-                      },
-                      borderRadius: BorderRadius.circular(12),
+                      onTap: _isImageAnalyzing || _isSubmitting
+                          ? null
+                          : () {
+                              Navigator.of(context).pop();
+                              _pickImage(fromCamera: true);
+                            },
+                      borderRadius: BorderRadius.circular(14),
                       child: Container(
-                        height: 80,
+                        height: 90,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: .8,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.03),
@@ -296,16 +321,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.camera_alt,
-                                size: 28,
-                                color: Colors.black,
-                              ),
+                              Icon(Icons.camera_alt_outlined, size: 28),
                               SizedBox(height: 6),
-                              Text(
-                                'التقاط صورة',
-                                style: TextStyle(color: Colors.black),
-                              ),
+                              Text('التقاط صورة'),
                             ],
                           ),
                         ),
@@ -315,17 +333,22 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _pickImage(false);
-                      },
-                      borderRadius: BorderRadius.circular(12),
+                      onTap: _isImageAnalyzing || _isSubmitting
+                          ? null
+                          : () {
+                              Navigator.of(context).pop();
+                              _pickImage(fromCamera: false);
+                            },
+                      borderRadius: BorderRadius.circular(14),
                       child: Container(
-                        height: 80,
+                        height: 90,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: .8,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.03),
@@ -338,16 +361,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.photo_library,
-                                size: 28,
-                                color: Colors.black,
-                              ),
+                              Icon(Icons.photo_library_outlined, size: 28),
                               SizedBox(height: 6),
-                              Text(
-                                'اختيار من المعرض',
-                                style: TextStyle(color: Colors.black),
-                              ),
+                              Text('اختيار من المعرض'),
                             ],
                           ),
                         ),
@@ -356,7 +372,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text(
@@ -372,19 +388,19 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
   }
 
   Future<void> _analyzeImageWithAi() async {
-    if (_imageFile == null || _resolvedLocation == null) return;
+    if (_selectedImageFile == null || _resolvedLocation == null) return;
 
     _safeSetState(() {
-      _analyzingImage = true;
-      _errorMessage = null;
+      _isImageAnalyzing = true;
+      _generalErrorMessage = null;
     });
 
     try {
-      final bytes = await _imageFile!.readAsBytes();
+      final Uint8List imageBytes = await _selectedImageFile!.readAsBytes();
 
       final suggestion = await ApiService.analyzeReportImage(
-        bytes: bytes,
-        filename: _imageFile!.name,
+        bytes: imageBytes,
+        filename: _selectedImageFile!.name,
         governmentId: _resolvedLocation!.governmentId,
         districtId: _resolvedLocation!.districtId,
         areaId: _resolvedLocation!.areaId,
@@ -392,162 +408,180 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
       _safeSetState(() {
         _aiSuggestion = suggestion;
+        _titleController.text = suggestion.suggestedTitle;
+        _descriptionController.text = suggestion.suggestedDescription;
 
-        // تعبئة الحقول المقترحة
-        _titleCtrl.text = suggestion.suggestedTitle;
-        _descCtrl.text = suggestion.suggestedDescription;
-
-        // اختيار نوع البلاغ المقترح إذا كان ضمن القائمة
-        final match = _types
+        final matchedType = _reportTypes
             .where((t) => t.id == suggestion.reportTypeId)
             .toList();
-        if (match.isNotEmpty) {
-          _selectedType = match.first;
+        if (matchedType.isNotEmpty) {
+          _selectedReportType = matchedType.first;
         }
       });
     } catch (e) {
       _safeSetState(() {
-        _errorMessage = "فشل تحليل الصورة بالذكاء الاصطناعي: $e";
+        _generalErrorMessage = "فشل تحليل الصورة بالذكاء الاصطناعي: $e";
       });
     } finally {
       _safeSetState(() {
-        _analyzingImage = false;
+        _isImageAnalyzing = false;
       });
     }
   }
 
-  Future<void> _submit() async {
+  // ========= Submit =========
+
+  Future<void> _submitReport() async {
     if (_resolvedLocation == null) {
       _safeSetState(() {
-        _errorMessage = "لم يتم تحديد الموقع بعد.";
+        _generalErrorMessage = "لم يتم تحديد موقع البلاغ بعد.";
       });
       return;
     }
-    if (_imageFile == null) {
+
+    if (_selectedImageFile == null) {
       _safeSetState(() {
-        _imageErrorMessage = "يرجى اختيار صورة للبلاغ.";
+        _imageErrorMessage = "يرجى إضافة صورة للتشوّه البصري.";
       });
       return;
     }
-    if (_selectedType == null) {
+
+    if (_selectedReportType == null) {
       _safeSetState(() {
-        _errorMessage = "يرجى اختيار نوع البلاغ.";
+        _generalErrorMessage = "يرجى اختيار نوع التشوّه البصري.";
       });
       return;
     }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     _safeSetState(() {
-      _sending = true;
-      _errorMessage = null;
+      _isSubmitting = true;
+      _generalErrorMessage = null;
     });
 
     try {
       // 1) رفع الصورة
-      final Uint8List bytes = await _imageFile!.readAsBytes();
-      final beforeUrl = await ApiService.uploadImage(bytes, _imageFile!.name);
+      final Uint8List imageBytes = await _selectedImageFile!.readAsBytes();
+      final String beforeImageUrl = await ApiService.uploadImage(
+        imageBytes,
+        _selectedImageFile!.name,
+      );
 
-      // 2) بناء payload
-      final payload = <String, dynamic>{
-        "report_type_id": _selectedType!.id,
-        "name_ar": _titleCtrl.text.trim(),
-        "description_ar": _descCtrl.text.trim(),
-        "note": _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+      // 2) بناء بيانات البلاغ
+      final Map<String, dynamic> payload = {
+        "report_type_id": _selectedReportType!.id,
+        "name_ar": _titleController.text.trim(),
+        "description_ar": _descriptionController.text.trim(),
+        "note": _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         "government_id": _resolvedLocation!.governmentId,
         "district_id": _resolvedLocation!.districtId,
         "area_id": _resolvedLocation!.areaId,
-        "image_before_url": beforeUrl,
+        "image_before_url": beforeImageUrl,
         "new_location": {
           "area_id": _resolvedLocation!.areaId,
           "name_ar": _resolvedLocation!.areaNameAr,
-          "latitude": _currentLatLng?.latitude,
-          "longitude": _currentLatLng?.longitude,
+          "latitude": _currentLocation?.latitude,
+          "longitude": _currentLocation?.longitude,
         },
       };
 
-      final created = await ApiService.createReport(payload);
+      final createdReport = await ApiService.createReport(payload);
 
       if (!mounted) return;
 
-      Get.off(() => SuccessPage(reportCode: created.reportCode));
+      Get.off(() => SuccessPage(reportCode: createdReport.reportCode));
     } catch (e) {
       _safeSetState(() {
-        _errorMessage = "فشل إرسال البلاغ: $e";
+        _generalErrorMessage = "فشل إرسال البلاغ: $e";
       });
     } finally {
-      if (mounted) {
-        _safeSetState(() {
-          _sending = false;
-        });
-      }
+      _safeSetState(() {
+        _isSubmitting = false;
+      });
     }
   }
+
+  // ========= Build =========
 
   @override
   Widget build(BuildContext context) {
-    // أثناء التحقق من حالة تسجيل الدخول
-    if (_checkingAuth) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFEFF1F1),
-        body: LoadingCenter(),
+    if (_isCheckingAuth) {
+      return const Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: Color(0xFFEFF1F1),
+          body: LoadingCenter(),
+        ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFEFF1F1),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFEFF1F1),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            "بلاغ تشوّه بصري",
+            style: TextStyle(color: Colors.white),
+          ),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: kPrimaryColor,
+          systemOverlayStyle: AppSystemUi.green,
         ),
-        title: const Text("إنشاء بلاغ ", style: TextStyle(color: Colors.white)),
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: kPrimaryColor,
-        systemOverlayStyle: AppSystemUi.green,
-      ),
-      body: _loadingLocation
-          ? const LoadingCenter()
-          : SafeArea(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 12),
-                    if (_errorMessage != null) _buildErrorBox(),
-                    const SizedBox(height: 8),
-                    _buildLocationCard(),
-                    const SizedBox(height: 12),
-                    _buildImageCard(),
-                    if (_imageFile != null) ...[
+        body: _isLocationLoading
+            ? const LoadingCenter()
+            : SafeArea(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    children: [
+                      _buildIntroCard(),
                       const SizedBox(height: 12),
-                      _buildTypeCard(),
+                      if (_generalErrorMessage != null) _buildErrorBanner(),
+                      const SizedBox(height: 8),
+                      _buildLocationCard(),
                       const SizedBox(height: 12),
-                      _buildDetailsCard(),
+                      _buildImageCard(),
+                      if (_selectedImageFile != null) ...[
+                        const SizedBox(height: 12),
+                        _buildTypeCard(),
+                        const SizedBox(height: 12),
+                        _buildDetailsCard(),
+                      ],
+                      const SizedBox(height: 20),
+                      _buildSubmitButton(),
                     ],
-                    const SizedBox(height: 20),
-                    _buildSubmitButton(),
-                  ],
+                  ),
                 ),
               ),
-            ),
-      bottomNavigationBar: const BasmaBottomNavPage(currentIndex: -1),
+        bottomNavigationBar: const BasmaBottomNavPage(currentIndex: -1),
+      ),
     );
   }
 
-  // ----------------- Widgets مساعدة -----------------
+  // ========= UI Sections =========
 
-  Widget _buildHeader() {
+  Widget _buildIntroCard() {
     return Card(
       color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -557,7 +591,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [Colors.green.shade400, Colors.green.shade700],
+                  colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.7)],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -565,7 +599,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
               child: const Icon(
                 Icons.camera_alt_outlined,
                 color: Colors.white,
-                size: 28,
+                size: 26,
               ),
             ),
             const SizedBox(width: 14),
@@ -574,13 +608,17 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "إنشاء بلاغ",
+                    "إنشاء بلاغ تشوّه بصري",
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    "سيتم تحديد موقعك تلقائياً وتحليل الصورة لتخمين نوع البلاغ واقتراح عنوان ووصف.",
-                    style: TextStyle(fontSize: 12, color: Colors.black),
+                    "التقط صورة للمشكلة، وسنحدّد موقعك ونقترح نوع البلاغ والعنوان والوصف باستخدام الذكاء الاصطناعي. يمكنك تعديل كل شيء قبل الإرسال.",
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -591,7 +629,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     );
   }
 
-  Widget _buildErrorBox() {
+  Widget _buildErrorBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -606,7 +644,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _errorMessage ?? "",
+              _generalErrorMessage ?? "",
               style: const TextStyle(fontSize: 13, color: Colors.red),
             ),
           ),
@@ -616,150 +654,106 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
   }
 
   Widget _buildLocationCard() {
-    final r = _resolvedLocation;
+    final location = _resolvedLocation;
 
     return Card(
       color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
-                Icon(Icons.place_outlined, size: 18, color: Colors.green),
-                SizedBox(width: 6),
-                Text(
-                  "الموقع الحالي",
+              children: [
+                Icon(Icons.place_outlined, size: 18, color: kPrimaryColor),
+                const SizedBox(width: 6),
+                const Text(
+                  "موقع البلاغ",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              "الموقع الذي سيتم إرسال البلاغ منه. يمكنك تغييره يدوياً إذا لزم الأمر.",
-              style: const TextStyle(fontSize: 12, color: Colors.black),
+            const Text(
+              "سيتم إرسال البلاغ حسب هذا الموقع. تأكّد من صحته أو قم بتعديله من الخريطة.",
+              style: TextStyle(fontSize: 12, color: Colors.black87),
             ),
-            const SizedBox(height: 17),
-            if (r == null)
-              Text(
-                "لم يتم تحديد الموقع",
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+            const SizedBox(height: 14),
+            if (location == null)
+              const Text(
+                "لم يتم تحديد الموقع.",
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               )
-            else ...[
-              Padding(
-                padding: const EdgeInsets.only(right: 2.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          textDirection: TextDirection.rtl,
-                          children: [
-                            const Text(
-                              'المحافظة : ',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              r.governmentNameAr,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                        _buildLocationRow(
+                          label: "المحافظة",
+                          value: location.governmentNameAr,
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          textDirection: TextDirection.rtl,
-                          children: [
-                            const Text(
-                              'اللواء : ',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              r.districtNameAr,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 4),
+                        _buildLocationRow(
+                          label: "اللواء",
+                          value: location.districtNameAr,
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          textDirection: TextDirection.rtl,
-                          children: [
-                            const Text(
-                              'المنطقة : ',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              r.areaNameAr,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 4),
+                        _buildLocationRow(
+                          label: "المنطقة",
+                          value: location.areaNameAr,
                         ),
                       ],
                     ),
-
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 6,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 6,
                       ),
-                      onPressed: _changeLocationManually,
-                      icon: const Icon(
-                        Icons.edit_location_alt_outlined,
-                        size: 16,
-                      ),
-                      label: const Text(
-                        "تعديل",
-                        style: TextStyle(fontSize: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                  ],
-                ),
+                    onPressed: _changeLocationFromMap,
+                    icon: const Icon(
+                      Icons.edit_location_alt_outlined,
+                      size: 16,
+                    ),
+                    label: const Text("تعديل", style: TextStyle(fontSize: 13)),
+                  ),
+                ],
               ),
-
-              // move the edit button below the location details
-              // Align(
-              //   alignment: Alignment.centerLeft,
-              //   child: ElevatedButton.icon(
-              //     style: ElevatedButton.styleFrom(
-              //       backgroundColor: _primaryColor,
-              //       foregroundColor: Colors.white,
-              //       padding: const EdgeInsets.symmetric(
-              //         horizontal: 18,
-              //         vertical: 6,
-              //       ),
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(16),
-              //       ),
-              //     ),
-              //     onPressed: _changeLocationManually,
-              //     icon: const Icon(Icons.edit_location_alt_outlined, size: 16),
-              //     label: const Text("تعديل", style: TextStyle(fontSize: 13)),
-              //   ),
-              // ),
-            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLocationRow({required String label, required String value}) {
+    return Row(
+      textDirection: TextDirection.rtl,
+      children: [
+        Text(
+          "$label: ",
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+          ),
+        ),
+      ],
     );
   }
 
@@ -769,38 +763,37 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.photo_camera_back_outlined,
                   size: 18,
-                  color: Colors.green,
+                  color: kPrimaryColor,
                 ),
-                SizedBox(width: 6),
-                Text(
-                  "صورة التشوه البصري",
+                const SizedBox(width: 6),
+                const Text(
+                  "صورة التشوّه البصري",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             const Text(
-              "التقط أو ارفع صورة للمشكلة وسيتم تحليلها تلقائياً.",
-              style: TextStyle(fontSize: 12, color: Colors.black),
+              "التقط أو ارفع صورة للموقع المتضرّر، وسيتم تحليلها تلقائياً لتخمين نوع البلاغ.",
+              style: TextStyle(fontSize: 12, color: Colors.black87),
             ),
             const SizedBox(height: 12),
-
             if (_imageErrorMessage != null)
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
                 ),
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12),
@@ -824,22 +817,22 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   ],
                 ),
               ),
-
-            // منطقة الرفع (نفس ستايل صفحة إكمال البلاغ)
             GestureDetector(
-              onTap: _analyzingImage || _sending ? null : _showImageSourceSheet,
+              onTap: _isImageAnalyzing || _isSubmitting
+                  ? null
+                  : _showImageSourceBottomSheet,
               child: Container(
                 width: double.infinity,
                 height: 220,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: kPrimaryColor.withOpacity(0.5),
+                    color: kPrimaryColor.withOpacity(0.6),
                     width: 1.4,
                   ),
                   color: Colors.white,
                 ),
-                child: _imageFile == null
+                child: _selectedImageFile == null
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
@@ -848,9 +841,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                             size: 52,
                             color: Colors.black54,
                           ),
-                          SizedBox(height: 12),
+                          SizedBox(height: 10),
                           Text(
-                            "اضغط لرفع أو التقاط صورة",
+                            "اضغط لالتقاط أو رفع صورة",
                             style: TextStyle(fontSize: 14, color: Colors.grey),
                           ),
                         ],
@@ -860,7 +853,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: Image.file(
-                              File(_imageFile!.path),
+                              File(_selectedImageFile!.path),
                               width: double.infinity,
                               height: double.infinity,
                               fit: BoxFit.cover,
@@ -870,20 +863,23 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                             top: 10,
                             left: 10,
                             child: GestureDetector(
-                              onTap: _analyzingImage || _sending
+                              onTap: _isImageAnalyzing || _isSubmitting
                                   ? null
-                                  : () => _safeSetState(() {
-                                      _imageFile = null;
-                                      _imageErrorMessage = null;
-                                      _aiSuggestion = null;
-                                    }),
+                                  : () {
+                                      _safeSetState(() {
+                                        _selectedImageFile = null;
+                                        _imageErrorMessage = null;
+                                        _aiSuggestion = null;
+                                        _selectedReportType = null;
+                                      });
+                                    },
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
+                                      color: Colors.black.withOpacity(0.25),
                                       blurRadius: 4,
                                     ),
                                   ],
@@ -897,11 +893,8 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                       ),
               ),
             ),
-
-            // preview moved into the upload box above to avoid duplication
             const SizedBox(height: 10),
-
-            if (_analyzingImage)
+            if (_isImageAnalyzing)
               const Row(
                 children: [
                   SizedBox(
@@ -928,16 +921,16 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.lightbulb_outline,
                       size: 18,
-                      color: Colors.green,
+                      color: kPrimaryColor,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        "نوع البلاغ المتوقع: ${_aiSuggestion!.reportTypeNameAr} "
-                        "(ثقة: ${(100 * _aiSuggestion!.confidence).toStringAsFixed(1)}%)",
+                        "اقتراح الذكاء الاصطناعي: ${_aiSuggestion!.reportTypeNameAr} "
+                        "(ثقة ${(100 * _aiSuggestion!.confidence).toStringAsFixed(1)}%)",
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
@@ -950,74 +943,28 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     );
   }
 
-  Widget _buildDetailsCard() {
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.description_outlined, size: 18, color: Colors.green),
-                SizedBox(width: 6),
-                Text(
-                  "تفاصيل البلاغ (يمكنك التعديل)",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _buildTextField(
-              controller: _titleCtrl,
-              label: "عنوان البلاغ (يمكنك التعديل)",
-              required: true,
-            ),
-            const SizedBox(height: 10),
-            _buildTextField(
-              controller: _descCtrl,
-              label: "الوصف (يمكنك التعديل)",
-              required: true,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 10),
-            _buildTextField(
-              controller: _noteCtrl,
-              label: "ملاحظات إضافية (اختياري)",
-              required: false,
-              maxLines: 2,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildTypeCard() {
     return Card(
       color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.report, size: 18, color: Colors.green),
-                SizedBox(width: 6),
-                Text(
-                  "نوع البلاغ (يمكنك التعديل)",
+                Icon(Icons.report_outlined, size: 18, color: kPrimaryColor),
+                const SizedBox(width: 6),
+                const Text(
+                  "نوع التشوّه البصري",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            if (_loadingTypes)
+            if (_isReportTypesLoading)
               const Row(
                 children: [
                   SizedBox(
@@ -1032,19 +979,19 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   ),
                 ],
               )
-            else if (_typesError != null)
+            else if (_reportTypesErrorMessage != null)
               Text(
-                _typesError!,
+                _reportTypesErrorMessage!,
                 style: const TextStyle(fontSize: 12, color: Colors.red),
               )
-            else if (_types.isEmpty)
+            else if (_reportTypes.isEmpty)
               const Text(
                 "لا توجد أنواع بلاغ متاحة.",
                 style: TextStyle(fontSize: 12),
               )
             else
               Container(
-                margin: const EdgeInsets.only(top: 8),
+                margin: const EdgeInsets.only(top: 6),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(30),
@@ -1057,22 +1004,22 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   ],
                 ),
                 child: DropdownButtonFormField<ReportTypeOption>(
-                  initialValue: _selectedType,
-                  items: _types
+                  value: _selectedReportType,
+                  items: _reportTypes
                       .map(
-                        (t) => DropdownMenuItem<ReportTypeOption>(
-                          value: t,
-                          child: Text(t.nameAr),
+                        (type) => DropdownMenuItem<ReportTypeOption>(
+                          value: type,
+                          child: Text(type.nameAr),
                         ),
                       )
                       .toList(),
                   onChanged: (value) {
                     _safeSetState(() {
-                      _selectedType = value;
+                      _selectedReportType = value;
                     });
                   },
                   decoration: InputDecoration(
-                    hintText: _selectedType?.nameAr ?? 'اختر نوع البلاغ',
+                    hintText: 'اختر نوع التشوّه البصري',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(30),
                       borderSide: BorderSide.none,
@@ -1096,19 +1043,69 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     );
   }
 
+  Widget _buildDetailsCard() {
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.description_outlined,
+                  size: 18,
+                  color: kPrimaryColor,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  "تفاصيل البلاغ",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildBasmaTextField(
+              controller: _titleController,
+              label: "عنوان البلاغ (يمكنك التعديل)",
+              isRequired: true,
+            ),
+            const SizedBox(height: 10),
+            _buildBasmaTextField(
+              controller: _descriptionController,
+              label: "وصف المشكلة (يمكنك التعديل)",
+              isRequired: true,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 10),
+            _buildBasmaTextField(
+              controller: _notesController,
+              label: "ملاحظات إضافية (اختياري)",
+              isRequired: false,
+              maxLines: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 52,
       child: ElevatedButton(
-        onPressed: _sending ? null : _submit,
+        onPressed: _isSubmitting ? null : _submitReport,
         style: ElevatedButton.styleFrom(
           backgroundColor: kPrimaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        child: _sending
+        child: _isSubmitting
             ? const SizedBox(
                 width: 22,
                 height: 22,
@@ -1119,16 +1116,22 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
               )
             : const Text(
                 "إرسال البلاغ",
-                style: TextStyle(fontSize: 17, color: Colors.white),
+                style: TextStyle(
+                  fontSize: 16.5,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
       ),
     );
   }
 
-  Widget _buildTextField({
+  // ========= Shared TextField =========
+
+  Widget _buildBasmaTextField({
     required TextEditingController controller,
     required String label,
-    required bool required,
+    required bool isRequired,
     int maxLines = 1,
   }) {
     return Container(
@@ -1146,8 +1149,8 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
-        validator: (v) {
-          if (required && (v == null || v.trim().isEmpty)) {
+        validator: (value) {
+          if (isRequired && (value == null || value.trim().isEmpty)) {
             return "هذا الحقل مطلوب";
           }
           return null;
