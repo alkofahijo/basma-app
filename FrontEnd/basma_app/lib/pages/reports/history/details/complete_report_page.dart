@@ -1,16 +1,14 @@
-// lib/pages/reports/history/details/complete_report_page.dart
-
 import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/services/api_service.dart';
-import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/theme/app_colors.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 
-// use central primary color
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class CompleteReportPage extends StatefulWidget {
@@ -23,55 +21,208 @@ class CompleteReportPage extends StatefulWidget {
 }
 
 class _CompleteReportPageState extends State<CompleteReportPage> {
-  File? _selectedImage;
-  final TextEditingController _noteCtrl = TextEditingController();
-  bool _loading = false;
-  bool _isConfirmed = false;
+  final TextEditingController _completionNotesController =
+      TextEditingController();
+
+  File? _afterImageFile;
+
+  bool _isSubmitting = false;
+  bool _isCompletionConfirmed = false;
 
   @override
   void dispose() {
-    _noteCtrl.dispose();
+    _completionNotesController.dispose();
     super.dispose();
   }
 
-  Future<void> _pick(ImageSource source) async {
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
+
+  // ========= Image Picking =========
+
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final x = await ImagePicker().pickImage(source: source);
-      if (x != null) {
-        setState(() => _selectedImage = File(x.path));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("حدث خطأ أثناء اختيار الصورة: $e")),
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 90,
       );
+      if (picked == null) return;
+
+      _safeSetState(() {
+        _afterImageFile = File(picked.path);
+      });
+    } catch (e) {
+      _showSnackBar("حدث خطأ أثناء اختيار الصورة: $e");
     }
   }
 
-  Future<void> _submit() async {
-    if (_selectedImage == null || !_isConfirmed) return;
+  void _showImageSourceBottomSheet() {
+    if (_isSubmitting) return;
 
-    setState(() => _loading = true);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.photo_camera_back_outlined,
+                    size: 20,
+                    color: kPrimaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "اختر مصدر الصورة",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _isSubmitting
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _pickImage(ImageSource.camera);
+                            },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: .8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.camera_alt_outlined, size: 26),
+                              SizedBox(height: 6),
+                              Text("التقاط صورة"),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _isSubmitting
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _pickImage(ImageSource.gallery);
+                            },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: .8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.photo_library_outlined, size: 26),
+                              SizedBox(height: 6),
+                              Text("اختيار من المعرض"),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ========= Submit =========
+
+  Future<void> _submitCompletion() async {
+    if (_afterImageFile == null || !_isCompletionConfirmed) return;
+
+    _safeSetState(() {
+      _isSubmitting = true;
+    });
 
     try {
-      final bytes = await _selectedImage!.readAsBytes();
-      final url = await ApiService.uploadImage(bytes, "after.jpg");
+      final bytes = await _afterImageFile!.readAsBytes();
+      final imageUrl = await ApiService.uploadImage(bytes, "after.jpg");
 
       await ApiService.completeReport(
         reportId: widget.report.id,
-        imageAfterUrl: url,
-        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        imageAfterUrl: imageUrl,
+        note: _completionNotesController.text.trim().isEmpty
+            ? null
+            : _completionNotesController.text.trim(),
       );
 
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("فشل إكمال البلاغ: $e")));
+      _showSnackBar("فشل إكمال البلاغ: $e");
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      _safeSetState(() {
+        _isSubmitting = false;
+      });
     }
   }
 
@@ -101,7 +252,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [Color(0xFF004d00), kPrimaryColor],
+                      colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.8)],
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
                     ),
@@ -124,8 +275,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
               children: [
                 const SizedBox(height: 8),
                 const Text(
-                  "بتأكيد إتمام البلاغ، سيُسجَّل البلاغ كمكتمل وسيتم حفظ صور الإكمال."
-                  " تأكد من أن الصور والملاحظات تعكس الحل النهائي.",
+                  "بتأكيد إتمام البلاغ، سيتم تسجيله كمكتمل وحفظ صورة ما بعد الإصلاح مع ملاحظاتك.",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14),
                 ),
@@ -136,12 +286,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color.fromARGB(
-                      255,
-                      0,
-                      150,
-                      10,
-                    ).withOpacity(0.04),
+                    color: kPrimaryColor.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -150,7 +295,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                       const SizedBox(width: 6),
                       const Expanded(
                         child: Text(
-                          "تأكد أنك قادر على متابعة البلاغ بعد اكتماله ومراجعة الصور المرفوعة.",
+                          "تأكد أن الصورة توضح النتيجة النهائية للموقع بعد المعالجة.",
                           style: TextStyle(fontSize: 12),
                         ),
                       ),
@@ -195,52 +340,30 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
     );
   }
 
-  void _showImageSourceSheet() {
-    if (_loading) return;
-
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('اختيار من المعرض'),
-              onTap: () {
-                Navigator.pop(context);
-                _pick(ImageSource.gallery);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('التقاط صورة'),
-              onTap: () {
-                Navigator.pop(context);
-                _pick(ImageSource.camera);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Border _buildBorder() {
+  // ========= UI Helpers =========
+
+  Border _buildUploadBorder() {
     return Border.all(color: kPrimaryColor.withOpacity(0.5), width: 1.4);
   }
 
   Widget _buildUploadBox() {
     return GestureDetector(
-      onTap: _showImageSourceSheet,
+      onTap: _isSubmitting ? null : _showImageSourceBottomSheet,
       child: Container(
         height: 220,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: _buildBorder(),
+          border: _buildUploadBorder(),
           color: Colors.white,
         ),
-        child: _selectedImage == null
+        child: _afterImageFile == null
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
@@ -251,8 +374,9 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    "اضغط لرفع أو التقاط صورة",
+                    "اضغط لرفع أو التقاط صورة بعد الإصلاح",
                     style: TextStyle(fontSize: 14, color: Colors.grey),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               )
@@ -261,7 +385,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.file(
-                      _selectedImage!,
+                      _afterImageFile!,
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,
@@ -271,9 +395,13 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                     top: 10,
                     left: 10,
                     child: GestureDetector(
-                      onTap: _loading
+                      onTap: _isSubmitting
                           ? null
-                          : () => setState(() => _selectedImage = null),
+                          : () {
+                              _safeSetState(() {
+                                _afterImageFile = null;
+                              });
+                            },
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -298,149 +426,158 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _pageBackground,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context, false),
-        ),
-        backgroundColor: kPrimaryColor,
-        systemOverlayStyle: AppSystemUi.green,
-        centerTitle: true,
-        title: const Text(
-          "إكمال البلاغ",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.white,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _pageBackground,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          backgroundColor: kPrimaryColor,
+          systemOverlayStyle: AppSystemUi.green,
+          centerTitle: true,
+          title: const Text(
+            "إكمال البلاغ",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 19,
+              color: Colors.white,
+            ),
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: ListView(
-            children: [
-              Center(
-                child: Column(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: ListView(
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        "أضف صورة بعد الإصلاح",
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "ساعدنا في توثيق تحوّل الموقع بعد معالجة التشوّه البصري.",
+                        style: TextStyle(color: Colors.grey.shade600),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildUploadBox(),
+                const SizedBox(height: 24),
+                Text(
+                  "ملاحظات بعد الإصلاح (اختياري)",
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: TextField(
+                    controller: _completionNotesController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText:
+                          "اذكر بإيجاز ما تم عمله لمعالجة التشوّه البصري...",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.all(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  value: _isCompletionConfirmed,
+                  activeColor: kPrimaryColor,
+                  onChanged: _isSubmitting
+                      ? null
+                      : (v) => _safeSetState(
+                          () => _isCompletionConfirmed = v ?? false,
+                        ),
+                  title: const Text("أؤكد أن المشكلة تم حلّها في الموقع."),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 20),
+                Row(
                   children: [
-                    Text(
-                      "تحميل صور بعد الإصلاح",
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isSubmitting
+                            ? null
+                            : () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: kPrimaryColor),
+                          foregroundColor: kPrimaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text("إلغاء"),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "اعرض كيف أصبح المكان الآن.",
-                      style: TextStyle(color: Colors.grey[600]),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed:
+                            (!_isCompletionConfirmed ||
+                                _afterImageFile == null ||
+                                _isSubmitting)
+                            ? null
+                            : () async {
+                                final confirmed =
+                                    await _showConfirmCompleteDialog();
+                                if (confirmed == true) {
+                                  await _submitCompletion();
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                "تأكيد إكمال البلاغ",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              _buildUploadBox(),
-              const SizedBox(height: 24),
-              Text(
-                "ملاحظات بعد الإصلاح",
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: TextField(
-                  controller: _noteCtrl,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: "أضف أي تفاصيل قصيرة حول ما قمت به...",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.all(14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                value: _isConfirmed,
-                activeColor: kPrimaryColor,
-                onChanged: _loading
-                    ? null
-                    : (v) => setState(() => _isConfirmed = v ?? false),
-                title: const Text("أؤكد أننا قمنا بحل المشكلة."),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _loading
-                          ? null
-                          : () => Navigator.pop(context, false),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: kPrimaryColor),
-                        foregroundColor: kPrimaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text("إلغاء"),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed:
-                          (!_isConfirmed || _selectedImage == null || _loading)
-                          ? null
-                          : () async {
-                              final confirmed =
-                                  await _showConfirmCompleteDialog();
-                              if (confirmed == true) {
-                                await _submit();
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: _loading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              "تأكيد إكمال البلاغ",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+        bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 1),
       ),
-      bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 1),
     );
   }
 }

@@ -1,26 +1,24 @@
-// lib/pages/reports/browse/guest_reports_list_page.dart
-
-import 'package:basma_app/services/api_service.dart';
-import 'package:basma_app/theme/app_system_ui.dart';
-import 'package:basma_app/theme/app_colors.dart';
-import 'package:basma_app/widgets/loading_center.dart';
-import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../models/report_models.dart';
-import 'details/report_details_page.dart';
+import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/theme/app_system_ui.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
+import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/models/report_models.dart';
 
 // custom widgets
+import 'details/report_details_page.dart';
 import 'widgets/reports_status_tabs.dart';
 import 'widgets/reports_filters_card.dart';
 import 'widgets/reports_card_item.dart';
 
-// use central primary color
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class GuestReportsListPage extends StatefulWidget {
-  final String initialMainTab; // 'all' أو 'mine'
+  /// 'all' أو 'mine'
+  final String initialMainTab;
 
   const GuestReportsListPage({super.key, this.initialMainTab = 'all'});
 
@@ -29,25 +27,23 @@ class GuestReportsListPage extends StatefulWidget {
 }
 
 class _GuestReportsListPageState extends State<GuestReportsListPage> {
-  // login state
+  // ---- Auth ----
   bool _isLoggedIn = false;
 
-  // main tab: 'all' or 'mine'
+  // main tab: 'all' أو 'mine'
   String _mainTab = 'all';
 
   // status tab: 'open' / 'in_progress' / 'completed'
   String _statusTab = 'open';
 
-  // reports
-  List<ReportPublicSummary> _reports = [];
-  List<ReportPublicSummary> _filteredReports = [];
-  bool _loading = true;
-  String? _error;
+  // ---- Reports ----
+  List<ReportPublicSummary> _allReports = [];
+  List<ReportPublicSummary> _visibleReports = [];
+  bool _isLoading = true;
+  String? _loadErrorMessage;
 
-  // filters
+  // ---- Filters (IDs + lists) ----
   List<GovernmentOption> _governments = [];
-  List<DistrictOption> _districts = [];
-  List<AreaOption> _areas = [];
   List<ReportTypeOption> _reportTypes = [];
 
   int? _selectedGovernmentId;
@@ -55,50 +51,61 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   int? _selectedAreaId;
   int? _selectedReportTypeId;
 
-  // search
+  // ---- Search ----
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _mainTab = widget.initialMainTab;
-    _checkLoginAndInit();
+    _checkLoginAndInitialize();
   }
 
-  Future<void> _checkLoginAndInit() async {
-    setState(() {
-      _loading = true;
-      _error = null;
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
+
+  // ========= Init / Auth =========
+
+  Future<void> _checkLoginAndInitialize() async {
+    _safeSetState(() {
+      _isLoading = true;
+      _loadErrorMessage = null;
     });
 
     try {
       final sp = await SharedPreferences.getInstance();
       final token = sp.getString('token');
-      final loggedIn = token != null && token.isNotEmpty;
+      final bool loggedIn = token != null && token.isNotEmpty;
 
-      setState(() {
+      _safeSetState(() {
         _isLoggedIn = loggedIn;
         if (!_isLoggedIn) {
           _mainTab = 'all';
-        } else {
-          // لو الصفحة مفتوحة على "بلاغاتي" افتراضياً → الحالة الافتراضية "قيد التنفيذ"
-          if (_mainTab == 'mine') {
-            _statusTab = 'in_progress';
-          }
+        } else if (_mainTab == 'mine') {
+          _statusTab = 'in_progress';
         }
       });
 
-      await _initFiltersAndLoad();
+      await _initFiltersAndLoadReports();
     } catch (_) {
-      setState(() {
+      _safeSetState(() {
         _isLoggedIn = false;
         _mainTab = 'all';
       });
-      await _initFiltersAndLoad();
+      await _initFiltersAndLoadReports();
     }
   }
 
-  Future<void> _initFiltersAndLoad() async {
+  Future<void> _initFiltersAndLoadReports() async {
     try {
       final results = await Future.wait([
         ApiService.listGovernments(),
@@ -110,12 +117,14 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
 
       await _loadReports();
     } catch (_) {
-      setState(() {
-        _loading = false;
-        _error = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
+      _safeSetState(() {
+        _isLoading = false;
+        _loadErrorMessage = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
       });
     }
   }
+
+  // ========= Backend-loading =========
 
   int _statusIdForTab(String tab) {
     switch (tab) {
@@ -131,13 +140,13 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   }
 
   Future<void> _loadReports() async {
-    setState(() {
-      _loading = true;
-      _error = null;
+    _safeSetState(() {
+      _isLoading = true;
+      _loadErrorMessage = null;
     });
 
     try {
-      final statusId = _statusIdForTab(_statusTab);
+      final int statusId = _statusIdForTab(_statusTab);
       final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
 
       late final List<ReportPublicSummary> list;
@@ -160,137 +169,109 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
         );
       }
 
-      setState(() {
-        _reports = list;
+      _safeSetState(() {
+        _allReports = list;
         _searchQuery = '';
+        _searchController.clear();
       });
 
-      _applySearchAndFilters();
+      _applySearchFilter();
     } catch (_) {
-      setState(() {
-        _reports = [];
-        _filteredReports = [];
-        _error = 'تعذّر تحميل البلاغات، يرجى المحاولة لاحقاً.';
+      _safeSetState(() {
+        _allReports = [];
+        _visibleReports = [];
+        _loadErrorMessage = 'تعذّر تحميل البلاغات، يرجى المحاولة لاحقاً.';
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      _safeSetState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  // ================== tabs switching ==================
+  // ========= Tabs =========
 
-  void _switchStatusTab(String tab) {
-    if (_statusTab == tab) return;
+  void _switchStatusTab(String newTab) {
+    if (_statusTab == newTab) return;
 
     final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
 
-    // في "بلاغاتي" لا معنى لعرض "جديد" (2) لأنها فقط عامة
-    if (isMyReports && tab == 'open') return;
+    // في "بلاغاتي" لا معنى لعرض "جديد"
+    if (isMyReports && newTab == 'open') return;
 
-    setState(() {
-      _statusTab = tab;
+    _safeSetState(() {
+      _statusTab = newTab;
     });
 
     _loadReports();
   }
 
-  // ================== filters ==================
+  // ========= Filters (IDs only) =========
 
-  Future<void> _onGovernmentChanged(int? govId) async {
-    setState(() {
-      _selectedGovernmentId = govId;
+  Future<void> _onGovernmentChanged(int? governmentId) async {
+    _safeSetState(() {
+      _selectedGovernmentId = governmentId;
       _selectedDistrictId = null;
       _selectedAreaId = null;
-      _districts = [];
-      _areas = [];
     });
-
-    if (govId != null) {
-      try {
-        final districts = await ApiService.listDistrictsByGovernment(govId);
-        setState(() {
-          _districts = districts;
-        });
-      } catch (_) {
-        // تجاهل الخطأ هنا، فقط لا نعرض مقاطعات
-      }
-    }
-
     await _loadReports();
   }
 
-  Future<void> _onDistrictChanged(int? distId) async {
-    setState(() {
-      _selectedDistrictId = distId;
+  Future<void> _onDistrictChanged(int? districtId) async {
+    _safeSetState(() {
+      _selectedDistrictId = districtId;
       _selectedAreaId = null;
-      _areas = [];
     });
-
-    if (distId != null) {
-      try {
-        final areas = await ApiService.listAreasByDistrict(distId);
-        setState(() {
-          _areas = areas;
-        });
-      } catch (_) {
-        // تجاهل الخطأ
-      }
-    }
-
     await _loadReports();
   }
 
   Future<void> _onAreaChanged(int? areaId) async {
-    setState(() {
+    _safeSetState(() {
       _selectedAreaId = areaId;
     });
     await _loadReports();
   }
 
   Future<void> _onReportTypeChanged(int? typeId) async {
-    setState(() {
+    _safeSetState(() {
       _selectedReportTypeId = typeId;
     });
     await _loadReports();
   }
 
-  // ================== search + filter client-side ==================
+  // ========= Search (client-side) =========
 
-  void _applySearchAndFilters() {
-    List<ReportPublicSummary> results = List.of(_reports);
+  void _applySearchFilter() {
+    List<ReportPublicSummary> results = List.of(_allReports);
 
     if (_searchQuery.isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      bool match(String? s) => (s ?? '').toLowerCase().contains(q);
+      final query = _searchQuery.toLowerCase();
+      bool match(String? s) => (s ?? '').toLowerCase().contains(query);
 
-      results = results.where((r) {
-        return match(r.governmentNameAr) ||
-            match(r.districtNameAr) ||
-            match(r.areaNameAr) ||
-            match(r.typeNameAr) ||
-            match(r.nameAr);
+      results = results.where((report) {
+        return match(report.governmentNameAr) ||
+            match(report.districtNameAr) ||
+            match(report.areaNameAr) ||
+            match(report.typeNameAr) ||
+            match(report.nameAr);
       }).toList();
     }
 
-    setState(() {
-      _filteredReports = results;
+    _safeSetState(() {
+      _visibleReports = results;
     });
   }
 
-  // ================== navigation ==================
+  // ========= Navigation =========
 
-  void _openDetails(int reportId) {
+  void _openReportDetails(int reportId) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ReportDetailsPage(reportId: reportId)),
     );
   }
 
-  // ================== helpers ==================
+  // ========= Helpers =========
 
   String _formatDate(DateTime? dt) {
     if (dt == null) return '';
@@ -320,7 +301,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       case 1:
         return 'قيد المراجعة';
       case 2:
-        return 'جديد';
+        return 'بلاغ جديد';
       case 3:
         return 'قيد التنفيذ';
       case 4:
@@ -342,13 +323,12 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
         return Icons.crop_landscape;
       case 'planting':
         return Icons.local_florist;
-      case 'other':
       default:
         return Icons.more_horiz;
     }
   }
 
-  // ================== UI widgets ==================
+  // ========= UI: Search + Filter Bar =========
 
   Widget _buildSearchAndFilterBar() {
     return Padding(
@@ -358,33 +338,68 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black12.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: Colors.black12.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
                 onChanged: (value) {
                   _searchQuery = value.trim();
-                  _applySearchAndFilters();
+                  _applySearchFilter();
                 },
+                style: const TextStyle(fontSize: 13, height: 1.3),
                 decoration: InputDecoration(
-                  hintText:
-                      'ابحث عن بلاغ (محافظة، لواء، منطقة، نوع التشوه البصري...)',
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  hintText: 'ابحث في البلاغات (العنوان، النوع، الموقع...)',
+                  hintStyle: TextStyle(
+                    fontSize: 11.5,
+                    color: Colors.grey.shade600,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            _searchQuery = '';
+                            _applySearchFilter();
+                          },
+                        )
+                      : null,
                   filled: true,
-                  fillColor: Colors.grey.shade50,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 0,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(
+                      color: kPrimaryColor.withOpacity(0.8),
+                      width: 1.3,
+                    ),
                   ),
                 ),
               ),
@@ -426,14 +441,12 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       ),
       builder: (context) {
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
             child: GuestFiltersCard(
               governments: _governments,
-              districts: _districts,
-              areas: _areas,
               reportTypes: _reportTypes,
               selectedGovernmentId: _selectedGovernmentId,
               selectedDistrictId: _selectedDistrictId,
@@ -441,19 +454,19 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
               selectedReportTypeId: _selectedReportTypeId,
               onGovernmentChanged: (id) async {
                 await _onGovernmentChanged(id);
-                _applySearchAndFilters();
+                _applySearchFilter();
               },
               onDistrictChanged: (id) async {
                 await _onDistrictChanged(id);
-                _applySearchAndFilters();
+                _applySearchFilter();
               },
               onAreaChanged: (id) async {
                 await _onAreaChanged(id);
-                _applySearchAndFilters();
+                _applySearchFilter();
               },
               onReportTypeChanged: (id) async {
                 await _onReportTypeChanged(id);
-                _applySearchAndFilters();
+                _applySearchFilter();
               },
               iconForReportType: _iconForReportType,
             ),
@@ -463,42 +476,50 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     );
   }
 
+  // ========= Body =========
+
   Widget _buildBody() {
-    if (_error != null) {
+    if (_loadErrorMessage != null) {
       return Center(
-        child: Text(
-          _error!,
-          style: const TextStyle(color: Colors.red, fontSize: 14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            _loadErrorMessage!,
+            style: const TextStyle(color: Colors.red, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
 
-    if (_filteredReports.isEmpty) {
-      String msg;
+    if (_visibleReports.isEmpty) {
+      String emptyMessage;
       switch (_statusTab) {
         case 'open':
-          msg = 'لا توجد بلاغات جديدة حالياً.';
+          emptyMessage = 'لا توجد بلاغات جديدة حالياً.';
           break;
         case 'in_progress':
-          msg = 'لا توجد بلاغات قيد التنفيذ حالياً.';
+          emptyMessage = 'لا توجد بلاغات قيد التنفيذ حالياً.';
           break;
         case 'completed':
-          msg = 'لا توجد بلاغات مكتملة في هذا القسم.';
+          emptyMessage = 'لا توجد بلاغات مكتملة في هذا القسم.';
           break;
         default:
-          msg = 'لا توجد بلاغات.';
+          emptyMessage = 'لا توجد بلاغات مطابقة للبحث/التصفية.';
       }
 
-      return Center(child: Text(msg, style: const TextStyle(fontSize: 14)));
+      return Center(
+        child: Text(emptyMessage, style: const TextStyle(fontSize: 14)),
+      );
     }
 
     return ListView.builder(
-      itemCount: _filteredReports.length,
+      itemCount: _visibleReports.length,
       itemBuilder: (_, index) {
-        final r = _filteredReports[index];
+        final report = _visibleReports[index];
         return GuestReportCard(
-          report: r,
-          onTap: () => _openDetails(r.id),
+          report: report,
+          onTap: () => _openReportDetails(report.id),
           formatDate: _formatDate,
           statusColor: _statusColor,
           statusNameAr: _statusNameAr,
@@ -511,49 +532,51 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   Widget build(BuildContext context) {
     final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
 
-    return Scaffold(
-      backgroundColor: _pageBackground,
-      appBar: AppBar(
-        leading: _isLoggedIn
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _pageBackground,
+        appBar: AppBar(
+          leading: _isLoggedIn
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+          backgroundColor: kPrimaryColor,
+          systemOverlayStyle: AppSystemUi.green,
+          elevation: 0,
+          title: Text(
+            isMyReports ? 'بلاغاتي' : 'تصفّح البلاغات',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 19,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
+          toolbarHeight: 60,
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildSearchAndFilterBar(),
+              const SizedBox(height: 8),
+              GuestStatusTabs(
+                currentStatusTab: _statusTab,
+                isMyReports: isMyReports,
+                onStatusChanged: _switchStatusTab,
               ),
-        backgroundColor: kPrimaryColor,
-        systemOverlayStyle: AppSystemUi.green,
-        elevation: 0,
-        title: Text(
-          isMyReports ? 'بلاغاتي' : 'تصفح البلاغات',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.white,
+              const SizedBox(height: 6),
+              Expanded(
+                child: _isLoading ? const LoadingCenter() : _buildBody(),
+              ),
+            ],
           ),
         ),
-        centerTitle: true,
-        actions: [],
-        toolbarHeight: 60,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildSearchAndFilterBar(),
-            const SizedBox(height: 8),
-            GuestStatusTabs(
-              currentStatusTab: _statusTab,
-              isMyReports: isMyReports,
-              onStatusChanged: _switchStatusTab,
-            ),
-            const SizedBox(height: 6),
-            Expanded(child: _loading ? const LoadingCenter() : _buildBody()),
-          ],
+        bottomNavigationBar: BasmaBottomNavPage(
+          currentIndex: isMyReports ? 1 : -1,
         ),
-      ),
-      bottomNavigationBar: BasmaBottomNavPage(
-        currentIndex: isMyReports ? 1 : -1,
       ),
     );
   }

@@ -13,7 +13,7 @@ class ReportClassifierService:
     """
     خدمة تصنيف البلاغات باستخدام Roboflow Inference Server (workflow مخصص).
 
-    تبقى واجهة `predict` كما هي:
+    واجهة الاستخدام:
         predict(image_bytes: bytes) -> (report_type_id: int, confidence: float, info: dict)
 
     حيث:
@@ -29,12 +29,22 @@ class ReportClassifierService:
     def __init__(
         self,
         api_url: str,
-        api_key: str,
         workspace_name: str,
         workflow_id: str,
+        api_key: Optional[str] = None,
     ) -> None:
+        """
+        :param api_url: عنوان خادم الـ Inference (مثال: http://localhost:9001)
+        :param workspace_name: اسم الـ workspace في Roboflow
+        :param workflow_id: معرف الـ workflow الذي أنشأته
+        :param api_key: مفتاح الـ API (اختياري؛ يمكن تركه فارغاً عند استخدام سيرفر محلي)
+        """
         # عميل Roboflow Inference
-        self.client = InferenceHTTPClient(api_url=api_url, api_key=api_key)
+        # لو api_key = None → نمرّر "" حتى لا يكون حقل إجباري
+        self.client = InferenceHTTPClient(
+            api_url=api_url,
+            api_key=api_key or "",
+        )
         self.workspace_name = workspace_name
         self.workflow_id = workflow_id
 
@@ -92,10 +102,15 @@ class ReportClassifierService:
 
     def _run_workflow(self, image_bytes: bytes) -> Any:
         """
-        حفظ الصورة مؤقتاً على القرص ثم إرسالها إلى الـ workflow
-        كما في المثال:
+        حفظ الصورة مؤقتاً على القرص ثم إرسالها إلى الـ workflow.
 
-            images={ "image": "YOUR_IMAGE.jpg" }
+        يستدعي:
+            self.client.run_workflow(
+                workspace_name=self.workspace_name,
+                workflow_id=self.workflow_id,
+                images={"image": tmp_path},
+                use_cache=True,
+            )
         """
         tmp_path = None
         try:
@@ -155,7 +170,7 @@ class ReportClassifierService:
 
     @staticmethod
     def _aggregate_predictions(
-        predictions: List[Dict[str, Any]]
+        predictions: List[Dict[str, Any]],
     ) -> Tuple[str, float, Optional[int]]:
         """
         - لو توجد أكثر من prediction نختار الكلاس الأكثر تكراراً.
@@ -229,7 +244,9 @@ class ReportClassifierService:
         result = self._run_workflow(image_bytes)
         predictions = self._extract_predictions(result)
 
-        class_code, confidence, model_class_id = self._aggregate_predictions(predictions)
+        class_code, confidence, model_class_id = self._aggregate_predictions(
+            predictions
+        )
 
         # لو الكود غير معروف نعتبره OTHERS
         if class_code not in self.report_type_ids:

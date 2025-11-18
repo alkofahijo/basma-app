@@ -1,3 +1,9 @@
 1- .\.venv\Scripts\activate
 
 2-  uvicorn app.main:app --reload  
+
+3-  $env:ROBOFLOW_API_KEY = "CuuXFiPJOg9d38qSabF2"
+4- inference server start
+
+pip install inference-cli
+pip install inference-sdk
