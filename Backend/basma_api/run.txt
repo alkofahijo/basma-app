@@ -7,3 +7,10 @@
 
 pip install inference-cli
 pip install inference-sdk
+
+
+1- uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+2- Windows: ipconfig → look for IPv4 Address, e.g. 192.168.1.10  -> http://192.168.1.201:8000
+
+3-  const String baseUrl = 'http://192.168.1.10:8000';

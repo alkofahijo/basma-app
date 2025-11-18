@@ -17,7 +17,7 @@ for this following data :
 
 
 1 	GRAFFITI		             كتابة على الجدران 
-2 	FADED SIGNAGE			لافتة باهتة
+2 		FADED SIGNAGE				لافتة باهتة
 3 	POTHOLES			حفر
 4 	GARBAGE				نفايات
 5 	CONSTRUCTION ROAD		طريق قيد الإنشاء
