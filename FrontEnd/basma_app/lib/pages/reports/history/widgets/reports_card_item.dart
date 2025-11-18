@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/models/report_models.dart';
 
-const String kApiBaseUrl = 'http://10.0.2.2:8000';
+const String kApiBaseUrl = 'http://192.168.1.201:8000';
 
 class GuestReportCard extends StatelessWidget {
   final ReportPublicSummary report;

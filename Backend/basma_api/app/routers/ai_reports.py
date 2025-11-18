@@ -1,5 +1,3 @@
-# app/routers/ai_reports.py
-
 from typing import Optional, Tuple, Dict, Any
 
 import httpx
@@ -9,38 +7,33 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.db import get_db  # دالة ترجع Session
+from app.db import get_db  # returns a database Session
 from app import models  # SQLAlchemy models
 from app.ml.report_classifier import ReportClassifierService
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
-# نحمّل الـ model / الخدمة عند تشغيل التطبيق (in-memory singleton)
+# Load the classification model once (singleton pattern)
 classifier_service: Optional[ReportClassifierService] = None
 
-# Threshold للثقة (لو أقل → نعتبرها "أخرى")
-CONFIDENCE_THRESHOLD = 0.6  # جرّب بين 0.5 و 0.7 حسب النتائج الفعلية
+# Confidence threshold: if below this, classify as "OTHERS"
+CONFIDENCE_THRESHOLD = 0.2
 
-# إعدادات خادم الـ Inference (Roboflow)
-INFERENCE_API_URL = "http://localhost:9001"
-INFERENCE_API_KEY = "CuuXFiPJOg9d38qSabF2"
-INFERENCE_WORKSPACE_NAME = "ahmad-i1hsy"
-INFERENCE_WORKFLOW_ID = "image-analyize"
+# Path to the local YOLOv8 model file
+MODEL_PATH = "app/models/best.pt"
+
+# ثابت لمعرّف "OTHERS" في قاعدة البيانات
+OTHERS_REPORT_TYPE_ID = 11
 
 
 def get_classifier_service() -> ReportClassifierService:
     """
-    إرجاع خدمة تصنيف البلاغات (singleton) التي تتصل بخادم Roboflow Inference
-    وتنفّذ workflow مخصّص لإرجاع نوع التشوّه البصري.
+    Returns a singleton instance of ReportClassifierService.
+    This service uses a local YOLOv8 model to classify visual pollution.
     """
     global classifier_service
     if classifier_service is None:
-        classifier_service = ReportClassifierService(
-            api_url=INFERENCE_API_URL,
-            workspace_name=INFERENCE_WORKSPACE_NAME,
-            workflow_id=INFERENCE_WORKFLOW_ID,
-            api_key=INFERENCE_API_KEY
-        )
+        classifier_service = ReportClassifierService(model_path=MODEL_PATH)
     return classifier_service
 
 
@@ -76,19 +69,19 @@ class AnalyzeImageResponse(BaseModel):
     report_type_id: int
     report_type_name_ar: str
     confidence: float
-    # هذه الحقول اختيارية لإرجاع class_id و class كما في استجابة الـ workflow
+    # Optional fields for debug info (class index and code from model)
     class_id: Optional[int] = None
     class_name: Optional[str] = Field(None, alias="class")
     suggested_title: str
     suggested_description: str
 
 
-# ---------- Helpers: Reverse Geocoding & Names ----------
+# ---------- Helpers: Reverse Geocoding & Name Cleaning ----------
 
 
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
     """
-    استعلام reverse geocoding من Nominatim (OpenStreetMap).
+    Use Nominatim (OpenStreetMap) to reverse geocode coordinates into an address.
     """
     url = "https://nominatim.openstreetmap.org/reverse"
     params = {
@@ -103,7 +96,6 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
         "User-Agent": "basma-app/1.0",
         "Accept-Language": "ar,en",
     }
-
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(url, params=params, headers=headers)
@@ -118,61 +110,43 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
 
 def _clean_admin_name(value: str) -> str:
     """
-    تنظيف بسيط لاسم المحافظة/اللواء (إزالة كلمات إنجليزية مثل Governorate, District).
-    نترك العربية كما هي حتى لا نكسر أسماء الألوية عندك في DB.
+    Clean up the governorate/district name by removing English words like
+    \"Governorate\", \"District\", etc.
+    (Keeps Arabic text as-is to match DB entries.)
     """
     if not value:
         return ""
     value = value.strip()
-
-    remove_tokens = ["Governorate", "District", "Municipality"]
-    for t in remove_tokens:
-        value = value.replace(t, "")
-    value = value.strip()
-    return value
+    for token in ["Governorate", "District", "Municipality"]:
+        value = value.replace(token, "")
+    return value.strip()
 
 
 def _clean_area_name(value: str) -> str:
     """
-    تنظيف اسم المنطقة (area_name) بإزالة الكلمات العربية العامة مثل:
-    ناحية، لواء، قضاء، بلدية، مدينة
-    مع الإبقاء على باقي الكلمات.
+    Clean up the area name by removing generic Arabic terms like \"ناحية\", \"لواء\",
+    \"قضاء\", \"بلدية\", \"مدينة\" for consistency.
     """
     if not value:
         return ""
     value = value.strip()
-
-    remove_tokens = ["ناحية", "لواء", "قضاء", "بلدية", "مدينة"]
-    for t in remove_tokens:
-        value = value.replace(t, "")
-
-    value = " ".join(value.split())
-    return value
+    for token in ["ناحية", "لواء", "قضاء", "بلدية", "مدينة"]:
+        value = value.replace(token, "")
+    # Remove extra whitespace
+    return " ".join(value.split())
 
 
 def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
     """
-    استخراج القيم من رد Nominatim:
-
-      gov_name   → من address["state"]                (مثال: إربد)
-      dist_name  → من address["state_district"]
-                    أو fallback إلى address["county"] (مثال: لواء قصبة إربد)
-      area_name  → أولوية:
-                      1) address["village"]           (مثال: كفر سوم / المزار)
-                      2) address["neighbourhood"]     (مثال: المنارة)
-                      3) address["suburb"]
-                      4) address["city"]
-                      5) address["county"]
-      loc_name   → من geo["display_name"]
+    Extract relevant address components from Nominatim response:
+      - gov_name: from address[\"state\"]
+      - dist_name: from address[\"state_district\"] or fallback to address[\"county\"]
+      - area_name: from one of (village, neighbourhood, suburb, city, county)
+      - loc_name: the full display_name of the location
     """
     address = geo.get("address", {}) or {}
-
     gov_name = address.get("state") or ""
-
-    # لو موجود state_district نستخدمه، وإلا نحاول county
     dist_name = address.get("state_district") or address.get("county") or ""
-
-    # أولوية استخراج اسم الحي/المنطقة
     area_name = (
         address.get("village")
         or address.get("neighbourhood")
@@ -181,9 +155,7 @@ def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
         or address.get("county")
         or ""
     )
-
     loc_name = geo.get("display_name") or ""
-
     return gov_name, dist_name, area_name, loc_name
 
 
@@ -192,14 +164,13 @@ def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
 
 @router.post("/resolve-location", response_model=ResolveLocationResponse)
 async def ai_resolve_location(
-    payload: ResolveLocationRequest,
-    db: Session = Depends(get_db),
+    payload: ResolveLocationRequest, db: Session = Depends(get_db)
 ):
     lat = payload.latitude
     lon = payload.longitude
 
+    # Reverse geocode the coordinates to get location names
     geo = await reverse_geocode(lat, lon)
-
     gov_raw, dist_raw, area_raw, loc_raw = extract_components(geo)
 
     gov_name = _clean_admin_name(gov_raw)
@@ -222,59 +193,50 @@ async def ai_resolve_location(
     )
 
     if not gov_name or not dist_name:
+        # If we could not determine a governorate or district, return error
         raise HTTPException(
             status_code=400,
             detail="غير قادر على تحديد المحافظة أو اللواء من الإحداثيات.",
         )
-
     if not area_name:
-        area_name = "منطقة بدون اسم"
+        area_name = "منطقة بدون اسم"  # Default name if area is undefined
 
-    # --------- Government ---------
+    # --------- Ensure Government exists in DB ---------
     try:
         gov = (
             db.query(models.Government)
             .filter(models.Government.name_ar == gov_name)
             .first()
         )
-
         if not gov:
+            # Create a new government entry if not found
             print("Creating new Government:", gov_name)
             db.execute(
                 text(
-                    """
-                    INSERT INTO governments (name_ar, name_en, is_active)
-                    VALUES (:name_ar, :name_en, 1)
-                    """
+                    "INSERT INTO governments (name_ar, name_en, is_active) "
+                    "VALUES (:name_ar, :name_en, 1)"
                 ),
-                {
-                    "name_ar": gov_name,
-                    "name_en": gov_name,
-                },
+                {"name_ar": gov_name, "name_en": gov_name},
             )
             db.commit()
-
             gov = (
                 db.query(models.Government)
                 .filter(models.Government.name_ar == gov_name)
                 .first()
             )
-
         if not gov:
             raise HTTPException(
                 status_code=500,
                 detail="فشل إنشاء أو قراءة بيانات المحافظة من قاعدة البيانات.",
             )
-
     except SQLAlchemyError as e:
         db.rollback()
         print("Error while creating Government:", e)
         raise HTTPException(
-            status_code=500,
-            detail="حدث خطأ أثناء حفظ بيانات المحافظة.",
+            status_code=500, detail="حدث خطأ أثناء حفظ بيانات المحافظة."
         ) from e
 
-    # --------- District ---------
+    # --------- Ensure District exists in DB ---------
     try:
         dist = (
             db.query(models.District)
@@ -284,24 +246,16 @@ async def ai_resolve_location(
             )
             .first()
         )
-
         if not dist:
             print("Creating new District:", dist_name, "for gov_id:", gov.id)
             db.execute(
                 text(
-                    """
-                    INSERT INTO districts (government_id, name_ar, name_en, is_active)
-                    VALUES (:government_id, :name_ar, :name_en, 1)
-                    """
+                    "INSERT INTO districts (government_id, name_ar, name_en, is_active) "
+                    "VALUES (:gid, :name_ar, :name_en, 1)"
                 ),
-                {
-                    "government_id": gov.id,
-                    "name_ar": dist_name,
-                    "name_en": dist_name,
-                },
+                {"gid": gov.id, "name_ar": dist_name, "name_en": dist_name},
             )
             db.commit()
-
             dist = (
                 db.query(models.District)
                 .filter(
@@ -310,35 +264,28 @@ async def ai_resolve_location(
                 )
                 .first()
             )
-
         if not dist:
             raise HTTPException(
                 status_code=500,
                 detail="فشل إنشاء أو قراءة بيانات اللواء/القضاء من قاعدة البيانات.",
             )
-
     except SQLAlchemyError as e:
         db.rollback()
         print("Error while creating District:", e)
         raise HTTPException(
-            status_code=500,
-            detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء.",
+            status_code=500, detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء."
         ) from e
 
-    # --------- Area ---------
+    # --------- Ensure Area exists in DB ---------
     area = (
         db.query(models.Area)
-        .filter(
-            models.Area.district_id == dist.id,
-            models.Area.name_ar == area_name,
-        )
+        .filter(models.Area.district_id == dist.id, models.Area.name_ar == area_name)
         .first()
     )
-
     if not area:
         try:
             print(
-                "Creating new Area (town/village/neighbourhood):",
+                "Creating new Area:",
                 area_name,
                 "| gov_id:",
                 gov.id,
@@ -347,25 +294,21 @@ async def ai_resolve_location(
             )
             db.execute(
                 text(
-                    """
-                    INSERT INTO areas (government_id, district_id, name_ar, name_en)
-                    VALUES (:government_id, :district_id, :name_ar, :name_en)
-                    """
+                    "INSERT INTO areas (government_id, district_id, name_ar, name_en) "
+                    "VALUES (:gid, :did, :name_ar, :name_en)"
                 ),
                 {
-                    "government_id": gov.id,
-                    "district_id": dist.id,
+                    "gid": gov.id,
+                    "did": dist.id,
                     "name_ar": area_name,
                     "name_en": area_name,
                 },
             )
             db.commit()
-
             area = (
                 db.query(models.Area)
                 .filter(
-                    models.Area.district_id == dist.id,
-                    models.Area.name_ar == area_name,
+                    models.Area.district_id == dist.id, models.Area.name_ar == area_name
                 )
                 .first()
             )
@@ -376,16 +319,14 @@ async def ai_resolve_location(
                 status_code=500,
                 detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
             ) from e
-
     if not area:
         raise HTTPException(
             status_code=500,
-            detail="فشل إنشاء أو قراءة بيانات المنطقة (Area) من قاعدة البيانات.",
+            detail="فشل إنشاء أو قراءة بيانات المنطقة من قاعدة البيانات.",
         )
 
-    # --------- Location ---------
+    # --------- Ensure Location exists in DB (optional detailed location) ---------
     location_obj: Optional[models.Location] = None
-
     if loc_name:
         try:
             location_obj = (
@@ -396,10 +337,9 @@ async def ai_resolve_location(
                 )
                 .first()
             )
-
             if not location_obj:
                 print(
-                    "Creating new Location (display_name):",
+                    "Creating new Location:",
                     loc_name[:80] + ("..." if len(loc_name) > 80 else ""),
                     "| area_id:",
                     area.id,
@@ -409,20 +349,13 @@ async def ai_resolve_location(
                 )
                 db.execute(
                     text(
-                        """
-                        INSERT INTO locations (area_id, name_ar, longitude, latitude, is_active)
-                        VALUES (:area_id, :name_ar, :lon, :lat, 1)
-                        """
+                        "INSERT INTO locations "
+                        "(area_id, name_ar, longitude, latitude, is_active) "
+                        "VALUES (:aid, :name_ar, :lon, :lat, 1)"
                     ),
-                    {
-                        "area_id": area.id,
-                        "name_ar": loc_name,
-                        "lon": lon,
-                        "lat": lat,
-                    },
+                    {"aid": area.id, "name_ar": loc_name, "lon": lon, "lat": lat},
                 )
                 db.commit()
-
                 location_obj = (
                     db.query(models.Location)
                     .filter(
@@ -431,42 +364,35 @@ async def ai_resolve_location(
                     )
                     .first()
                 )
-
         except SQLAlchemyError as e:
             db.rollback()
             print("Error while creating Location:", e)
             location_obj = None
 
-    location_response: Optional[LocationPoint] = None
+    # Prepare the response with the resolved location info
+    location_point = None
     if location_obj:
-        location_response = LocationPoint(
+        location_point = LocationPoint(
             id=location_obj.id,
             name_ar=location_obj.name_ar,
             latitude=getattr(location_obj, "latitude", None),
             longitude=getattr(location_obj, "longitude", None),
         )
-
     return ResolveLocationResponse(
         government=LocationInfo(
-            id=gov.id,
-            name_ar=gov.name_ar,
-            name_en=getattr(gov, "name_en", None),
+            id=gov.id, name_ar=gov.name_ar, name_en=getattr(gov, "name_en", None)
         ),
         district=LocationInfo(
-            id=dist.id,
-            name_ar=dist.name_ar,
-            name_en=getattr(dist, "name_en", None),
+            id=dist.id, name_ar=dist.name_ar, name_en=getattr(dist, "name_en", None)
         ),
         area=LocationInfo(
-            id=area.id,
-            name_ar=area.name_ar,
-            name_en=getattr(area, "name_en", None),
+            id=area.id, name_ar=area.name_ar, name_en=getattr(area, "name_en", None)
         ),
-        location=location_response,
+        location=location_point,
     )
 
 
-# ---------- Helper: توليد عنوان ووصف مقترح ----------
+# ---------- Helper: Generate Suggested Title/Description ----------
 
 
 def generate_text_suggestions(
@@ -477,8 +403,8 @@ def generate_text_suggestions(
     area_name_ar: str,
 ) -> Tuple[str, str]:
     """
-    توليد عناوين وأوصاف مقترحة بناءً على code (GRAFFITI, POTHOLES, ...)
-    مع استخدام الاسم العربي الجديد من جدولك.
+    Generate a suggested report title and description in Arabic based on the report type code
+    and location. Uses the Arabic name for the report type.
     """
     location_text = f"في منطقة {area_name_ar} / {dist_name_ar} / {gov_name_ar}"
 
@@ -488,84 +414,66 @@ def generate_text_suggestions(
             f"توجد كتابة على الجدران أو رسومات غرافيتي {location_text}. "
             "نرجو إزالة الكتابات وتنظيف الجدران لتحسين المظهر العام."
         )
-
     elif report_type_code == "FADED_SIGNAGE":
         title = "بلاغ عن لافتة باهتة"
         desc = (
-            f"توجد لافتة طرق أو لوحة إرشادية باهتة يصعب قراءتها {location_text}. "
-            "نرجو إعادة طلاء اللافتة أو استبدالها لتحسين وضوح المعلومات."
+            f"توجد لافتة طريق باهتة أو لوحة إرشادية متآكلة {location_text}. "
+            "نرجو إعادة طلائها أو استبدالها لتحسين وضوح المعلومات."
         )
-
     elif report_type_code == "POTHOLES":
         title = "بلاغ عن حفر في الشارع"
         desc = (
             f"توجد حفر أو تلف في سطح الطريق {location_text} "
-            "مما يعرّض المركبات والمارة للخطر. نرجو صيانة الطريق ومعالجة الحفر."
+            "مما يعرض المركبات والمارة للخطر. نرجو صيانة الطريق ومعالجة الحفر."
         )
-
     elif report_type_code == "GARBAGE":
         title = "بلاغ عن نفايات وتشوه بصري"
         desc = (
             f"يوجد تراكم للنفايات أو مخلفات متناثرة {location_text}. "
-            "نرجو إزالة النفايات وتنظيف الموقع وتحسين مظهر المنطقة."
+            "نرجو إزالة النفايات وتنظيف الموقع لتحسين المظهر العام."
         )
-
     elif report_type_code == "CONSTRUCTION_ROAD":
         title = "بلاغ عن طريق قيد الإنشاء"
         desc = (
             f"يوجد طريق قيد الإنشاء أو أعمال حفريات {location_text} "
-            "قد تسبب إزعاجاً أو خطراً للمارة والمركبات. نرجو تنظيم الموقع "
-            "وتأمينه ووضع لوحات تحذيرية واضحة."
+            "قد تسبب إزعاجاً أو خطراً للمارة. نرجو تأمين الموقع ووضع لوحات تحذيرية واضحة."
         )
-
     elif report_type_code == "BROKEN_SIGNAGE":
         title = "بلاغ عن لافتة مكسورة"
         desc = (
-            f"توجد لافتة طرق أو لوحة إرشادية مكسورة أو متضررة {location_text}. "
-            "نرجو إصلاح اللافتة أو استبدالها للحفاظ على سلامة الطريق وشكل المدينة."
+            f"توجد لافتة طريق أو لوحة إرشادية مكسورة {location_text}. "
+            "نرجو إصلاح أو استبدال اللافتة للحفاظ على سلامة الطريق."
         )
-
-    elif report_type_code == "BAD_STREETLIGHT":
-        title = "بلاغ عن إنارة طريق تالفة"
-        desc = (
-            f"توجد أعمدة إنارة أو مصابيح تالفة أو لا تعمل {location_text}. "
-            "نرجو إصلاح الإنارة لتحسين الرؤية ليلاً وتعزيز السلامة."
-        )
-
     elif report_type_code == "BAD_BILLBOARD":
         title = "بلاغ عن لوحة إعلانات تالفة"
         desc = (
             f"توجد لوحة إعلانات تالفة أو مهملة {location_text}. "
-            "نرجو صيانة اللوحة أو إزالتها إن كانت مهجورة لتحسين المنظر العام."
+            "نرجو صيانة اللوحة أو إزالتها إذا كانت غير صالحة لتحسين المنظر العام."
         )
-
     elif report_type_code == "SAND_ON_ROAD":
-        title = "بلاغ عن أتربة على الطريق"
+        title = "بلاغ عن تراكم أتربة على الطريق"
         desc = (
-            f"يوجد تراكم للأتربة أو الرمال على سطح الطريق {location_text} "
-            "مما قد يسبب انزلاق المركبات وخطر على السلامة. نرجو إزالة الأتربة وتنظيف الطريق."
+            f"يوجد تراكم للأتربة أو الرمال على الطريق {location_text} "
+            "مما قد يسبب انزلاق المركبات. نرجو إزالة الأتربة وتنظيف الطريق."
         )
-
     elif report_type_code == "CLUTTER_SIDEWALK":
         title = "بلاغ عن رصيف غير صالح للمشي"
         desc = (
-            f"يوجد رصيف غير صالح للمشي أو توجد عوائق ومخلفات على الرصيف {location_text} "
-            "مما يعيق حركة المشاة، خاصة كبار السن وذوي الإعاقة. نرجو إزالة العوائق وتنظيم الرصيف."
+            f"يوجد رصيف مليء بالعوائق أو المخلفات {location_text} "
+            "مما يعيق حركة المشاة. نرجو تنظيف الرصيف وإزالة العوائق."
         )
-
     elif report_type_code == "UNKEPT_FACADE":
-        title = "بلاغ عن واجهة مبنى سيئة المظهر"
+        title = "بلاغ عن واجهة مبنى مشوهة"
         desc = (
-            f"توجد واجهة مبنى سيئة المظهر أو مهملة أو مليئة بالتشوهات البصرية {location_text}. "
-            "نرجو صيانة الواجهة وتحسين مظهرها بما يليق بالمنطقة."
+            f"توجد واجهة مبنى سيئة المظهر أو متضررة {location_text}. "
+            "نرجو تجديد الواجهة لتحسين المظهر الجمالي للمنطقة."
         )
-
     else:
-        # كود غير متوقع أو "OTHERS" → نص عام
+        # Default case for unknown or "OTHERS"
         title = "بلاغ عن تشوه بصري"
         desc = (
-            f"يوجد تشوه بصري أو مشكلة في المظهر العام {location_text}. "
-            "نرجو التحقق من البلاغ ومعالجة المشكلة حسب نوعها."
+            f"هناك تشوه بصري أو مشكلة في المظهر العام {location_text}. "
+            "نرجو التحقق من المشكلة ومعالجتها من قبل الجهة المختصة."
         )
 
     return title, desc
@@ -584,27 +492,23 @@ async def ai_analyze_image(
     clf: ReportClassifierService = Depends(get_classifier_service),
 ):
     """
-    يستقبل صورة من المستخدم، يرسلها إلى Roboflow Inference workflow لتحليلها،
-    ثم يرجّع:
-      - نوع التشوه (report_type_id + الاسم بالعربي)
-      - درجة الثقة
-      - عنوان ووصف مقترحين حسب نوع البلاغ والموقع (إن وجد).
+    يقبل صورة من المستخدم ويستخدم نموذج YOLOv8 لتحليلها،
+    ويرجع نوع التشوه البصري المتوقع مع درجة الثقة وعنوان ووصف مقترحين.
     """
     image_bytes = await file.read()
     if not image_bytes:
         raise HTTPException(status_code=400, detail="ملف الصورة فارغ.")
 
-    # ML prediction عبر خادم الـ Inference
+    # Run the classifier on the image
     try:
         report_type_id, confidence, info = clf.predict(image_bytes)
     except Exception as e:
         print("AI analyze-image error:", e)
         raise HTTPException(
-            status_code=500,
-            detail="حدث خطأ أثناء تحليل الصورة.",
+            status_code=500, detail="حدث خطأ أثناء تحليل الصورة."
         ) from e
 
-    # أسماء عربية للموقع (إن تم تمرير IDs)
+    # Retrieve location names (Arabic) if IDs are provided
     gov = db.query(models.Government).get(gov_id) if gov_id else None
     dist = db.query(models.District).get(dist_id) if dist_id else None
     area = db.query(models.Area).get(area_id) if area_id else None
@@ -613,24 +517,24 @@ async def ai_analyze_image(
     dist_name_ar = dist.name_ar if dist else "غير محدد"
     area_name_ar = area.name_ar if area else "غير محدد"
 
-    # القيم الأساسية من الـ workflow
+    # Extract classification info
     report_type_name_ar = info.get("name_ar", "أخرى")
-    report_type_code = info.get("code", "UNKNOWN")
+    report_type_code = info.get("code", "OTHERS")
     model_class_id = info.get("model_class_id")
 
-    # -------- Threshold على الثقة --------
-    # لو الثقة أقل من CONFIDENCE_THRESHOLD → نعتبرها "OTHERS" (id = 12 في DB)
+    # If confidence is below threshold, override to "OTHERS"
     if confidence < CONFIDENCE_THRESHOLD:
         print(
-            f"[AI] Low confidence ({confidence:.3f}) → mapping to OTHERS (id=12). "
+            f"[AI] Low confidence ({confidence:.3f}) → mapping to OTHERS (id={OTHERS_REPORT_TYPE_ID}). "
             f"Original prediction: {report_type_code}"
         )
-        report_type_id = 12  # OTHERS في جدول report_types
+        report_type_id = OTHERS_REPORT_TYPE_ID
         report_type_name_ar = "أخرى"
         report_type_code = "OTHERS"
-        model_class_id = 12
+        model_class_id = OTHERS_REPORT_TYPE_ID
 
-    suggested_title, suggested_desc = generate_text_suggestions(
+    # Generate suggested report title and description based on type and location
+    suggested_title, suggested_description = generate_text_suggestions(
         report_type_code,
         report_type_name_ar,
         gov_name_ar,
@@ -645,22 +549,19 @@ async def ai_analyze_image(
         class_id=model_class_id,
         class_name=report_type_code,
         suggested_title=suggested_title,
-        suggested_description=suggested_desc,
+        suggested_description=suggested_description,
     )
 
 
 @router.post("/debug-reverse-geo")
-async def debug_reverse_geo(
-    payload: ResolveLocationRequest,
-):
+async def debug_reverse_geo(payload: ResolveLocationRequest):
     """
-    Endpoint ديبَغ: يرجّع الرد الخام من Nominatim كما هو.
-    استخدمه فقط أثناء التطوير.
+    Debug endpoint: returns raw reverse geocoding result (for development use only).
     """
     geo = await reverse_geocode(payload.latitude, payload.longitude)
+    print("=== RAW GEO ===")
     import json
 
-    print("=== RAW GEO ===")
     print(json.dumps(geo, ensure_ascii=False, indent=2))
     print("=== END RAW GEO ===")
     return geo
