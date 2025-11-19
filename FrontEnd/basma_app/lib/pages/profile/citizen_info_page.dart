@@ -122,7 +122,12 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              color: const Color.fromARGB(
+                255,
+                97,
+                102,
+                97,
+              ).withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -178,7 +183,7 @@ class _CitizenInfoPageState extends State<CitizenInfoPage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 22),

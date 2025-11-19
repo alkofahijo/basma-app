@@ -232,7 +232,7 @@ class _GuestFiltersCardState extends State<GuestFiltersCard> {
                 height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: kPrimaryColor.withOpacity(0.08),
+                  color: kPrimaryColor.withValues(alpha: 0.08),
                 ),
                 child: Icon(Icons.filter_list, color: kPrimaryColor, size: 20),
               ),

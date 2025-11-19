@@ -2,13 +2,12 @@
 
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/loading_center.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:basma_app/services/api_service.dart';
-
-// use central primary color
 
 class ViewReportLocationPage extends StatefulWidget {
   final double lat;
@@ -40,37 +39,29 @@ class _ViewReportLocationPageState extends State<ViewReportLocationPage> {
   }
 
   Future<void> _fetchDetails() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
     try {
       final res = await ApiService.resolveLocationByLatLng(
         widget.lat,
         widget.lng,
       );
+
       if (!mounted) return;
+
       setState(() {
         _resolved = res;
+        _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'تعذّر جلب تفاصيل الموقع';
-      });
-    } finally {
-      if (!mounted) return;
+
       setState(() {
         _loading = false;
+        _error = "تعذّر جلب بيانات الموقع";
       });
     }
   }
 
-  Future<void> _openInMaps(
-    BuildContext context, {
-    required bool withDirections,
-  }) async {
+  Future<void> _openInMaps({required bool withDirections}) async {
     final dest = '${widget.lat},${widget.lng}';
 
     final Uri uri = withDirections
@@ -89,9 +80,10 @@ class _ViewReportLocationPageState extends State<ViewReportLocationPage> {
         await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء فتح الخرائط: $e')));
+      ).showSnackBar(SnackBar(content: Text('حدث خطأ عند فتح الخرائط: $e')));
     }
   }
 
@@ -124,11 +116,6 @@ class _ViewReportLocationPageState extends State<ViewReportLocationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final locTitle =
-        (widget.locationName != null && widget.locationName!.isNotEmpty)
-        ? widget.locationName!
-        : 'موقع البلاغ';
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -149,232 +136,141 @@ class _ViewReportLocationPageState extends State<ViewReportLocationPage> {
         centerTitle: true,
         elevation: 0,
       ),
-      body: Stack(
-        children: [
-          // ====== الخريطة الأساسية ======
-          Positioned.fill(
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: _point,
-                initialZoom: 15.5,
-                maxZoom: 18,
-                minZoom: 3,
+      body: _loading
+          ? LoadingCenter()
+          : _error != null
+          ? Center(
+              child: Text(
+                _error!,
+                style: const TextStyle(fontSize: 16, color: Colors.red),
               ),
+            )
+          : Stack(
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.basma_app',
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _point,
-                      width: 60,
-                      height: 60,
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.location_on,
-                        size: 50,
-                        color: kPrimaryColor,
-                      ),
+                // ================== MAP ==================
+                Positioned.fill(
+                  child: FlutterMap(
+                    options: MapOptions(
+                      initialCenter: _point,
+                      initialZoom: 15.5,
                     ),
-                  ],
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.basma_app',
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _point,
+                            width: 60,
+                            height: 60,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.location_on,
+                              size: 50,
+                              color: kPrimaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ================== INFO CARD ==================
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SafeArea(
+                    minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.96),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: _buildResolvedContent(),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+    );
+  }
 
-          // ====== كارد المعلومات + الأزرار أسفل الشاشة ======
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.18),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+  Widget _buildResolvedContent() {
+    // now we are SAFE: _resolved is NOT NULL here
+    final r = _resolved!;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 42,
+              width: 42,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color.fromARGB(255, 0, 150, 10), kPrimaryColor],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          height: 42,
-                          width: 42,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color.fromARGB(255, 0, 150, 10),
-                                kPrimaryColor,
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.place, color: Colors.white),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                locTitle,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 6),
-                              if (_loading)
-                                const Text('جاري جلب تفاصيل الموقع...')
-                              else if (_error != null)
-                                Text(
-                                  _error!,
-                                  style: TextStyle(color: Colors.red.shade700),
-                                )
-                              else if (_resolved != null) ...[
-                                Text(
-                                  '${_resolved!.governmentNameAr} • ${_resolved!.districtNameAr} • ${_resolved!.areaNameAr}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ] else
-                                Text(
-                                  "خط العرض: ${widget.lat.toStringAsFixed(6)}، خط الطول: ${widget.lng.toStringAsFixed(6)}",
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    if (_resolved != null) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: kPrimaryColor.withOpacity(0.05),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "تفاصيل الموقع",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: kPrimaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            _buildDetailRow(
-                              "المحافظة",
-                              _resolved!.governmentNameAr,
-                            ),
-                            _buildDetailRow(
-                              "اللواء",
-                              _resolved!.districtNameAr,
-                            ),
-                            _buildDetailRow(
-                              "المنطقة / الحي",
-                              _resolved!.areaNameAr,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () =>
-                                _openInMaps(context, withDirections: false),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              side: const BorderSide(
-                                color: kPrimaryColor,
-                                width: 1.5,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.map_outlined,
-                              color: kPrimaryColor,
-                            ),
-                            label: const Text(
-                              "فتح الموقع في الخرائط",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: kPrimaryColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () =>
-                                _openInMaps(context, withDirections: true),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              backgroundColor: kPrimaryColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              elevation: 3,
-                            ),
-                            icon: const Icon(
-                              Icons.directions_car_outlined,
-                              color: Colors.white,
-                            ),
-                            label: const Text(
-                              "عرض الطريق إلى الموقع",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              ),
+              child: const Icon(Icons.place, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "تفاصيل الموقع",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: kPrimaryColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _buildDetailRow("المحافظة", r.governmentNameAr),
+                _buildDetailRow("اللواء", r.districtNameAr),
+                _buildDetailRow("المنطقة / الحي", r.areaNameAr),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _openInMaps(withDirections: false),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.map_outlined),
+                label: const Text(
+                  "فتح الموقع في الخرائط",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }

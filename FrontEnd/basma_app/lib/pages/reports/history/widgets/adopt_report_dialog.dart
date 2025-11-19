@@ -117,7 +117,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.8)],
+                  colors: [kPrimaryColor, kPrimaryColor.withValues(alpha: 0.8)],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -149,7 +149,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: kPrimaryColor.withOpacity(0.05),
+                color: kPrimaryColor.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -173,7 +173,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.06),
+                  color: Colors.red.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(

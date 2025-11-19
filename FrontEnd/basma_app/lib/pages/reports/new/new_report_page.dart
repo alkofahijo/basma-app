@@ -138,7 +138,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
       }
 
       final Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       _currentLocation = LatLng(position.latitude, position.longitude);
@@ -311,7 +313,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
+                              color: Colors.black.withValues(alpha: 0.03),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -351,7 +353,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
+                              color: Colors.black.withValues(alpha: 0.03),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -494,7 +496,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
       if (!mounted) return;
 
-      Get.off(() => SuccessPage(reportCode: createdReport.reportCode));
+      Get.offAll(() => SuccessPage(reportCode: createdReport.reportCode));
     } catch (e) {
       _safeSetState(() {
         _generalErrorMessage = "فشل إرسال البلاغ: $e";
@@ -591,7 +593,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.7)],
+                  colors: [kPrimaryColor, kPrimaryColor.withValues(alpha: 0.7)],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -633,9 +635,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.06),
+        color: Colors.red.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.4)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -795,9 +797,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 ),
                 margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.06),
+                  color: Colors.red.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.withOpacity(0.4)),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,7 +829,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: kPrimaryColor.withOpacity(0.6),
+                    color: kPrimaryColor.withValues(alpha: 0.6),
                     width: 1.4,
                   ),
                   color: Colors.white,
@@ -879,7 +881,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.25),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.25,
+                                      ),
                                       blurRadius: 4,
                                     ),
                                   ],
@@ -916,7 +920,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.06),
+                  color: Colors.green.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -997,7 +1001,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -1140,7 +1144,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),

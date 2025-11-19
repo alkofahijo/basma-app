@@ -1,5 +1,5 @@
 import 'package:basma_app/pages/on_start/home_page.dart';
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -13,7 +13,7 @@ class SuccessPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-      appBar: const BasmaAppBar(showBack: true),
+
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -31,7 +31,7 @@ class SuccessPage extends StatelessWidget {
               const Text(
                 'تم إرسال البلاغ بنجاح',
                 style: TextStyle(
-                  color: Colors.green,
+                  color: kPrimaryColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -82,7 +82,7 @@ class SuccessPage extends StatelessWidget {
                     Text(
                       'الحالة: قيد المراجعة',
                       style: TextStyle(
-                        color: Colors.green,
+                        color: kPrimaryColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
@@ -103,13 +103,13 @@ class SuccessPage extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: kPrimaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   onPressed: () {
-                    Get.offAll(() => const HomePage());
+                    Get.off(() => const HomePage());
                   },
                   child: const Text(
                     "العودة إلى الشاشة الرئيسية",

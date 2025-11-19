@@ -285,7 +285,12 @@ class _ProfilePageState extends State<ProfilePage> {
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              color: const Color.fromARGB(
+                255,
+                97,
+                102,
+                97,
+              ).withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -458,7 +463,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       mobileNumber: mobile,
                     );
                     if (!mounted) return;
-                    Navigator.of(ctx).pop(true);
+                    Navigator.of(context).pop(true);
                   } catch (_) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -542,7 +547,12 @@ class _ProfilePageState extends State<ProfilePage> {
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              color: const Color.fromARGB(
+                255,
+                97,
+                102,
+                97,
+              ).withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
             child: ClipRRect(
@@ -741,7 +751,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           : joinFormCtrl.text.trim(),
                     );
                     if (!mounted) return;
-                    Navigator.of(ctx).pop(true);
+                    Navigator.of(context).pop(true);
                   } catch (_) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -907,7 +917,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             try {
                               await ApiService.changePassword(p1);
                               if (!mounted) return;
-                              Navigator.of(ctx).pop(true);
+                              Navigator.of(context).pop(true);
                             } catch (_) {
                               setStateDialog(() {
                                 saving = false;

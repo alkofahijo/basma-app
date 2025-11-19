@@ -341,7 +341,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black12.withOpacity(0.06),
+                    color: Colors.black12.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -356,9 +356,9 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
                 },
                 style: const TextStyle(fontSize: 13, height: 1.3),
                 decoration: InputDecoration(
-                  hintText: 'ابحث في البلاغات (العنوان، النوع، الموقع...)',
+                  hintText: 'ابحث عن بلاغ معين ...',
                   hintStyle: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 15.5,
                     color: Colors.grey.shade600,
                   ),
                   prefixIcon: const Icon(
@@ -397,7 +397,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide: BorderSide(
-                      color: kPrimaryColor.withOpacity(0.8),
+                      color: kPrimaryColor.withValues(alpha: 0.8),
                       width: 1.3,
                     ),
                   ),
@@ -417,7 +417,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
                 border: Border.all(color: Colors.grey.shade300),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black12.withOpacity(0.05),
+                    color: Colors.black12.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

@@ -1,17 +1,12 @@
 // lib/pages/report/report_details_page.dart
 
-import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:get/get.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/pages/auth/Login/login_page.dart';
 import 'package:basma_app/pages/profile/citizen_info_page.dart';
 import 'package:basma_app/pages/profile/initiative_info_page.dart';
 import 'package:basma_app/pages/reports/history/details/complete_report_page.dart';
 import 'package:basma_app/pages/reports/history/widgets/adopt_report_dialog.dart';
+import 'package:basma_app/pages/reports/history/widgets/view_location_page.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
@@ -19,11 +14,15 @@ import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:get/get.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/report_image_section.dart';
-import '../widgets/view_location_page.dart';
 
-/// لون خلفية الصفحة العامة
+/// لون الخلفية العام للصفحة
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 /// تنسيق بسيط لتاريخ/وقت البلاغ
@@ -218,199 +217,219 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadReportDetails,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildHeaderCard(report),
-          const SizedBox(height: 16),
-          _buildBasicInfoSection(report),
-          const SizedBox(height: 16),
-          _buildImagesSection(report),
-          const SizedBox(height: 16),
-          _buildLocationSection(report),
-          const SizedBox(height: 16),
-          _buildReportingSection(report),
-          if (report.statusId == 3 || report.statusId == 4) ...[
-            const SizedBox(height: 16),
-            _buildSolvedBySection(report),
-          ],
-          const SizedBox(height: 24),
-          _buildActionSection(report),
-          const SizedBox(height: 24),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isTablet = constraints.maxWidth > 700;
+
+          return ListView(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 32 : 16,
+              vertical: 16,
+            ),
+            children: [
+              _buildHeaderCard(report),
+              const SizedBox(height: 16),
+              _buildBasicInfoSection(report),
+              const SizedBox(height: 16),
+              _buildImagesSection(report),
+              const SizedBox(height: 16),
+              _buildLocationSection(report),
+              const SizedBox(height: 16),
+              _buildReportingSection(report),
+              if (report.statusId == 3 || report.statusId == 4) ...[
+                const SizedBox(height: 16),
+                _buildSolvedBySection(report),
+              ],
+              const SizedBox(height: 24),
+              _buildActionSection(report),
+              const SizedBox(height: 24),
+            ],
+          );
+        },
       ),
     );
   }
 
-  // ======================= Header / Status =======================
+  // ======================= NEW MODERN RESPONSIVE HEADER =======================
 
   Widget _buildHeaderCard(ReportDetail report) {
-    return Card(
-      color: Colors.white,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // أيقونة البلاغ
-            Container(
-              height: 50,
-              width: 50,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.8)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.report_gmailerrorred_outlined,
-                color: Colors.white,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 380;
 
-            /// الاسم + التاريخ
-            Expanded(
-              child: Column(
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [kPrimaryColor, kPrimaryColor.withValues(alpha: 0.85)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TOP ROW: Icon + Title + Status
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    report.nameAr,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 15,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatDateTime(report.reportedAt),
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: Colors.grey.shade700,
+                  // Icon bubble
+                  Container(
+                    height: isSmall ? 48 : 56,
+                    width: isSmall ? 48 : 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.report_problem_outlined,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.confirmation_number_outlined,
-                        size: 15,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          "رقم البلاغ: ${report.reportCode}",
+                  const SizedBox(width: 14),
+
+                  // Title + meta
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          report.nameAr,
                           style: TextStyle(
-                            fontSize: 12.5,
-                            color: Colors.grey.shade700,
+                            fontSize: isSmall ? 15 : 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            height: 1.3,
                           ),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              size: 14,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatDateTime(report.reportedAt),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.numbers,
+                              size: 14,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                "رقم البلاغ: ${report.reportCode}",
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+
+                  const SizedBox(width: 8),
+                  _buildStatusChip(report),
                 ],
               ),
-            ),
-
-            const SizedBox(width: 8),
-
-            /// شارة الحالة (مرنة عشان ما تسبب Overflow)
-            Flexible(
-              fit: FlexFit.loose,
-              child: Align(
-                alignment: AlignmentDirectional.topEnd,
-                child: _buildStatusChip(report),
-              ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildStatusChip(ReportDetail report) {
     final style = _mapStatusStyle(report.statusId, report.statusNameAr);
 
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Container(
-        constraints: const BoxConstraints(
-          maxWidth: 140, // حد أقصى لعرض الشارة عشان ما تكسر الـ Row
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: style.backgroundColor,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.circle, size: 8, color: style.textColor),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                style.label,
-                style: TextStyle(
-                  color: style.textColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: style.backgroundColor.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 10, color: style.textColor),
+          const SizedBox(width: 5),
+          Text(
+            style.label,
+            style: TextStyle(
+              color: style.textColor,
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   _StatusStyle _mapStatusStyle(int statusId, String? statusNameAr) {
     switch (statusId) {
-      case 1: // مثلاً: قيد المراجعة
+      case 1:
         return _StatusStyle(
           backgroundColor: Colors.grey.shade200,
           textColor: Colors.grey.shade800,
           label: statusNameAr ?? "قيد المراجعة",
         );
-      case 2: // جديد / متاح للتبنّي
+      case 2:
         return _StatusStyle(
           backgroundColor: const Color(0xFFE3F2FD),
           textColor: const Color(0xFF0D47A1),
           label: statusNameAr ?? "بلاغ جديد",
         );
-      case 3: // قيد التنفيذ
+      case 3:
         return _StatusStyle(
           backgroundColor: Colors.orange.shade50,
           textColor: Colors.orange.shade700,
           label: statusNameAr ?? "قيد التنفيذ",
         );
-      case 4: // مكتمل
+      case 4:
         return _StatusStyle(
           backgroundColor: Colors.green.shade50,
           textColor: Colors.green.shade700,
@@ -436,17 +455,24 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     return Card(
       elevation: 3,
       color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // العنوان + الأيقونة
             Row(
               children: [
-                Icon(icon, size: 18, color: kPrimaryColor),
-                const SizedBox(width: 6),
+                Container(
+                  height: 28,
+                  width: 28,
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 16, color: kPrimaryColor),
+                ),
+                const SizedBox(width: 8),
                 Text(
                   title,
                   style: const TextStyle(
@@ -477,7 +503,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
   // ======================= Sections =======================
 
-  /// قسم معلومات البلاغ الأساسية
   Widget _buildBasicInfoSection(ReportDetail report) {
     return _buildSectionCard(
       icon: Icons.info_outline,
@@ -495,7 +520,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     );
   }
 
-  /// قسم صور البلاغ (قبل/بعد)
   Widget _buildImagesSection(ReportDetail report) {
     return _buildSectionCard(
       icon: Icons.photo_library_outlined,
@@ -510,7 +534,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     );
   }
 
-  /// قسم الموقع الجغرافي + خريطة مصغرة + زر عرض كامل
   Widget _buildLocationSection(ReportDetail report) {
     final hasCoordinates =
         report.locationLatitude != null && report.locationLongitude != null;
@@ -523,133 +546,27 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
-            final bool isNarrow = constraints.maxWidth < 360;
+            final isNarrow = constraints.maxWidth < 360;
 
-            // في الشاشات الضيقة: الخريطة فوق والنص تحت لتجنّب الـ overflow
             if (isNarrow) {
+              // خريطة فوق + تفاصيل تحت للشاشات الصغيرة
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: SizedBox(
-                      height: 160,
-                      child: Container(
-                        color: Colors.grey.shade200,
-                        child: hasCoordinates
-                            ? FlutterMap(
-                                options: MapOptions(
-                                  initialCenter: LatLng(
-                                    report.locationLatitude!,
-                                    report.locationLongitude!,
-                                  ),
-                                  initialZoom: 15,
-                                ),
-                                children: [
-                                  TileLayer(
-                                    urlTemplate:
-                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName:
-                                        'com.example.basma_app',
-                                  ),
-                                  MarkerLayer(
-                                    markers: [
-                                      Marker(
-                                        point: LatLng(
-                                          report.locationLatitude!,
-                                          report.locationLongitude!,
-                                        ),
-                                        width: 50,
-                                        height: 50,
-                                        child: const Icon(
-                                          Icons.location_on,
-                                          size: 40,
-                                          color: Color(0xFF008000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              )
-                            : const Center(
-                                child: Text(
-                                  "لا توجد إحداثيات",
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
+                  _buildMiniMap(report, hasCoordinates, height: 160),
                   const SizedBox(height: 12),
                   _buildLocationTextAndButton(report, hasCoordinates),
                 ],
               );
             }
 
-            // في الشاشات الأوسع: خريطة + نص جنب بعض بشكل مرن بدون overflow
+            // Row للشاشات الأوسع
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Flexible(
                   flex: 3,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: SizedBox(
-                      height: 150,
-                      child: Container(
-                        color: Colors.grey.shade200,
-                        child: hasCoordinates
-                            ? FlutterMap(
-                                options: MapOptions(
-                                  initialCenter: LatLng(
-                                    report.locationLatitude!,
-                                    report.locationLongitude!,
-                                  ),
-                                  initialZoom: 15,
-                                ),
-                                children: [
-                                  TileLayer(
-                                    urlTemplate:
-                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName:
-                                        'com.example.basma_app',
-                                  ),
-                                  MarkerLayer(
-                                    markers: [
-                                      Marker(
-                                        point: LatLng(
-                                          report.locationLatitude!,
-                                          report.locationLongitude!,
-                                        ),
-                                        width: 50,
-                                        height: 50,
-                                        child: const Icon(
-                                          Icons.location_on,
-                                          size: 40,
-                                          color: Color(0xFF008000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              )
-                            : const Center(
-                                child: Text(
-                                  "لا توجد إحداثيات",
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
+                  child: _buildMiniMap(report, hasCoordinates, height: 150),
                 ),
                 const SizedBox(width: 12),
                 Flexible(
@@ -664,7 +581,65 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     );
   }
 
-  /// جزء النص + زر "عرض على الخريطة" لقسم الموقع (مُعاد استخدامه في الـ Row والـ Column)
+  Widget _buildMiniMap(
+    ReportDetail report,
+    bool hasCoordinates, {
+    required double height,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: height,
+        child: Container(
+          color: Colors.grey.shade200,
+          child: hasCoordinates
+              ? FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(
+                      report.locationLatitude!,
+                      report.locationLongitude!,
+                    ),
+                    initialZoom: 15,
+                    maxZoom: 18,
+                    minZoom: 3,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.basma_app',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(
+                            report.locationLatitude!,
+                            report.locationLongitude!,
+                          ),
+                          width: 50,
+                          height: 50,
+                          child: const Icon(
+                            Icons.location_on,
+                            size: 40,
+                            color: Color(0xFF008000),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : const Center(
+                  child: Text(
+                    "لا توجد إحداثيات",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLocationTextAndButton(ReportDetail report, bool hasCoordinates) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,16 +655,11 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
         ),
         const SizedBox(height: 6),
         _LocationInfoRow(label: "المنطقة:", value: report.areaNameAr ?? "---"),
-        const SizedBox(height: 6),
-        _LocationInfoRow(
-          label: "اسم الموقع:",
-          value: report.locationNameAr ?? "---",
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Align(
-          alignment: Alignment.centerRight,
+          alignment: Alignment.centerLeft,
           child: SizedBox(
-            width: 180,
+            width: 160,
             child: ElevatedButton(
               onPressed: hasCoordinates
                   ? () {
@@ -730,7 +700,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     );
   }
 
-  /// قسم بيانات التبليغ (من ومتى)
   Widget _buildReportingSection(ReportDetail report) {
     return _buildSectionCard(
       icon: Icons.person_outline,
@@ -749,16 +718,13 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     );
   }
 
-  /// قسم الجهة المسؤولة عن الحل
   Widget _buildSolvedBySection(ReportDetail report) {
-    final String adopterName =
-        report.adoptedByName ?? "بيانات الجهة غير متوفرة";
     final bool hasAdopter =
         report.adoptedById != null && report.adoptedByType != null;
 
-    Widget nameWidget = Text(
-      adopterName,
-      style: const TextStyle(
+    Widget nameWidget = const Text(
+      "تفاصيل الجهة ",
+      style: TextStyle(
         fontSize: 14.5,
         color: Colors.blue,
         decoration: TextDecoration.underline,
@@ -787,7 +753,9 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
         if (report.adoptedByType != null)
           InfoRow(
             label: "نوع الجهة",
-            value: report.adoptedByType == 1 ? "مواطن" : "مبادرة تطوعية",
+            value: report.adoptedByType == 1
+                ? "مواطن"
+                : "مبادرة تطوعية أو بلدية",
           ),
         const SizedBox(height: 6),
         nameWidget,
@@ -799,10 +767,8 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   // ======================= Actions / Call To Action =======================
 
   Widget _buildActionSection(ReportDetail report) {
-    // ضيف غير مسجّل
     if (!_isAuthenticated) {
       if (report.statusId != 2) {
-        // إن لم يكن البلاغ متاحًا للتبنّي، لا نعرض CTA
         return const SizedBox.shrink();
       }
 
@@ -848,10 +814,9 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       );
     }
 
-    // مستخدم مسجّل
     switch (report.statusId) {
       case 2:
-        // بلاغ جديد → متاح للتبنّي
+        // متاح للتبنّي
         return SizedBox(
           width: double.infinity,
           height: 52,
@@ -885,7 +850,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
         );
 
       case 3:
-        // قيد التنفيذ → فقط الجهة المتبنية يمكنها إتمامه
+        // قيد التنفيذ
         final bool canComplete = _canCurrentUserComplete(report);
 
         if (canComplete) {
@@ -940,7 +905,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
         );
 
       case 4:
-        // مكتمل → لا حاجة لأي CTA
+        // مكتمل
         return const SizedBox.shrink();
 
       default:

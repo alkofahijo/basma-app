@@ -37,7 +37,7 @@ class HomeScreenButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -54,7 +54,7 @@ class HomeScreenButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -86,7 +86,7 @@ class HomeScreenButton extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: size.width * 0.035,
-                      color: Colors.black.withOpacity(0.75),
+                      color: Colors.black.withValues(alpha: 0.75),
                       height: 1.4,
                     ),
                     maxLines: 2,
@@ -100,7 +100,7 @@ class HomeScreenButton extends StatelessWidget {
 
             Icon(
               Icons.chevron_right_rounded,
-              color: Colors.black.withOpacity(0.45),
+              color: Colors.black.withValues(alpha: 0.45),
               size: size.width * 0.075,
             ),
           ],

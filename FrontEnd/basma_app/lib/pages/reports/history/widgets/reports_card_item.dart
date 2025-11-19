@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/models/report_models.dart';
-
-const String kApiBaseUrl = 'http://192.168.1.201:8000';
+import 'package:basma_app/config/base_url.dart';
 
 class GuestReportCard extends StatelessWidget {
   final ReportPublicSummary report;
@@ -25,24 +24,47 @@ class GuestReportCard extends StatelessWidget {
   String? _resolveImageUrl(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     if (raw.startsWith('http')) return raw;
-    if (raw.startsWith('/')) return '$kApiBaseUrl$raw';
-    return '$kApiBaseUrl/$raw';
+    if (raw.startsWith('/')) return '$kBaseUrl$raw';
+    return '$kBaseUrl/$raw';
   }
 
   IconData _iconForCategory(String? code) {
     switch (code) {
-      case 'cleanliness':
-        return Icons.cleaning_services_outlined;
-      case 'potholes':
-        return Icons.warning_amber_outlined;
-      case 'sidewalks':
-        return Icons.directions_walk;
-      case 'walls':
-        return Icons.crop_landscape;
-      case 'planting':
-        return Icons.local_florist;
-      default:
+      case 'GRAFFITI':
+        return Icons.format_paint; // رسم / كتابة على الجدران
+
+      case 'FADED_SIGNAGE':
+        return Icons.signpost_outlined; // لافتة باهتة
+
+      case 'POTHOLES':
+        return Icons.warning_amber_outlined; // حفر
+
+      case 'GARBAGE':
+        return Icons.delete_outline; // نفايات
+
+      case 'CONSTRUCTION_ROAD':
+        return Icons.engineering; // طريق قيد الإنشاء
+
+      case 'BROKEN_SIGNAGE':
+        return Icons.report_gmailerrorred_outlined; // لافتة مكسورة
+
+      case 'BAD_BILLBOARD':
+        return Icons.broken_image_outlined; // لوحة إعلانات تالفة
+
+      case 'SAND_ON_ROAD':
+        return Icons.landscape_outlined; // أتربة على الطريق
+
+      case 'CLUTTER_SIDEWALK':
+        return Icons.directions_walk; // رصيف غير صالح للمشي
+
+      case 'UNKEPT_FACADE':
+        return Icons.apartment_outlined; // واجهة مبنى سيئة المظهر
+
+      case 'OTHERS':
         return Icons.category_outlined;
+
+      default:
+        return Icons.help_outline; // Unknown
     }
   }
 
@@ -79,7 +101,7 @@ class GuestReportCard extends StatelessWidget {
                           ? Image.network(
                               imageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
+                              errorBuilder: (_, _, _) =>
                                   const Icon(Icons.image_not_supported),
                             )
                           : const Icon(
@@ -106,7 +128,7 @@ class GuestReportCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: statusColor(
                                 report.statusId,
-                              ).withOpacity(0.10),
+                              ).withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
