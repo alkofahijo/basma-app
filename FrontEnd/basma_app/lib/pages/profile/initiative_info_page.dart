@@ -127,7 +127,12 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 97, 102, 97).withOpacity(0.06),
+              color: const Color.fromARGB(
+                255,
+                97,
+                102,
+                97,
+              ).withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
             child: ClipRRect(
@@ -183,7 +188,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 22),
@@ -280,7 +285,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: kPrimaryColor.withOpacity(0.06),
+                color: kPrimaryColor.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(

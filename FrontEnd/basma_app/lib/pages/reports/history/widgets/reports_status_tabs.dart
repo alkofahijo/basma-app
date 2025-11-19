@@ -63,7 +63,7 @@ class GuestStatusTabs extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -124,7 +124,7 @@ class _StatusTabButton extends StatelessWidget {
                     ? LinearGradient(
                         colors: [
                           kPrimaryColor,
-                          kPrimaryColor.withOpacity(0.85),
+                          kPrimaryColor.withValues(alpha: 0.85),
                         ],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,

@@ -118,7 +118,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
+                              color: Colors.black.withValues(alpha: 0.03),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -158,7 +158,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
+                              color: Colors.black.withValues(alpha: 0.03),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -252,7 +252,10 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [kPrimaryColor, kPrimaryColor.withOpacity(0.8)],
+                      colors: [
+                        kPrimaryColor,
+                        kPrimaryColor.withValues(alpha: 0.8),
+                      ],
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
                     ),
@@ -286,7 +289,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: kPrimaryColor.withOpacity(0.05),
+                    color: kPrimaryColor.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -350,7 +353,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
   // ========= UI Helpers =========
 
   Border _buildUploadBorder() {
-    return Border.all(color: kPrimaryColor.withOpacity(0.5), width: 1.4);
+    return Border.all(color: kPrimaryColor.withValues(alpha: 0.5), width: 1.4);
   }
 
   Widget _buildUploadBox() {
@@ -408,7 +411,7 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 4,
                             ),
                           ],

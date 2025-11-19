@@ -22,7 +22,7 @@ class ZoomableImage extends StatelessWidget {
         child: Image.network(
           imageUrl,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
+          errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 40),
         ),
       ),
     );

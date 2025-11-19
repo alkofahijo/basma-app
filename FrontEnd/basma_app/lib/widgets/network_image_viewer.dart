@@ -15,7 +15,7 @@ class NetworkImageViewer extends StatelessWidget {
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           height: height,
           color: Colors.grey.shade300,
           alignment: Alignment.center,

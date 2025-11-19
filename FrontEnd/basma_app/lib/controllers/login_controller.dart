@@ -1,5 +1,6 @@
 // lib/controllers/login_controller.dart (الموقع حسب مشروعك)
 import 'package:basma_app/pages/on_start/home_page.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';
 
@@ -16,6 +17,7 @@ class LoginController extends GetxController {
       return;
     }
     try {
+      FocusScope.of(Get.context!).unfocus();
       isLoading.value = true;
       await ApiService.login(email.value.trim(), password.value);
 

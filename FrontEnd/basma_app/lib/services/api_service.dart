@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:basma_app/config/base_url.dart';
 
 /// -------------------------
 /// AI MODELS (DTOs)
@@ -81,8 +82,8 @@ class AiSuggestion {
 }
 
 class ApiService {
-  /// Emulator base URL
-  static const String base = "http://192.168.1.201:8000";
+  /// Emulator base URL (centralized)
+  static const String base = kBaseUrl;
 
   // -------------------------------------------------------------
   // TOKEN MANAGEMENT

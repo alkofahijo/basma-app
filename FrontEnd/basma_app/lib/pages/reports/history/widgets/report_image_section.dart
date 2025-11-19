@@ -1,7 +1,6 @@
 import 'package:basma_app/pages/reports/history/widgets/zoomable_image.dart';
 import 'package:flutter/material.dart';
-
-const String kApiBaseUrl = 'http://192.168.1.201:8000';
+import 'package:basma_app/config/base_url.dart';
 
 class BeforeAfterImages extends StatelessWidget {
   final String? beforeUrl;
@@ -16,8 +15,8 @@ class BeforeAfterImages extends StatelessWidget {
   String? _resolve(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     if (raw.startsWith('http')) return raw;
-    if (raw.startsWith('/')) return '$kApiBaseUrl$raw';
-    return '$kApiBaseUrl/$raw';
+    if (raw.startsWith('/')) return '$kBaseUrl$raw';
+    return '$kBaseUrl/$raw';
   }
 
   @override
@@ -30,24 +29,16 @@ class BeforeAfterImages extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              // ------------------ BEFORE ------------------
-              Expanded(child: _buildCard("الصورة قبل", before)),
-
-              const SizedBox(width: 12),
-
-              // ------------------ AFTER (optional) ------------------
-              Expanded(
-                child: after == null
-                    ? Opacity(
-                        opacity: 0, // invisible placeholder
-                        child: _buildCard("", null),
-                      )
-                    : _buildCard("الصورة بعد", after),
-              ),
-            ],
-          ),
+          // ========== LOGIC HERE ==========
+          after == null
+              ? _buildCard("الصورة قبل", before) // FULL WIDTH
+              : Row(
+                  children: [
+                    Expanded(child: _buildCard("الصورة قبل", before)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildCard("الصورة بعد", after)),
+                  ],
+                ),
         ],
       ),
     );
@@ -60,7 +51,7 @@ class BeforeAfterImages extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12.withOpacity(0.06),
+            color: Colors.black12.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),

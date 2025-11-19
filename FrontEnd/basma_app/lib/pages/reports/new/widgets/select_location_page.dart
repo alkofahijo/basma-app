@@ -115,7 +115,9 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
       }
 
       final Position pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       final LatLng newPos = LatLng(pos.latitude, pos.longitude);
@@ -406,8 +408,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         textInputAction: TextInputAction.search,
         onSubmitted: (_) => _onSearchPressed(),
         decoration: InputDecoration(
-          hintText:
-              "ابحث بالعنوان داخل الأردن أو أدخل الإحداثيات: 32.5456, 35.8907",
+          hintText: "ابحث عن موقع  ",
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
           filled: true,
           fillColor: Colors.white,
@@ -445,7 +446,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: _searchResults.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final item = _searchResults[index];
             return ListTile(
@@ -483,7 +484,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: kPrimaryColor.withOpacity(0.04),
+          color: kPrimaryColor.withValues(alpha: 0.04),
         ),
         child: const Row(
           children: [
@@ -509,8 +510,8 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.red.withOpacity(0.04),
-          border: Border.all(color: Colors.red.withOpacity(0.3)),
+          color: Colors.red.withValues(alpha: 0.04),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
         ),
         child: Text(
           _locationError!,
@@ -524,7 +525,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.grey.withOpacity(0.05),
+          color: Colors.grey.withValues(alpha: 0.05),
         ),
         child: const Text(
           "تم اختيار نقطة على الخريطة، لكن لا توجد تفاصيل عنوان متاحة.",
@@ -543,7 +544,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: kPrimaryColor.withOpacity(0.05),
+        color: kPrimaryColor.withValues(alpha: 0.05),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +678,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.07),
+                  color: Colors.black.withValues(alpha: 0.07),
                   blurRadius: 8,
                   offset: const Offset(0, -2),
                 ),

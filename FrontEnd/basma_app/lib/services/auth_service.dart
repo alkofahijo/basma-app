@@ -1,131 +1,125 @@
+// lib/services/auth_service.dart
+
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// خدمة خاصة بالتوثيق وقراءة بيانات المستخدم الحالي من JWT
+/// خدمة مسؤولة عن التوثيق وقراءة بيانات المستخدم من JWT.
+///
+/// مثال على شكل الكاش داخل SharedPreferences:
+/// {
+///   "token": "jwt_token_here",
+///   "user": {
+///     "id": 3,
+///     "backend_type": 3,
+///     "citizen_id": 3,
+///     "initiative_id": null,
+///     "type": "citizen"
+///   }
+/// }
 class AuthService {
   static const String _tokenKey = 'token';
   static const String _cachedUserKey = 'current_user';
 
-  /// شكل الكاش داخل SharedPreferences:
-  /// {
-  ///   "token": "<jwt-token-string>",
-  ///   "user": {
-  ///     "id": 3,
-  ///     "backend_type": 3,
-  ///     "citizen_id": 3,
-  ///     "initiative_id": null,
-  ///     "type": "citizen"
-  ///   }
-  /// }
+  /// قراءة المستخدم الحالي من الـ JWT + الـ cache.
   ///
   /// ترجع:
-  /// - Map<String, dynamic> فيها معلومات المستخدم
-  /// - أو null لو ما فيه توكن أو توكن غير صالح
+  /// - أو null إذا لم يكن هناك توكن أو التوكن غير صالح
   static Future<Map<String, dynamic>?> currentUser() async {
     final sp = await SharedPreferences.getInstance();
 
-    // اقرأ التوكن الحالي
     final token = sp.getString(_tokenKey);
     if (token == null || token.isEmpty) {
-      // لا يوجد توكن => احذف أي كاش قديم
       await sp.remove(_cachedUserKey);
       return null;
     }
 
-    // جرّب قراءة الكاش والتحقق أن الكاش مطابق لنفس التوكن
+    // ============== قراءة الكاش ==============
     final cachedStr = sp.getString(_cachedUserKey);
     if (cachedStr != null) {
       try {
         final cached = jsonDecode(cachedStr);
+
         if (cached is Map<String, dynamic>) {
-          final cachedToken = cached['token'];
-          final cachedUser = cached['user'];
+          final cachedToken = cached["token"];
+          final cachedUser = cached["user"];
+
           if (cachedToken == token && cachedUser is Map<String, dynamic>) {
-            // الكاش يخص نفس التوكن الحالي
             return Map<String, dynamic>.from(cachedUser);
           }
         }
       } catch (_) {
-        // تجاهل أي خطأ في الكاش واستمر
+        // تجاهل أي خطأ
       }
     }
 
-    // لم نجد كاش صالح => فكّك التوكن وجِب البيانات من الـ payload
+    // ============== فك التوكن ==============
     final user = _parseUserFromToken(token);
     if (user == null) {
-      // لو التوكن غير صالح، نظف الكاش فقط
       await sp.remove(_cachedUserKey);
       return null;
     }
 
-    // خزّن الكاش مع التوكن الحالي
-    final cacheEnvelope = {"token": token, "user": user};
-    await sp.setString(_cachedUserKey, jsonEncode(cacheEnvelope));
+    // ============== تخزين الكاش ==============
+    final envelope = {"token": token, "user": user};
+
+    await sp.setString(_cachedUserKey, jsonEncode(envelope));
 
     return user;
   }
 
-  /// يحذف التوكن الحالي وأي كاش للمستخدم.
+  /// حذف التوكن + حذف الكاش.
   static Future<void> logout() async {
     final sp = await SharedPreferences.getInstance();
     await sp.remove(_tokenKey);
     await sp.remove(_cachedUserKey);
   }
 
-  // ===================================================================
-  // Helpers
-  // ===================================================================
+  // ==========================================================================
+  // Helper: Decode JWT
+  // ==========================================================================
 
-  /// يفكّك الـ JWT ويستخرج معلومات المستخدم.
+  /// يحلّل JWT ويستخرج معلومات المستخدم من الـ payload.
   ///
-  /// لو التوكن غير صالح أو لا يحتوي على الحقول المطلوبة يرجّع null.
+  /// يرجّع:
+  /// - Map فيها بيانات المستخدم
+  /// - أو null لو التوكن غير صالح
   static Map<String, dynamic>? _parseUserFromToken(String token) {
     try {
       final parts = token.split('.');
-      if (parts.length != 3) {
-        return null;
-      }
+      if (parts.length != 3) return null;
 
-      final payloadSegment = parts[1];
-      final normalized = base64Url.normalize(payloadSegment);
+      // payload هو الجزء الثاني
+      final payload = parts[1];
+
+      final normalized = base64Url.normalize(payload);
       final payloadJson = utf8.decode(base64Url.decode(normalized));
 
       final data = jsonDecode(payloadJson);
-      if (data is! Map<String, dynamic>) {
-        return null;
-      }
+      if (data is! Map<String, dynamic>) return null;
 
       final sub = data['sub'];
-      final backendType = data['user_type']; // 3 citizen, 2 initiative
+      final backendType = data['user_type']; // رقم نوع المستخدم
 
-      if (sub == null || backendType == null) {
-        return null;
-      }
+      if (sub == null || backendType == null) return null;
 
       final citizenId = data['citizen_id'];
       final initiativeId = data['initiative_id'];
 
-      // تحويل النوع إلى نص مفهوم
-      String typeStr;
-      if (backendType == 3) {
-        typeStr = 'citizen';
-      } else if (backendType == 2) {
-        typeStr = 'initiative';
-      } else {
-        typeStr = 'unknown';
-      }
+      // نوع المستخدم نصيًا
+      final typeStr = switch (backendType) {
+        3 => 'citizen',
+        2 => 'initiative',
+        _ => 'unknown',
+      };
 
-      final user = <String, dynamic>{
+      return {
         'id': int.tryParse(sub.toString()) ?? sub,
         'backend_type': backendType,
         'citizen_id': citizenId,
         'initiative_id': initiativeId,
         'type': typeStr,
       };
-
-      return user;
     } catch (_) {
-      // أي خطأ في فك التوكن => نرجع null بدون رمي استثناء
       return null;
     }
   }
