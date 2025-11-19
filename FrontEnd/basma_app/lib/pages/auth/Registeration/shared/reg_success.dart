@@ -1,4 +1,4 @@
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -13,10 +13,6 @@ class RegisterSuccessPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-      appBar: BasmaAppBar(
-        showBack: true,
-        onBack: () => Get.offAll(() => LoginPage()),
-      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -59,7 +55,7 @@ class RegisterSuccessPage extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: kPrimaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
