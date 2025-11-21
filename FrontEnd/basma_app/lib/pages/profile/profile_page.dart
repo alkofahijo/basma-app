@@ -1,21 +1,21 @@
 // lib/pages/profile/profile_page.dart
 
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:basma_app/models/citizen_models.dart';
-import 'package:basma_app/models/initiative_models.dart';
+import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
+import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
-import 'package:basma_app/widgets/network_image_viewer.dart';
-import 'package:basma_app/widgets/basma_bottom_nav.dart';
-import 'package:basma_app/theme/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-// use central primary color
+// ✅ لإضافة الدومين على المسار النسبي
+import 'package:basma_app/config/base_url.dart';
+// ✅ لعرض الصورة مع إمكانية التكبير
+import 'package:basma_app/pages/reports/history/widgets/zoomable_image.dart';
+
 const Color _pageBackground = Color(0xFFEFF1F1);
 
 class ProfilePage extends StatefulWidget {
@@ -29,9 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   String? _err;
 
-  String? _userType; // 'citizen' أو 'initiative'
-  Citizen? _citizen;
-  Initiative? _initiative;
+  Account? _account;
 
   @override
   void initState() {
@@ -64,52 +62,31 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       final String type = (user["type"] ?? "").toString().trim();
-
-      if (type == "citizen") {
-        final citizenId = _parseInt(user["citizen_id"]);
-        if (citizenId == null) {
-          if (!mounted) return;
-          setState(() {
-            _err = "تعذّر تحديد هوية المواطن، يرجى إعادة تسجيل الدخول.";
-            _loading = false;
-          });
-          return;
-        }
-
-        final citizen = await ApiService.getCitizen(citizenId);
-        if (!mounted) return;
-        setState(() {
-          _userType = 'citizen';
-          _citizen = citizen;
-          _initiative = null;
-          _loading = false;
-        });
-      } else if (type == "initiative") {
-        final initiativeId = _parseInt(user["initiative_id"]);
-        if (initiativeId == null) {
-          if (!mounted) return;
-          setState(() {
-            _err = "تعذّر تحديد هوية المبادرة، يرجى إعادة تسجيل الدخول.";
-            _loading = false;
-          });
-          return;
-        }
-
-        final initiative = await ApiService.getInitiative(initiativeId);
-        if (!mounted) return;
-        setState(() {
-          _userType = 'initiative';
-          _initiative = initiative;
-          _citizen = null;
-          _loading = false;
-        });
-      } else {
+      if (type != "account") {
         if (!mounted) return;
         setState(() {
           _err = "نوع الحساب غير مدعوم، يرجى إعادة تسجيل الدخول.";
           _loading = false;
         });
+        return;
       }
+
+      final accountId = _parseInt(user["account_id"]);
+      if (accountId == null) {
+        if (!mounted) return;
+        setState(() {
+          _err = "تعذّر تحديد هوية الحساب، يرجى إعادة تسجيل الدخول.";
+          _loading = false;
+        });
+        return;
+      }
+
+      final acc = await ApiService.getAccount(accountId);
+      if (!mounted) return;
+      setState(() {
+        _account = acc;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -163,14 +140,17 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (confirmed == true) {
-      await ApiService.setToken(null);
-      final sp = await SharedPreferences.getInstance();
-      await sp.remove('user_type');
-      await sp.remove('citizen_id');
-      await sp.remove('initiative_id');
-
-      Get.offAll(() => LandingPage());
+      await AuthService.logout();
+      Get.offAll(() => const LandingPage());
     }
+  }
+
+  /// نفس منطق BeforeAfterImages لتحويل المسار النسبي إلى URL كامل
+  String? _resolveLogoUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return '$kBaseUrl$raw';
+    return '$kBaseUrl/$raw';
   }
 
   @override
@@ -190,13 +170,11 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       );
-    } else if (_userType == 'citizen' && _citizen != null) {
-      bodyContent = _buildCitizenProfile(_citizen!);
-    } else if (_userType == 'initiative' && _initiative != null) {
-      bodyContent = _buildInitiativeProfile(_initiative!);
+    } else if (_account != null) {
+      bodyContent = _buildAccountProfile(_account!);
     } else {
       bodyContent = const Center(
-        child: Text("لم يتم العثور على بيانات الملف الشخصي."),
+        child: Text("لم يتم العثور على بيانات الحساب."),
       );
     }
 
@@ -207,7 +185,6 @@ class _ProfilePageState extends State<ProfilePage> {
         appBar: AppBar(
           backgroundColor: kPrimaryColor,
           elevation: 0,
-
           title: const Text(
             'الملف الشخصي',
             style: TextStyle(
@@ -225,10 +202,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // ============================================================
-  // CITIZEN PROFILE
+  // ACCOUNT PROFILE (موحَّد لكل أنواع الحسابات)
   // ============================================================
 
-  Widget _buildCitizenProfile(Citizen c) {
+  Widget _buildAccountProfile(Account a) {
     return Container(
       color: _pageBackground,
       child: SafeArea(
@@ -238,13 +215,13 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              _buildCitizenHeader(c),
+              _buildAccountHeader(a),
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    _buildCitizenInfoSection(c),
+                    _buildAccountInfoSection(a),
                     const SizedBox(height: 16),
                     const SizedBox(height: 30),
                     SizedBox(
@@ -276,269 +253,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildCitizenHeader(Citizen c) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Column(
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(
-                255,
-                97,
-                102,
-                97,
-              ).withValues(alpha: 0.06),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person_outline,
-              size: 64,
-              color: Color.fromARGB(255, 47, 50, 47),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            c.nameAr,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildAccountHeader(Account a) {
+    final resolvedLogoUrl = _resolveLogoUrl(a.logoUrl);
 
-  Widget _buildCitizenInfoSection(Citizen c) {
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: Text(
-                    "تفاصيل المواطن",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                IconButton(
-                  onPressed: _editCitizenProfile,
-                  icon: const Icon(Icons.edit, color: kPrimaryColor),
-                  tooltip: 'تعديل',
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "معلومات أساسية حول المواطن المساهم في حل البلاغات.",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 10),
-            const Divider(height: 16),
-            InfoRow(label: "الاسم بالعربية", value: c.nameAr),
-            InfoRow(label: "الاسم بالإنجليزية", value: c.nameEn),
-            InfoRow(label: "رقم الهاتف", value: c.mobileNumber),
-            InfoRow(
-              label: "عدد البلاغات المنجزة",
-              value: c.reportsCompletedCount.toString(),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: SizedBox(
-                width: 250,
-                child: ElevatedButton.icon(
-                  onPressed: _showChangePasswordDialog,
-                  icon: const Icon(Icons.lock_reset, color: Colors.white),
-                  label: const Text("تغيير كلمة المرور"),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: kPrimaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _editCitizenProfile() async {
-    if (_citizen == null) return;
-    final c = _citizen!;
-
-    final nameArCtrl = TextEditingController(text: c.nameAr);
-    final nameEnCtrl = TextEditingController(text: c.nameEn);
-    final mobileCtrl = TextEditingController(text: c.mobileNumber);
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            title: const Text(
-              "تعديل بيانات المواطن",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameArCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "الاسم بالعربية",
-                    ),
-                  ),
-                  TextField(
-                    controller: nameEnCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "الاسم بالإنجليزية",
-                    ),
-                  ),
-                  TextField(
-                    controller: mobileCtrl,
-                    decoration: const InputDecoration(labelText: "رقم الهاتف"),
-                    keyboardType: TextInputType.phone,
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text(
-                  "إلغاء",
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () async {
-                  final nameAr = nameArCtrl.text.trim();
-                  final nameEn = nameEnCtrl.text.trim();
-                  final mobile = mobileCtrl.text.trim();
-
-                  if (nameAr.isEmpty || mobile.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("الاسم بالعربية ورقم الهاتف مطلوبان"),
-                      ),
-                    );
-                    return;
-                  }
-
-                  try {
-                    await ApiService.updateCitizenProfile(
-                      id: c.id,
-                      nameAr: nameAr,
-                      nameEn: nameEn,
-                      mobileNumber: mobile,
-                    );
-                    if (!mounted) return;
-                    Navigator.of(context).pop(true);
-                  } catch (_) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("تعذّر حفظ التعديلات.")),
-                    );
-                  }
-                },
-                child: const Text("حفظ"),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (saved == true) {
-      await _loadProfile();
-    }
-  }
-
-  // ============================================================
-  // INITIATIVE PROFILE
-  // ============================================================
-
-  Widget _buildInitiativeProfile(Initiative i) {
-    return Container(
-      color: _pageBackground,
-      child: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          onRefresh: _loadProfile,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              _buildInitiativeHeader(i),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildInitiativeInfoSection(i),
-                    const SizedBox(height: 16),
-
-                    Center(
-                      child: SizedBox(
-                        width: 250,
-                        child: ElevatedButton.icon(
-                          onPressed: () => _logout(context),
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          label: const Text(
-                            "تسجيل الخروج",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInitiativeHeader(Initiative i) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
@@ -557,10 +274,10 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(55),
-              child: i.logoUrl != null && i.logoUrl!.isNotEmpty
-                  ? NetworkImageViewer(url: i.logoUrl!, height: 110)
+              child: resolvedLogoUrl != null
+                  ? ZoomableImage(imageUrl: resolvedLogoUrl)
                   : const Icon(
-                      Icons.volunteer_activism,
+                      Icons.account_balance,
                       size: 64,
                       color: Color.fromARGB(255, 47, 50, 47),
                     ),
@@ -568,7 +285,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: 12),
           Text(
-            i.nameAr,
+            a.nameAr,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -581,7 +298,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildInitiativeInfoSection(Initiative i) {
+  Widget _buildAccountInfoSection(Account a) {
+    // نحاول استخدام أسماء الحقول الاختيارية لو متوفرة في الموديل
+    final accountTypeName = a.accountTypeNameAr ?? "غير محدد";
+    final governmentName = a.governmentNameAr ?? "غير محدد";
+
     return Card(
       color: Colors.white,
       elevation: 2,
@@ -592,39 +313,32 @@ class _ProfilePageState extends State<ProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: [
-                const Icon(Icons.info_outline, size: 18, color: Colors.teal),
-                const SizedBox(width: 6),
-                const Expanded(
+              children: const [
+                Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
+                SizedBox(width: 6),
+                Expanded(
                   child: Text(
-                    "تفاصيل المبادرة",
+                    "تفاصيل الحساب",
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
-                ),
-                IconButton(
-                  onPressed: _editInitiativeProfile,
-                  icon: const Icon(Icons.edit, color: kPrimaryColor),
-                  tooltip: 'تعديل',
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              "معلومات أساسية حول المبادرة وقنوات التواصل.",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              "معلومات أساسية حول الحساب المساهم في حل البلاغات.",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 10),
             const Divider(height: 16),
-            InfoRow(label: "اسم المبادرة", value: i.nameAr),
-            InfoRow(label: "الاسم بالإنجليزية", value: i.nameEn),
-            InfoRow(label: "رقم الهاتف", value: i.mobileNumber),
+            InfoRow(label: "نوع الحساب", value: accountTypeName),
+            InfoRow(label: "الاسم بالعربية", value: a.nameAr),
+            InfoRow(label: "الاسم بالإنجليزية", value: a.nameEn ?? "---"),
+            InfoRow(label: "المحافظة", value: governmentName),
+            InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
             InfoRow(
               label: "عدد البلاغات المنجزة",
-              value: i.reportsCompletedCount.toString(),
-            ),
-            InfoRow(
-              label: "رابط نموذج الانضمام",
-              value: i.joinFormLink ?? "غير متوفر",
+              value: a.reportsCompletedCount.toString(),
             ),
             const SizedBox(height: 12),
             Center(
@@ -654,126 +368,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _editInitiativeProfile() async {
-    if (_initiative == null) return;
-    final i = _initiative!;
-
-    final nameArCtrl = TextEditingController(text: i.nameAr);
-    final nameEnCtrl = TextEditingController(text: i.nameEn);
-    final mobileCtrl = TextEditingController(text: i.mobileNumber);
-    final joinFormCtrl = TextEditingController(text: i.joinFormLink ?? "");
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            title: const Text(
-              "تعديل بيانات المبادرة",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameArCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "الاسم بالعربية",
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: nameEnCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "الاسم بالإنجليزية",
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: mobileCtrl,
-                    decoration: const InputDecoration(labelText: "رقم الهاتف"),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: joinFormCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'رابط نموذج الانضمام (اختياري)',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text(
-                  "إلغاء",
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () async {
-                  final nameAr = nameArCtrl.text.trim();
-                  final nameEn = nameEnCtrl.text.trim();
-                  final mobile = mobileCtrl.text.trim();
-
-                  if (nameAr.isEmpty || mobile.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("الاسم بالعربية ورقم الهاتف مطلوبان"),
-                      ),
-                    );
-                    return;
-                  }
-
-                  try {
-                    await ApiService.updateInitiativeProfile(
-                      id: i.id,
-                      nameAr: nameAr,
-                      nameEn: nameEn,
-                      mobileNumber: mobile,
-                      joinFormLink: joinFormCtrl.text.trim().isEmpty
-                          ? null
-                          : joinFormCtrl.text.trim(),
-                    );
-                    if (!mounted) return;
-                    Navigator.of(context).pop(true);
-                  } catch (_) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تعذّر حفظ التعديلات.')),
-                    );
-                  }
-                },
-                child: const Text("حفظ"),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (saved == true) {
-      await _loadProfile();
-    }
-  }
-
   // ============================================================
-  // CHANGE PASSWORD (citizen + initiative)
+  // CHANGE PASSWORD (لأي حساب مسجَّل)
   // ============================================================
 
   Future<void> _showChangePasswordDialog() async {

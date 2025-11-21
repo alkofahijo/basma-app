@@ -4,7 +4,7 @@ import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../controllers/login_controller.dart';
-import '../Registeration/register_choice_page.dart';
+import '../Registeration/register_account_info_page.dart';
 
 class LoginPage extends StatelessWidget {
   LoginPage({super.key});

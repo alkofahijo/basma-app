@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -60,6 +60,13 @@ class LocationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LocationCreate(BaseModel):
+    area_id: int
+    name_ar: str
+    latitude: float | None = None
+    longitude: float | None = None
+
+
 # ============================================================
 # REPORT PUBLIC OUT (for /reports/public)
 # ============================================================
@@ -95,55 +102,77 @@ class ReportPublicOut(BaseModel):
 
 
 # ============================================================
-# CITIZEN
+# ACCOUNTS (UNIFIED)
 # ============================================================
 
 
-class CitizenCreate(BaseModel):
-    name_ar: str
-    name_en: str
-    mobile_number: str
-    government_id: int
-    username: str
-    password: str
-
-
-class CitizenOut(BaseModel):
+class AccountTypeOut(BaseModel):
     id: int
     name_ar: str
     name_en: str
-    mobile_number: str
-    government_id: int
-    reports_completed_count: int
+    code: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-# ============================================================
-# INITIATIVE
-# ============================================================
+class AccountCreate(BaseModel):
+    """
+    لإنشاء حساب من لوحة التحكم (admin) – يمكن إرسال username/password أو تركهما.
+    """
 
-
-class InitiativeCreate(BaseModel):
+    account_type_id: int
     name_ar: str
     name_en: str
     mobile_number: str
-    join_form_link: Optional[str]
     government_id: int
-    logo_url: Optional[str]
+    logo_url: str | None = None
+    join_form_link: str | None = None
+
+    username: str | None = None
+    password: str | None = None
+
+
+class AccountRegister(BaseModel):
+    """
+    لتسجيل حساب جديد عبر /auth/register (كل شيء مطلوب).
+    """
+
+    account_type_id: int
+    name_ar: str
+    name_en: str
+    mobile_number: str
+    government_id: int
+    logo_url: str | None = None
+    join_form_link: str | None = None
+
     username: str
     password: str
 
 
-class InitiativeOut(BaseModel):
+class AccountOut(BaseModel):
     id: int
+
+    account_type_id: int
+    account_type_name_ar: str | None = None
+    account_type_name_en: str | None = None
+    account_type_code: str | None = None
+
     name_ar: str
     name_en: str
     mobile_number: str
+
     government_id: int
-    members_count: int
-    reports_completed_count: int
+    government_name_ar: str | None = None
+
+    logo_url: str | None = None
     join_form_link: str | None = None
+
+    reports_completed_count: int
+    is_active: int
+    show_details: int
+
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -174,13 +203,6 @@ class ReportStatusOut(BaseModel):
 # ============================================================
 
 
-class LocationCreate(BaseModel):
-    area_id: int
-    name_ar: str
-    latitude: float | None = None
-    longitude: float | None = None
-
-
 class ReportCreate(BaseModel):
     report_type_id: int
     name_ar: str
@@ -195,6 +217,7 @@ class ReportCreate(BaseModel):
     location_id: int | None = None
     new_location: LocationCreate | None = None
 
+    # لو المبلّغ زائر بدون حساب
     reported_by_name: Optional[str] = None
 
 
@@ -218,9 +241,9 @@ class ReportOut(BaseModel):
     status_id: int
     reported_at: datetime
 
-    adopted_by_type: Optional[int]  # 1 citizen, 2 initiative
-    adopted_by_id: Optional[int]
-    adopted_by_name: Optional[str] = None
+    # unified adoption via accounts
+    adopted_by_account_id: Optional[int]
+    adopted_by_account_name: Optional[str] = None
 
     government_id: int
     district_id: int
@@ -235,7 +258,7 @@ class ReportOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    # أسماء عربية للمرجعيات (يتم تعبئتها في get_report بـ JOIN)
+    # Arabic names for foreign keys (JOIN output)
     report_type_name_ar: Optional[str] = None
     status_name_ar: Optional[str] = None
     government_name_ar: Optional[str] = None
@@ -243,7 +266,7 @@ class ReportOut(BaseModel):
     area_name_ar: Optional[str] = None
     location_name_ar: Optional[str] = None
 
-    # إحداثيات الموقع
+    # Coordinates of location
     location_longitude: Optional[float] = None
     location_latitude: Optional[float] = None
 
@@ -256,8 +279,12 @@ class ReportOut(BaseModel):
 
 
 class AdoptRequest(BaseModel):
-    adopted_by_type: Literal[1, 2]  # 1 citizen, 2 initiative
-    adopted_by_id: int
+    """
+    طلب تبنّي بلاغ.
+    في التصميم الجديد الأفضل أن نعتمد على الحساب من الـ JWT مباشرة،
+    لكن لو أردت استخدام body يمكنك تمرير account_id هنا.
+    """
+    account_id: int
 
 
 class CompleteRequest(BaseModel):

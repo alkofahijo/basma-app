@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:basma_app/models/citizen_models.dart';
-import 'package:basma_app/models/initiative_models.dart';
+import 'package:basma_app/config/base_url.dart';
+import 'package:basma_app/models/account_models.dart';
+
 import 'package:basma_app/models/location_models.dart';
 import 'package:basma_app/models/report_models.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:basma_app/config/base_url.dart';
 
 /// -------------------------
 /// AI MODELS (DTOs)
@@ -82,7 +82,7 @@ class AiSuggestion {
 }
 
 class ApiService {
-  /// Emulator base URL (centralized)
+  /// Base URL (مضبوط في config/base_url.dart)
   static const String base = kBaseUrl;
 
   // -------------------------------------------------------------
@@ -90,22 +90,22 @@ class ApiService {
   // -------------------------------------------------------------
   static Future<String?> _token() async {
     final sp = await SharedPreferences.getInstance();
-    return sp.getString("token");
+    return sp.getString('token');
   }
 
   static Future<void> setToken(String? token) async {
     final sp = await SharedPreferences.getInstance();
     if (token == null) {
-      await sp.remove("token");
+      await sp.remove('token');
     } else {
-      await sp.setString("token", token);
+      await sp.setString('token', token);
     }
   }
 
   static Map<String, String> _headers(String? tok, {bool json = true}) {
     final h = <String, String>{};
-    if (json) h["Content-Type"] = "application/json";
-    if (tok != null && tok.isNotEmpty) h["Authorization"] = "Bearer $tok";
+    if (json) h['Content-Type'] = 'application/json';
+    if (tok != null && tok.isNotEmpty) h['Authorization'] = 'Bearer $tok';
     return h;
   }
 
@@ -114,20 +114,20 @@ class ApiService {
   // -------------------------------------------------------------
   static Never _throwHttp(
     http.Response res, {
-    String fallback = "Request failed",
+    String fallback = 'Request failed',
   }) {
-    String msg = "$fallback (${res.statusCode})";
+    String msg = '$fallback (${res.statusCode})';
     final raw = utf8.decode(res.bodyBytes);
 
     try {
       final body = jsonDecode(raw);
-      if (body is Map && body["detail"] != null) {
-        msg = body["detail"].toString();
+      if (body is Map && body['detail'] != null) {
+        msg = body['detail'].toString();
       } else if (raw.isNotEmpty) {
-        msg = "$msg: $raw";
+        msg = '$msg: $raw';
       }
     } catch (_) {
-      if (raw.isNotEmpty) msg = "$msg: $raw";
+      if (raw.isNotEmpty) msg = '$msg: $raw';
     }
 
     throw HttpException(msg);
@@ -137,49 +137,51 @@ class ApiService {
   // AUTH
   // -------------------------------------------------------------
   static Future<void> login(String username, String password) async {
-    final uri = Uri.parse("$base/auth/login");
+    final uri = Uri.parse('$base/auth/login');
 
     final res = await http.post(
       uri,
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: {
-        "username": username,
-        "password": password,
-        "grant_type": "password",
+        'username': username,
+        'password': password,
+        'grant_type': 'password',
       },
     );
 
     if (res.statusCode != 200) {
-      _throwHttp(res, fallback: "فشل تسجيل الدخول");
+      _throwHttp(res, fallback: 'فشل تسجيل الدخول');
     }
 
     final data = jsonDecode(res.body);
-    await setToken(data["access_token"]);
+    await setToken(data['access_token']);
   }
 
+  // قديمة (لو ما زالت مستخدمة في شاشات قديمة)
   static Future<void> registerCitizen(Map<String, dynamic> payload) async {
-    final uri = Uri.parse("$base/auth/register/citizen");
+    final uri = Uri.parse('$base/auth/register/citizen');
     final res = await http.post(
       uri,
-      headers: {"Content-Type": "application/json"},
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
     );
 
     if (res.statusCode != 201) {
-      _throwHttp(res, fallback: "فشل إنشاء حساب المواطن");
+      _throwHttp(res, fallback: 'فشل إنشاء حساب المواطن');
     }
   }
 
+  // قديمة (لو ما زالت مستخدمة في شاشات قديمة)
   static Future<void> registerInitiative(Map<String, dynamic> payload) async {
-    final uri = Uri.parse("$base/auth/register/initiative");
+    final uri = Uri.parse('$base/auth/register/initiative');
     final res = await http.post(
       uri,
-      headers: {"Content-Type": "application/json"},
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
     );
 
     if (res.statusCode != 201) {
-      _throwHttp(res, fallback: "فشل إنشاء حساب المبادرة");
+      _throwHttp(res, fallback: 'فشل إنشاء حساب المبادرة');
     }
   }
 
@@ -187,26 +189,58 @@ class ApiService {
   static Future<void> changePassword(String newPassword) async {
     final tok = await _token();
     if (tok == null || tok.isEmpty) {
-      throw Exception("Not authenticated");
+      throw Exception('Not authenticated');
     }
 
-    final uri = Uri.parse("$base/auth/change-password");
+    final uri = Uri.parse('$base/auth/change-password');
     final res = await http.post(
       uri,
       headers: _headers(tok),
-      body: jsonEncode({"new_password": newPassword}),
+      body: jsonEncode({'new_password': newPassword}),
     );
 
     if (res.statusCode != 204) {
-      _throwHttp(res, fallback: "فشل تغيير كلمة المرور");
+      _throwHttp(res, fallback: 'فشل تغيير كلمة المرور');
     }
+  }
+
+  // =================== AUTH (نظام الحسابات الجديد) ===================
+
+  /// تسجيل حساب جديد من نوع (بلدية، شركة، مبادرة، ... إلخ)
+  static Future<void> registerAccount(Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$base/auth/register/account');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode != 201) {
+      _throwHttp(res, fallback: 'فشل إنشاء الحساب');
+    }
+  }
+
+  // =================== ACCOUNT TYPES ===================
+
+  static Future<List<AccountTypeOption>> listAccountTypes() async {
+    final uri = Uri.parse('$base/accounts/types');
+    final res = await http.get(uri);
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: 'فشل تحميل أنواع الحسابات');
+    }
+
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data
+        .map((e) => AccountTypeOption.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // -------------------------------------------------------------
   // LOCATIONS (main models)
   // -------------------------------------------------------------
   static Future<List<Government>> governments() async {
-    final uri = Uri.parse("$base/locations/governments");
+    final uri = Uri.parse('$base/locations/governments');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -216,7 +250,7 @@ class ApiService {
   }
 
   static Future<List<District>> districts(int govId) async {
-    final uri = Uri.parse("$base/locations/governments/$govId/districts");
+    final uri = Uri.parse('$base/locations/governments/$govId/districts');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -227,7 +261,7 @@ class ApiService {
   }
 
   static Future<List<Area>> areas(int districtId) async {
-    final uri = Uri.parse("$base/locations/districts/$districtId/areas");
+    final uri = Uri.parse('$base/locations/districts/$districtId/areas');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -240,15 +274,15 @@ class ApiService {
     required String nameAr,
     required String nameEn,
   }) async {
-    final uri = Uri.parse("$base/locations/areas");
+    final uri = Uri.parse('$base/locations/areas');
 
     final res = await http.post(
       uri,
-      headers: {"Content-Type": "application/json"},
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        "district_id": districtId,
-        "name_ar": nameAr,
-        "name_en": nameEn,
+        'district_id': districtId,
+        'name_ar': nameAr,
+        'name_en': nameEn,
       }),
     );
 
@@ -258,7 +292,7 @@ class ApiService {
   }
 
   static Future<List<LocationModel>> locations(int areaId) async {
-    final uri = Uri.parse("$base/locations/areas/$areaId/locations");
+    final uri = Uri.parse('$base/locations/areas/$areaId/locations');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -272,7 +306,7 @@ class ApiService {
   // REPORT TYPES & STATUS
   // -------------------------------------------------------------
   static Future<List<ReportType>> reportTypes() async {
-    final uri = Uri.parse("$base/reports/types");
+    final uri = Uri.parse('$base/reports/types');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -283,7 +317,7 @@ class ApiService {
   }
 
   static Future<List<ReportStatus>> reportStatuses() async {
-    final uri = Uri.parse("$base/reports/status");
+    final uri = Uri.parse('$base/reports/status');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -302,12 +336,12 @@ class ApiService {
     int limit = 200,
     int offset = 0,
   }) async {
-    final uri = Uri.parse("$base/reports").replace(
+    final uri = Uri.parse('$base/reports').replace(
       queryParameters: {
-        if (areaId != null) "area_id": "$areaId",
-        if (statusId != null) "status_id": "$statusId",
-        "limit": "$limit",
-        "offset": "$offset",
+        if (areaId != null) 'area_id': '$areaId',
+        if (statusId != null) 'status_id': '$statusId',
+        'limit': '$limit',
+        'offset': '$offset',
       },
     );
 
@@ -324,7 +358,7 @@ class ApiService {
   // REPORT DETAIL
   // -------------------------------------------------------------
   static Future<ReportDetail> getReport(int id) async {
-    final uri = Uri.parse("$base/reports/$id");
+    final uri = Uri.parse('$base/reports/$id');
     final res = await http.get(uri);
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -337,7 +371,7 @@ class ApiService {
   // -------------------------------------------------------------
   static Future<ReportDetail> createReport(Map<String, dynamic> payload) async {
     final tok = await _token();
-    final uri = Uri.parse("$base/reports");
+    final uri = Uri.parse('$base/reports');
 
     final res = await http.post(
       uri,
@@ -350,24 +384,19 @@ class ApiService {
     return ReportDetail.fromJson(jsonDecode(res.body));
   }
 
-  // -------------------------------------------------------------
-  // ADOPT REPORT (open → in_progress)
-  // -------------------------------------------------------------
+  // =================== ADOPT REPORT ===================
+
   static Future<ReportDetail> adopt({
     required int reportId,
-    required int adoptedById,
-    required int adoptedByType, // 1 citizen, 2 initiative
+    required int accountId,
   }) async {
     final tok = await _token();
-    final uri = Uri.parse("$base/reports/$reportId/adopt");
+    final uri = Uri.parse('$base/reports/$reportId/adopt');
 
     final res = await http.patch(
       uri,
       headers: _headers(tok),
-      body: jsonEncode({
-        "adopted_by_id": adoptedById,
-        "adopted_by_type": adoptedByType,
-      }),
+      body: jsonEncode({'account_id': accountId}),
     );
 
     if (res.statusCode != 200) _throwHttp(res);
@@ -384,14 +413,14 @@ class ApiService {
     String? note,
   }) async {
     final tok = await _token();
-    final uri = Uri.parse("$base/reports/$reportId/complete");
+    final uri = Uri.parse('$base/reports/$reportId/complete');
 
     final res = await http.patch(
       uri,
       headers: _headers(tok),
       body: jsonEncode({
-        "image_after_url": imageAfterUrl,
-        if (note != null) "note": note,
+        'image_after_url': imageAfterUrl,
+        if (note != null) 'note': note,
       }),
     );
 
@@ -401,38 +430,17 @@ class ApiService {
   }
 
   // -------------------------------------------------------------
-  // CITIZEN / INITIATIVE DETAILS
-  // -------------------------------------------------------------
-  static Future<Citizen> getCitizen(int id) async {
-    final uri = Uri.parse("$base/citizens/$id");
-    final res = await http.get(uri);
-
-    if (res.statusCode != 200) _throwHttp(res);
-
-    return Citizen.fromJson(jsonDecode(res.body));
-  }
-
-  static Future<Initiative> getInitiative(int id) async {
-    final uri = Uri.parse("$base/initiatives/$id");
-    final res = await http.get(uri);
-
-    if (res.statusCode != 200) _throwHttp(res);
-
-    return Initiative.fromJson(jsonDecode(res.body));
-  }
-
-  // -------------------------------------------------------------
   // IMAGE UPLOAD
   // -------------------------------------------------------------
   static Future<String> uploadImage(List<int> bytes, String filename) async {
     Future<http.StreamedResponse> sendTo(String path) async {
-      final req = http.MultipartRequest("POST", Uri.parse("$base$path"));
+      final req = http.MultipartRequest('POST', Uri.parse('$base$path'));
 
-      final mime = lookupMimeType(filename) ?? "application/octet-stream";
+      final mime = lookupMimeType(filename) ?? 'application/octet-stream';
 
       req.files.add(
         http.MultipartFile.fromBytes(
-          "file",
+          'file',
           bytes,
           filename: filename,
           contentType: MediaType.parse(mime),
@@ -442,18 +450,18 @@ class ApiService {
       return req.send();
     }
 
-    http.StreamedResponse res = await sendTo("/uploads");
+    http.StreamedResponse res = await sendTo('/uploads');
 
     if (res.statusCode == 404) {
-      res = await sendTo("/files/upload");
+      res = await sendTo('/files/upload');
     }
 
     final body = await res.stream.bytesToString();
     if (res.statusCode != 200) {
-      throw HttpException("Upload failed: $body");
+      throw HttpException('Upload failed: $body');
     }
 
-    return jsonDecode(body)["url"] as String;
+    return jsonDecode(body)['url'] as String;
   }
 
   // -------------------------------------------------------------
@@ -557,7 +565,7 @@ class ApiService {
   }) async {
     final tok = await _token();
     if (tok == null || tok.isEmpty) {
-      throw Exception("Not authenticated");
+      throw Exception('Not authenticated');
     }
 
     final query = <String, String>{'limit': '$limit', 'offset': '$offset'};
@@ -572,14 +580,14 @@ class ApiService {
     final res = await http.get(url, headers: _headers(tok, json: false));
 
     if (res.statusCode != 200) {
-      _throwHttp(res, fallback: "Failed to load my reports");
+      _throwHttp(res, fallback: 'Failed to load my reports');
     }
 
     return ReportPublicSummary.listFromJson(res.body);
   }
 
   // -------------------------------------------------------------
-  // UPDATE CITIZEN PROFILE
+  // UPDATE CITIZEN PROFILE (لو لسا مستخدمين citizens)
   // -------------------------------------------------------------
   static Future<void> updateCitizenProfile({
     required int id,
@@ -589,15 +597,15 @@ class ApiService {
   }) async {
     final tok = await _token();
     if (tok == null || tok.isEmpty) {
-      throw Exception("Not authenticated");
+      throw Exception('Not authenticated');
     }
 
-    final uri = Uri.parse("$base/citizens/$id");
+    final uri = Uri.parse('$base/citizens/$id');
 
     final payload = <String, dynamic>{};
-    if (nameAr != null) payload["name_ar"] = nameAr;
-    if (nameEn != null) payload["name_en"] = nameEn;
-    if (mobileNumber != null) payload["mobile_number"] = mobileNumber;
+    if (nameAr != null) payload['name_ar'] = nameAr;
+    if (nameEn != null) payload['name_en'] = nameEn;
+    if (mobileNumber != null) payload['mobile_number'] = mobileNumber;
 
     final res = await http.patch(
       uri,
@@ -606,12 +614,12 @@ class ApiService {
     );
 
     if (res.statusCode != 200) {
-      _throwHttp(res, fallback: "فشل تحديث بيانات المواطن");
+      _throwHttp(res, fallback: 'فشل تحديث بيانات المواطن');
     }
   }
 
   // -------------------------------------------------------------
-  // UPDATE INITIATIVE PROFILE
+  // UPDATE INITIATIVE PROFILE (لو لسا مستخدمين initiatives)
   // -------------------------------------------------------------
   static Future<void> updateInitiativeProfile({
     required int id,
@@ -623,17 +631,17 @@ class ApiService {
   }) async {
     final tok = await _token();
     if (tok == null || tok.isEmpty) {
-      throw Exception("Not authenticated");
+      throw Exception('Not authenticated');
     }
 
-    final uri = Uri.parse("$base/initiatives/$id");
+    final uri = Uri.parse('$base/initiatives/$id');
 
     final payload = <String, dynamic>{};
-    if (nameAr != null) payload["name_ar"] = nameAr;
-    if (nameEn != null) payload["name_en"] = nameEn;
-    if (mobileNumber != null) payload["mobile_number"] = mobileNumber;
-    if (joinFormLink != null) payload["join_form_link"] = joinFormLink;
-    if (logoUrl != null) payload["logo_url"] = logoUrl;
+    if (nameAr != null) payload['name_ar'] = nameAr;
+    if (nameEn != null) payload['name_en'] = nameEn;
+    if (mobileNumber != null) payload['mobile_number'] = mobileNumber;
+    if (joinFormLink != null) payload['join_form_link'] = joinFormLink;
+    if (logoUrl != null) payload['logo_url'] = logoUrl;
 
     final res = await http.patch(
       uri,
@@ -642,8 +650,28 @@ class ApiService {
     );
 
     if (res.statusCode != 200) {
-      _throwHttp(res, fallback: "فشل تحديث بيانات المبادرة");
+      _throwHttp(res, fallback: 'فشل تحديث بيانات المبادرة');
     }
+  }
+
+  // -------------------------------------------------------------
+  // ACCOUNT DETAILS
+  // -------------------------------------------------------------
+  static Future<Account> getAccount(int id) async {
+    final tok = await _token(); // لو الاندبوينت محمي، خلي التوكن
+    final uri = Uri.parse('$base/accounts/$id');
+
+    final res = await http.get(
+      uri,
+      headers: _headers(tok, json: false), // أو {} لو الاندبوينت public
+    );
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: 'فشل تحميل بيانات الحساب');
+    }
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return Account.fromJson(data);
   }
 
   // -------------------------------------------------------------

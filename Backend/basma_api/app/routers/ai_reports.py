@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from typing import Optional, Tuple, Dict, Any
 
 import httpx
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -13,6 +15,10 @@ from app.ml.report_classifier import ReportClassifierService
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
+# ============================================================
+# MODEL / CLASSIFIER SETUP
+# ============================================================
+
 # Load the classification model once (singleton pattern)
 classifier_service: Optional[ReportClassifierService] = None
 
@@ -23,6 +29,7 @@ CONFIDENCE_THRESHOLD = 0.2
 MODEL_PATH = "app/models/best.pt"
 
 # ثابت لمعرّف "OTHERS" في قاعدة البيانات
+# تأكد أن هذا يطابق السجل في جدول report_types
 OTHERS_REPORT_TYPE_ID = 11
 
 
@@ -37,7 +44,9 @@ def get_classifier_service() -> ReportClassifierService:
     return classifier_service
 
 
-# ---------- Schemas ----------
+# ============================================================
+# SCHEMAS
+# ============================================================
 
 
 class ResolveLocationRequest(BaseModel):
@@ -76,7 +85,9 @@ class AnalyzeImageResponse(BaseModel):
     suggested_description: str
 
 
-# ---------- Helpers: Reverse Geocoding & Name Cleaning ----------
+# ============================================================
+# HELPERS: Reverse Geocoding & Name Cleaning
+# ============================================================
 
 
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
@@ -103,7 +114,7 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
             return resp.json()
     except httpx.HTTPError as e:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail="خدمة تحديد الموقع الجغرافي غير متاحة حالياً.",
         ) from e
 
@@ -111,7 +122,7 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
 def _clean_admin_name(value: str) -> str:
     """
     Clean up the governorate/district name by removing English words like
-    \"Governorate\", \"District\", etc.
+    "Governorate", "District", "Municipality".
     (Keeps Arabic text as-is to match DB entries.)
     """
     if not value:
@@ -124,8 +135,8 @@ def _clean_admin_name(value: str) -> str:
 
 def _clean_area_name(value: str) -> str:
     """
-    Clean up the area name by removing generic Arabic terms like \"ناحية\", \"لواء\",
-    \"قضاء\", \"بلدية\", \"مدينة\" for consistency.
+    Clean up the area name by removing generic Arabic terms like "ناحية", "لواء",
+    "قضاء", "بلدية", "مدينة" for consistency.
     """
     if not value:
         return ""
@@ -139,8 +150,8 @@ def _clean_area_name(value: str) -> str:
 def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
     """
     Extract relevant address components from Nominatim response:
-      - gov_name: from address[\"state\"]
-      - dist_name: from address[\"state_district\"] or fallback to address[\"county\"]
+      - gov_name: from address["state"]
+      - dist_name: from address["state_district"] or fallback to address["county"]
       - area_name: from one of (village, neighbourhood, suburb, city, county)
       - loc_name: the full display_name of the location
     """
@@ -159,13 +170,24 @@ def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
     return gov_name, dist_name, area_name, loc_name
 
 
-# ---------- Endpoint: Resolve Location ----------
+# ============================================================
+# Endpoint: Resolve Location
+# ============================================================
 
 
 @router.post("/resolve-location", response_model=ResolveLocationResponse)
 async def ai_resolve_location(
-    payload: ResolveLocationRequest, db: Session = Depends(get_db)
+    payload: ResolveLocationRequest,
+    db: Session = Depends(get_db),
 ):
+    """
+    يأخذ إحداثيات (lat/lon) ويستخدم Nominatim لتحديد:
+      - المحافظة (governments)
+      - اللواء / القضاء (districts)
+      - المنطقة (areas)
+      - الموقع التفصيلي (locations) إن وُجد
+    ويقوم بإنشاء السجلات تلقائياً في قاعدة البيانات عند عدم وجودها.
+    """
     lat = payload.latitude
     lon = payload.longitude
 
@@ -195,7 +217,7 @@ async def ai_resolve_location(
     if not gov_name or not dist_name:
         # If we could not determine a governorate or district, return error
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="غير قادر على تحديد المحافظة أو اللواء من الإحداثيات.",
         )
     if not area_name:
@@ -226,14 +248,15 @@ async def ai_resolve_location(
             )
         if not gov:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="فشل إنشاء أو قراءة بيانات المحافظة من قاعدة البيانات.",
             )
     except SQLAlchemyError as e:
         db.rollback()
         print("Error while creating Government:", e)
         raise HTTPException(
-            status_code=500, detail="حدث خطأ أثناء حفظ بيانات المحافظة."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="حدث خطأ أثناء حفظ بيانات المحافظة.",
         ) from e
 
     # --------- Ensure District exists in DB ---------
@@ -250,10 +273,10 @@ async def ai_resolve_location(
             print("Creating new District:", dist_name, "for gov_id:", gov.id)
             db.execute(
                 text(
-                    "INSERT INTO districts (government_id, name_ar, name_en, is_active) "
-                    "VALUES (:gid, :name_ar, :name_en, 1)"
+                    "INSERT INTO districts (government_id, name_ar, is_active) "
+                    "VALUES (:gid, :name_ar, 1)"
                 ),
-                {"gid": gov.id, "name_ar": dist_name, "name_en": dist_name},
+                {"gid": gov.id, "name_ar": dist_name},
             )
             db.commit()
             dist = (
@@ -266,24 +289,25 @@ async def ai_resolve_location(
             )
         if not dist:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="فشل إنشاء أو قراءة بيانات اللواء/القضاء من قاعدة البيانات.",
             )
     except SQLAlchemyError as e:
         db.rollback()
         print("Error while creating District:", e)
         raise HTTPException(
-            status_code=500, detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء.",
         ) from e
 
     # --------- Ensure Area exists in DB ---------
-    area = (
-        db.query(models.Area)
-        .filter(models.Area.district_id == dist.id, models.Area.name_ar == area_name)
-        .first()
-    )
-    if not area:
-        try:
+    try:
+        area = (
+            db.query(models.Area)
+            .filter(models.Area.district_id == dist.id, models.Area.name_ar == area_name)
+            .first()
+        )
+        if not area:
             print(
                 "Creating new Area:",
                 area_name,
@@ -294,11 +318,10 @@ async def ai_resolve_location(
             )
             db.execute(
                 text(
-                    "INSERT INTO areas (government_id, district_id, name_ar, name_en) "
-                    "VALUES (:gid, :did, :name_ar, :name_en)"
+                    "INSERT INTO areas (district_id, name_ar, name_en, is_active) "
+                    "VALUES (:did, :name_ar, :name_en, 1)"
                 ),
                 {
-                    "gid": gov.id,
                     "did": dist.id,
                     "name_ar": area_name,
                     "name_en": area_name,
@@ -308,22 +331,23 @@ async def ai_resolve_location(
             area = (
                 db.query(models.Area)
                 .filter(
-                    models.Area.district_id == dist.id, models.Area.name_ar == area_name
+                    models.Area.district_id == dist.id,
+                    models.Area.name_ar == area_name,
                 )
                 .first()
             )
-        except SQLAlchemyError as e:
-            db.rollback()
-            print("Error while creating Area:", e)
+        if not area:
             raise HTTPException(
-                status_code=500,
-                detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
-            ) from e
-    if not area:
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="فشل إنشاء أو قراءة بيانات المنطقة من قاعدة البيانات.",
+            )
+    except SQLAlchemyError as e:
+        db.rollback()
+        print("Error while creating Area:", e)
         raise HTTPException(
-            status_code=500,
-            detail="فشل إنشاء أو قراءة بيانات المنطقة من قاعدة البيانات.",
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
+        ) from e
 
     # --------- Ensure Location exists in DB (optional detailed location) ---------
     location_obj: Optional[models.Location] = None
@@ -378,21 +402,30 @@ async def ai_resolve_location(
             latitude=getattr(location_obj, "latitude", None),
             longitude=getattr(location_obj, "longitude", None),
         )
+
     return ResolveLocationResponse(
         government=LocationInfo(
-            id=gov.id, name_ar=gov.name_ar, name_en=getattr(gov, "name_en", None)
+            id=gov.id,
+            name_ar=gov.name_ar,
+            name_en=getattr(gov, "name_en", None),
         ),
         district=LocationInfo(
-            id=dist.id, name_ar=dist.name_ar, name_en=getattr(dist, "name_en", None)
+            id=dist.id,
+            name_ar=dist.name_ar,
+            name_en=getattr(dist, "name_en", None),
         ),
         area=LocationInfo(
-            id=area.id, name_ar=area.name_ar, name_en=getattr(area, "name_en", None)
+            id=area.id,
+            name_ar=area.name_ar,
+            name_en=getattr(area, "name_en", None),
         ),
         location=location_point,
     )
 
 
-# ---------- Helper: Generate Suggested Title/Description ----------
+# ============================================================
+# Helper: Generate Suggested Title/Description
+# ============================================================
 
 
 def generate_text_suggestions(
@@ -403,8 +436,8 @@ def generate_text_suggestions(
     area_name_ar: str,
 ) -> Tuple[str, str]:
     """
-    Generate a suggested report title and description in Arabic based on the report type code
-    and location. Uses the Arabic name for the report type.
+    Generate a suggested report title and description in Arabic based on the
+    report type code and location. Uses the Arabic name for the report type.
     """
     location_text = f"في منطقة {area_name_ar} / {dist_name_ar} / {gov_name_ar}"
 
@@ -479,7 +512,9 @@ def generate_text_suggestions(
     return title, desc
 
 
-# ---------- Endpoint: Analyze Image ----------
+# ============================================================
+# Endpoint: Analyze Image
+# ============================================================
 
 
 @router.post("/analyze-image", response_model=AnalyzeImageResponse)
@@ -493,11 +528,12 @@ async def ai_analyze_image(
 ):
     """
     يقبل صورة من المستخدم ويستخدم نموذج YOLOv8 لتحليلها،
-    ويرجع نوع التشوه البصري المتوقع مع درجة الثقة وعنوان ووصف مقترحين.
+    ويرجع نوع التشوه البصري المتوقع مع درجة الثقة
+    بالإضافة إلى عنوان ووصف مقترحين للبلاغ.
     """
     image_bytes = await file.read()
     if not image_bytes:
-        raise HTTPException(status_code=400, detail="ملف الصورة فارغ.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ملف الصورة فارغ.")
 
     # Run the classifier on the image
     try:
@@ -505,13 +541,14 @@ async def ai_analyze_image(
     except Exception as e:
         print("AI analyze-image error:", e)
         raise HTTPException(
-            status_code=500, detail="حدث خطأ أثناء تحليل الصورة."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="حدث خطأ أثناء تحليل الصورة.",
         ) from e
 
     # Retrieve location names (Arabic) if IDs are provided
-    gov = db.query(models.Government).get(gov_id) if gov_id else None
-    dist = db.query(models.District).get(dist_id) if dist_id else None
-    area = db.query(models.Area).get(area_id) if area_id else None
+    gov = db.get(models.Government, gov_id) if gov_id else None
+    dist = db.get(models.District, dist_id) if dist_id else None
+    area = db.get(models.Area, area_id) if area_id else None
 
     gov_name_ar = gov.name_ar if gov else "غير محدد"
     dist_name_ar = dist.name_ar if dist else "غير محدد"
@@ -551,6 +588,11 @@ async def ai_analyze_image(
         suggested_title=suggested_title,
         suggested_description=suggested_description,
     )
+
+
+# ============================================================
+# Debug endpoint: raw reverse geocoding (for development)
+# ============================================================
 
 
 @router.post("/debug-reverse-geo")
