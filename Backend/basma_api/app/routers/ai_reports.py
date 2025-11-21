@@ -304,7 +304,10 @@ async def ai_resolve_location(
     try:
         area = (
             db.query(models.Area)
-            .filter(models.Area.district_id == dist.id, models.Area.name_ar == area_name)
+            .filter(
+                models.Area.district_id == dist.id,
+                models.Area.name_ar == area_name,
+            )
             .first()
         )
         if not area:
@@ -316,12 +319,14 @@ async def ai_resolve_location(
                 "| district_id:",
                 dist.id,
             )
+            # ✅ هنا الإصلاح: إضافة government_id في الـ INSERT
             db.execute(
                 text(
-                    "INSERT INTO areas (district_id, name_ar, name_en, is_active) "
-                    "VALUES (:did, :name_ar, :name_en, 1)"
+                    "INSERT INTO areas (government_id, district_id, name_ar, name_en, is_active) "
+                    "VALUES (:gid, :did, :name_ar, :name_en, 1)"
                 ),
                 {
+                    "gid": gov.id,
                     "did": dist.id,
                     "name_ar": area_name,
                     "name_en": area_name,
@@ -533,7 +538,10 @@ async def ai_analyze_image(
     """
     image_bytes = await file.read()
     if not image_bytes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ملف الصورة فارغ.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ملف الصورة فارغ.",
+        )
 
     # Run the classifier on the image
     try:

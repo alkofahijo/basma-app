@@ -1,0 +1,32 @@
+DELIMITER $$
+
+CREATE DEFINER=`root`@`localhost` TRIGGER `trg_reports_set_reported_by_name`
+BEFORE INSERT ON `reports`
+FOR EACH ROW
+BEGIN
+    DECLARE v_name_ar VARCHAR(200);
+
+    -- لو الـ SELECT ما رجّع صف، ما نبغى التريغر يرمي خطأ
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_name_ar = NULL;
+
+    -- لو الاسم المبلِّغ موجود أصلاً (جاينا من الـ API)، ما نغيّر شيء
+    IF NEW.reported_by_name IS NULL OR NEW.reported_by_name = '' THEN
+
+        -- لو عندنا user_id نحاول نجيب الاسم من الـ account المرتبط
+        IF NEW.user_id IS NOT NULL THEN
+            SELECT a.name_ar
+              INTO v_name_ar
+            FROM users u
+            LEFT JOIN accounts a ON a.id = u.account_id
+            WHERE u.id = NEW.user_id
+            LIMIT 1;
+
+            IF v_name_ar IS NOT NULL AND v_name_ar <> '' THEN
+                SET NEW.reported_by_name = v_name_ar;
+            END IF;
+        END IF;
+
+    END IF;
+END$$
+
+DELIMITER ;

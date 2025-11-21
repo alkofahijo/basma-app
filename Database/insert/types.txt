@@ -1,31 +1,19 @@
-USE `basmadb`;
-
-INSERT INTO `report_types`
-(`id`, `code`, `name_ar`, `name_en`)
+INSERT INTO `basmadb`.`report_types`
+(`id`,
+ `code`,
+ `name_ar`,
+ `name_en`)
 VALUES
-(1, 'cleanliness', 'نظافة', 'Cleanliness');
-
-INSERT INTO `report_types`
-(`id`, `code`, `name_ar`, `name_en`)
-VALUES
-(2, 'potholes', 'حُفر', 'Potholes');
-
-INSERT INTO `report_types`
-(`id`, `code`, `name_ar`, `name_en`)
-VALUES
-(3, 'sidewalks', 'أرصفة', 'Sidewalks');
-
-INSERT INTO `report_types`
-(`id`, `code`, `name_ar`, `name_en`)
-VALUES
-(4, 'walls', 'جدران', 'Walls');
-
-INSERT INTO `report_types`
-(`id`, `code`, `name_ar`, `name_en`)
-VALUES
-(5, 'planting', 'زراعة', 'Planting');
-
-INSERT INTO `report_types`
-(`id`, `code`, `name_ar`, `name_en`)
-VALUES
-(6, 'other', 'أخرى', 'Other');
+(1, 'GRAFFITI', 'كتابة على الجدران', 'Graffiti'),
+(2, 'FADED_SIGNAGE', 'لافتة باهتة', 'Faded signage'),
+(3, 'POTHOLES', 'حفر', 'Potholes'),
+(4, 'GARBAGE', 'نفايات', 'Garbage'),
+(5, 'CONSTRUCTION_ROAD', 'طريق قيد الإنشاء', 'Road under construction'),
+(6, 'BROKEN_SIGNAGE', 'لافتة مكسورة', 'Broken signage'),
+(7, 'BAD_BILLBOARD', 'لوحة إعلانات تالفة', 'Damaged billboard'),
+(8, 'SAND_ON_ROAD', 'أتربة على الطريق', 'Sand/dust on road'),
+(9, 'CLUTTER_SIDEWALK', 'رصيف غير صالح للمشي', 'Cluttered sidewalk'),
+(10, 'UNKEPT_FACADE', 'واجهة مبنى سيئة المظهر', 'Unkept facade'),
+(11, 'OTHERS', 'أخرى', 'Others'),
+(12, 'LAND_NEEDS_PLANTING', 'أرض بحاجة لزراعة أو تشجير', 'Land needs planting'),
+(13, 'DAMAGED_LIGHTING', 'إنارة تالفة', 'Damaged lighting');
