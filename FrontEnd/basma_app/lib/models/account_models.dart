@@ -65,7 +65,7 @@ class Account {
 
   factory Account.fromJson(Map<String, dynamic> json) {
     // نحاول استخراج اسم نوع الحساب / اسم المحافظة سواء كانت مفصولة أو ضمن كائن
-    String? _extractName(
+    String? extractName(
       Map<String, dynamic> j,
       String flatKey,
       String nestedKey,
@@ -90,12 +90,12 @@ class Account {
       joinFormLink: json['join_form_link'] as String?,
       logoUrl: json['logo_url'] as String?,
 
-      accountTypeNameAr: _extractName(
+      accountTypeNameAr: extractName(
         json,
         'account_type_name_ar',
         'account_type',
       ),
-      governmentNameAr: _extractName(json, 'government_name_ar', 'government'),
+      governmentNameAr: extractName(json, 'government_name_ar', 'government'),
 
       isActive: (() {
         final v = json['is_active'];

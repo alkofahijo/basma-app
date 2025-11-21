@@ -186,7 +186,7 @@ class RegisterChoicePage extends StatelessWidget {
 
               Obx(
                 () => DropdownButtonFormField<AccountTypeOption>(
-                  value: controller.selectedAccountType.value,
+                  initialValue: controller.selectedAccountType.value,
                   hint: const Text('اختر نوع الحساب'),
                   items: controller.accountTypes
                       .map(
@@ -227,7 +227,7 @@ class RegisterChoicePage extends StatelessWidget {
 
               Obx(
                 () => DropdownButtonFormField<Government>(
-                  value: controller.selectedGov.value,
+                  initialValue: controller.selectedGov.value,
                   hint: const Text('اختر محافظتك'),
                   items: controller.governments
                       .map(
