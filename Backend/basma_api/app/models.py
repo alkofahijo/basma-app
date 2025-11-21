@@ -173,7 +173,7 @@ class AccountType(Base):
 class Account(Base):
     """
     حساب موحّد:
-      - يمكن أن يمثّل: مواطن، مبادرة، بلدية، شركة، ... حسب account_type_id
+      - يمكن أن يمثّل: مبادرة، بلدية، شركة، ... حسب account_type_id
       - يتم الربط مع User (user_type=2) عبر account_id
       - ويتم اعتماده في التبنّي عبر adopted_by_account_id في Report
     """
@@ -201,7 +201,7 @@ class Account(Base):
 
     logo_url = Column(String(500), nullable=True)
 
-    # رابط نموذج الانضمام (اختياري) – مهم للمبادرات التطوعية ونحوها
+    # رابط نموذج الانضمام (اختياري)
     join_form_link = Column(String(500), nullable=True)
 
     reports_completed_count = Column(
@@ -349,7 +349,7 @@ class Report(Base):
         server_default=text("CURRENT_TIMESTAMP"),
     )
 
-    # تبنّي موحّد: الحساب الذي تبنّى هذا البلاغ (مواطن، مبادرة، بلدية، ...)
+    # تبنّي موحّد: الحساب الذي تبنّى هذا البلاغ
     adopted_by_account_id = Column(
         MySQLInteger(unsigned=True),
         ForeignKey("accounts.id", onupdate="RESTRICT", ondelete="SET NULL"),

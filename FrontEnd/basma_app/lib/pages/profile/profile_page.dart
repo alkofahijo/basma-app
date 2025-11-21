@@ -2,6 +2,7 @@
 
 import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
+import 'package:basma_app/pages/profile/edit_account_page.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
@@ -41,6 +42,15 @@ class _ProfilePageState extends State<ProfilePage> {
     if (value == null) return null;
     if (value is int) return value;
     return int.tryParse(value.toString());
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return "$y-$m-$d $hh:$mm";
   }
 
   Future<void> _loadProfile() async {
@@ -223,7 +233,41 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     _buildAccountInfoSection(a),
                     const SizedBox(height: 16),
-                    const SizedBox(height: 30),
+                    // زر تعديل بيانات الحساب
+                    SizedBox(
+                      width: 250,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (_account == null) return;
+                          final updated = await Navigator.push<Account?>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  EditAccountPage(account: _account!),
+                            ),
+                          );
+                          if (updated != null && mounted) {
+                            setState(() {
+                              _account = updated;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.edit, color: Colors.white),
+                        label: const Text(
+                          "تعديل بيانات الحساب",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // زر تسجيل الخروج
                     SizedBox(
                       width: 250,
                       child: ElevatedButton.icon(
@@ -299,7 +343,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildAccountInfoSection(Account a) {
-    // نحاول استخدام أسماء الحقول الاختيارية لو متوفرة في الموديل
+    // أسماء نوع الحساب والمحافظة
     final accountTypeName = a.accountTypeNameAr ?? "غير محدد";
     final governmentName = a.governmentNameAr ?? "غير محدد";
 
@@ -331,15 +375,39 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 10),
             const Divider(height: 16),
+
+            // ✅ جميع البيانات المهمّة للحساب
+
+            // نوع الحساب من account_types.name_ar
             InfoRow(label: "نوع الحساب", value: accountTypeName),
+
+            // الاسم بالعربية / الإنجليزية
             InfoRow(label: "الاسم بالعربية", value: a.nameAr),
             InfoRow(label: "الاسم بالإنجليزية", value: a.nameEn ?? "---"),
+
+            // المحافظة من governments.name_ar
             InfoRow(label: "المحافظة", value: governmentName),
+
+            // رقم الهاتف (في الملف الشخصي نعرضه دائماً لصاحب الحساب)
             InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
+
+            // عدد البلاغات المنجزة
             InfoRow(
               label: "عدد البلاغات المنجزة",
               value: a.reportsCompletedCount.toString(),
             ),
+
+            // رابط نموذج الانضمام (إن وجد)
+            if (a.joinFormLink != null && a.joinFormLink!.trim().isNotEmpty)
+              InfoRow(label: "رابط نموذج الانضمام", value: a.joinFormLink!),
+
+            // تاريخ إنشاء الحساب
+            if (a.createdAt != null)
+              InfoRow(
+                label: "تاريخ إنشاء الحساب",
+                value: _formatDateTime(a.createdAt!),
+              ),
+
             const SizedBox(height: 12),
             Center(
               child: SizedBox(

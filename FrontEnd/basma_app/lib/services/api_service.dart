@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:basma_app/config/base_url.dart';
 import 'package:basma_app/models/account_models.dart';
-
 import 'package:basma_app/models/location_models.dart';
 import 'package:basma_app/models/report_models.dart';
 import 'package:http/http.dart' as http;
@@ -655,7 +654,7 @@ class ApiService {
   }
 
   // -------------------------------------------------------------
-  // ACCOUNT DETAILS
+  // ACCOUNT DETAILS + UPDATE (نظام الحسابات الموحد)
   // -------------------------------------------------------------
   static Future<Account> getAccount(int id) async {
     final tok = await _token(); // لو الاندبوينت محمي، خلي التوكن
@@ -668,6 +667,34 @@ class ApiService {
 
     if (res.statusCode != 200) {
       _throwHttp(res, fallback: 'فشل تحميل بيانات الحساب');
+    }
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return Account.fromJson(data);
+  }
+
+  /// تحديث بيانات حساب موحّد (Account) عبر PATCH /accounts/{id}
+  /// body يمكن أن يحتوي أي من الحقول:
+  /// name_ar, name_en, mobile_number, logo_url, join_form_link, ...
+  static Future<Account> updateAccount(
+    int id,
+    Map<String, dynamic> payload,
+  ) async {
+    final tok = await _token();
+    if (tok == null || tok.isEmpty) {
+      throw Exception('Not authenticated');
+    }
+
+    final uri = Uri.parse('$base/accounts/$id');
+
+    final res = await http.patch(
+      uri,
+      headers: _headers(tok, json: true),
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: 'فشل تحديث بيانات الحساب');
     }
 
     final data = jsonDecode(res.body) as Map<String, dynamic>;

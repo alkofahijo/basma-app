@@ -1,11 +1,89 @@
-import 'package:basma_app/pages/on_start/home_page.dart';
+import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+/// صفحة نجاح عامة قابلة لإعادة الاستخدام.
+/// - يمكن استخدامها لنجاح إنشاء بلاغ جديد.
+/// - أو لنجاح إكمال/معالجة بلاغ موجود.
+/// - قابلة للتخصيص بالنصوص والحالة.
 class SuccessPage extends StatelessWidget {
-  final String reportCode;
-  const SuccessPage({super.key, required this.reportCode});
+  /// رقم البلاغ (اختياري). إذا لم يُمرر لن يظهر البوكس الخاص به.
+  final String? reportCode;
+
+  /// عنوان كبير في الأعلى (مثلاً: "تم إرسال البلاغ بنجاح" أو "تم إكمال معالجة البلاغ").
+  final String title;
+
+  /// نص الشرح داخل البوكس الثاني.
+  final String message;
+
+  /// نص الحالة (مثلاً: "قيد المراجعة" أو "مكتمل").
+  final String statusText;
+
+  /// نص زر الإجراء الرئيسي.
+  final String primaryButtonText;
+
+  /// مسار صورة النجاح (يمكن تغييره إن رغبت).
+  final String imageAsset;
+
+  /// هل نعرض بوكس الحالة أم لا.
+  final bool showStatus;
+
+  /// هل نعرض بوكس رقم البلاغ أم لا.
+  final bool showReportCode;
+
+  const SuccessPage({
+    super.key,
+    this.reportCode,
+    String? title,
+    String? message,
+    String? statusText,
+    String? primaryButtonText,
+    this.imageAsset = "assets/images/success.png",
+    this.showStatus = true,
+    this.showReportCode = true,
+  }) : title = title ?? 'تم إرسال البلاغ بنجاح',
+       message =
+           message ??
+           'شكرًا لمساهمتك في تحسين مدينتنا. سيتم مراجعة بلاغك من قبل فريقنا المختص، '
+               'ويمكنك متابعة الحالة من خلال "بلاغي" في قائمة البلاغات.',
+       statusText = statusText ?? 'قيد المراجعة',
+       primaryButtonText = primaryButtonText ?? 'الانتقال إلى بلاغاتي';
+
+  /// Factory مخصصة لحالة "إنشاء بلاغ جديد"
+  factory SuccessPage.forNewReport({required String reportCode}) {
+    return SuccessPage(
+      reportCode: reportCode,
+      title: 'تم إرسال البلاغ بنجاح',
+      statusText: 'قيد المراجعة',
+      message:
+          'شكرًا لمساهمتك في تحسين مدينتنا. سيتم مراجعة البلاغ من قبل الجهة المختصة، '
+          'ويمكنك متابعة الحالة وتحديثاتها من صفحة "بلاغاتي".',
+      primaryButtonText: 'الانتقال إلى بلاغاتي',
+      showReportCode: true,
+      showStatus: true,
+    );
+  }
+
+  /// Factory مخصصة لحالة "إكمال / معالجة بلاغ"
+  factory SuccessPage.forCompletedReport({required String reportCode}) {
+    return SuccessPage(
+      reportCode: reportCode,
+      title: 'تم إكمال معالجة البلاغ',
+      statusText: 'مكتمل',
+      message:
+          'تم توثيق إكمال معالجة التشوّه البصري لهذا البلاغ مع صورة ما بعد الإصلاح وملاحظاتك. '
+          'يمكنك مراجعة التفاصيل من صفحة "بلاغاتي".',
+      primaryButtonText: 'الانتقال إلى بلاغاتي',
+      showReportCode: true,
+      showStatus: true,
+    );
+  }
+
+  void _goToReportsHistory() {
+    // إرسال المستخدم إلى قائمة بلاغاته (سجل البلاغات)
+    Get.offAll(() => GuestReportsListPage());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +91,6 @@ class SuccessPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -21,16 +98,18 @@ class SuccessPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                "assets/images/success.png",
+                imageAsset,
                 width: 180,
                 height: 180,
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 40),
 
-              const Text(
-                'تم إرسال البلاغ بنجاح',
-                style: TextStyle(
+              // العنوان الرئيسي
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
                   color: kPrimaryColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -38,66 +117,76 @@ class SuccessPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'رقم البلاغ:',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
+              // بوكس رقم البلاغ (اختياري)
+              if (showReportCode && reportCode != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'رقم البلاغ:',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      reportCode,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
+                      const SizedBox(height: 4),
+                      Text(
+                        reportCode!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'الحالة: قيد المراجعة',
-                      style: TextStyle(
-                        color: kPrimaryColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+              // بوكس الحالة والرسالة
+              if (showStatus) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'الحالة: $statusText',
+                        style: const TextStyle(
+                          color: kPrimaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'شكرًا لمساهمتك في تحسين مدينتنا. سيتم مراجعة بلاغك من قبل فريقنا المختص، ويمكنك متابعة الحالة من خلال "بلاغي" في الصفحة الرئيسية.',
-                      style: TextStyle(color: Colors.black54, height: 1.4),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        message,
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
 
               SizedBox(height: size.height * 0.08),
 
+              // زر الانتقال إلى قائمة البلاغات
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -108,12 +197,10 @@ class SuccessPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  onPressed: () {
-                    Get.off(() => const HomePage());
-                  },
-                  child: const Text(
-                    "العودة إلى الشاشة الرئيسية",
-                    style: TextStyle(
+                  onPressed: _goToReportsHistory,
+                  child: Text(
+                    primaryButtonText,
+                    style: const TextStyle(
                       fontSize: 17,
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

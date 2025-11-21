@@ -40,12 +40,18 @@ class Account {
   final String? logoUrl;
 
   /// أسماء جاهزة من الـ backend (JOIN / flatten)
+  /// تأتي من:
+  /// - جدول account_types -> accountTypeNameAr
+  /// - جدول governments  -> governmentNameAr
   final String? accountTypeNameAr;
   final String? governmentNameAr;
 
-  /// حالات إضافية من الـ backend لو احتجتها لاحقاً
+  /// حالات إضافية من الـ backend
   final bool isActive;
   final bool showDetails;
+
+  /// تاريخ إنشاء الجهة (من عمود accounts.created_at)
+  final DateTime? createdAt;
 
   Account({
     required this.id,
@@ -61,10 +67,10 @@ class Account {
     this.governmentNameAr,
     this.isActive = true,
     this.showDetails = true,
+    this.createdAt,
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
-    // نحاول استخراج اسم نوع الحساب / اسم المحافظة سواء كانت مفصولة أو ضمن كائن
     String? extractName(
       Map<String, dynamic> j,
       String flatKey,
@@ -74,6 +80,15 @@ class Account {
       final nested = j[nestedKey];
       if (nested is Map && nested['name_ar'] is String) {
         return nested['name_ar'] as String;
+      }
+      return null;
+    }
+
+    DateTime? parseDate(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      if (value is String) {
+        return DateTime.tryParse(value);
       }
       return null;
     }
@@ -90,6 +105,7 @@ class Account {
       joinFormLink: json['join_form_link'] as String?,
       logoUrl: json['logo_url'] as String?,
 
+      // أسماء النوع والمحافظة (تأتي الآن من properties في الموديل)
       accountTypeNameAr: extractName(
         json,
         'account_type_name_ar',
@@ -97,18 +113,24 @@ class Account {
       ),
       governmentNameAr: extractName(json, 'government_name_ar', 'government'),
 
+      // is_active
       isActive: (() {
         final v = json['is_active'];
         if (v == null) return true;
         if (v is bool) return v;
         return v.toString() == '1';
       })(),
+
+      // show_details
       showDetails: (() {
         final v = json['show_details'];
         if (v == null) return true;
         if (v is bool) return v;
         return v.toString() == '1';
       })(),
+
+      // created_at
+      createdAt: parseDate(json['created_at']),
     );
   }
 
@@ -126,5 +148,6 @@ class Account {
     'government_name_ar': governmentNameAr,
     'is_active': isActive ? 1 : 0,
     'show_details': showDetails ? 1 : 0,
+    'created_at': createdAt?.toIso8601String(),
   };
 }

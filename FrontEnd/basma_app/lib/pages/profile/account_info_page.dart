@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+// lib/pages/profile/account_info_page.dart
 
 import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/services/api_service.dart';
@@ -6,6 +6,7 @@ import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
+import 'package:flutter/material.dart';
 
 const Color _pageBackground = Color(0xFFEFF1F1);
 
@@ -49,6 +50,16 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
         _loading = false;
       });
     }
+  }
+
+  String _formatDateTime(DateTime? dt) {
+    if (dt == null) return "غير متوفر";
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return "$y-$m-$d $hh:$mm";
   }
 
   @override
@@ -110,6 +121,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
+  // ====================== Header (الصورة + الاسم) ======================
+
   Widget _buildHeader(Account a) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18),
@@ -152,6 +165,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       ),
     );
   }
+
+  // ================ بطاقة إحصائية للبلاغات المنجزة =================
 
   Widget _buildStatsRow(Account a) {
     return _buildStatCard(
@@ -212,7 +227,11 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
+  // ===================== تفاصيل الجهة (الأعمدة المطلوبة) =====================
+
   Widget _buildInfoSection(Account a) {
+    final bool canShowDetails = a.showDetails;
+
     return Card(
       color: Colors.white,
       elevation: 2,
@@ -239,11 +258,44 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
             ),
             const SizedBox(height: 10),
             const Divider(height: 16),
+
+            // 1) الاسم بالعربية
             InfoRow(label: "الاسم بالعربية", value: a.nameAr),
+
+            // 2) الاسم بالإنجليزية
             InfoRow(label: "الاسم بالإنجليزية", value: a.nameEn ?? "غير متوفر"),
-            InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
+
+            // 3) نوع الجهة
+            InfoRow(
+              label: "نوع الجهة",
+              value: a.accountTypeNameAr ?? "غير متوفر",
+            ),
+
+            // 4) المحافظة
+            InfoRow(
+              label: "المحافظة",
+              value: a.governmentNameAr ?? "غير متوفر",
+            ),
+
+            // 5) رقم الهاتف (لو show_details=true فقط)
+            if (canShowDetails)
+              InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
+
+            // 6) رابط نموذج الانضمام
             if (a.joinFormLink != null && a.joinFormLink!.trim().isNotEmpty)
               InfoRow(label: "رابط نموذج الانضمام", value: a.joinFormLink!),
+
+            // 7) عدد البلاغات المنجزة
+            InfoRow(
+              label: "عدد البلاغات المنجزة",
+              value: "${a.reportsCompletedCount}",
+            ),
+
+            // 8) تاريخ الإنشاء
+            InfoRow(
+              label: "تاريخ إنشاء الجهة",
+              value: _formatDateTime(a.createdAt),
+            ),
           ],
         ),
       ),

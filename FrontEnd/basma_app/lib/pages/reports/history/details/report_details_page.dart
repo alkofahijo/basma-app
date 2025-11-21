@@ -2,6 +2,7 @@
 
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/pages/auth/Login/login_page.dart';
+import 'package:basma_app/pages/profile/account_info_page.dart';
 import 'package:basma_app/pages/reports/history/details/complete_report_page.dart';
 import 'package:basma_app/pages/reports/history/widgets/adopt_report_dialog.dart';
 import 'package:basma_app/pages/reports/history/widgets/view_location_page.dart';
@@ -728,16 +729,56 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       );
     }
 
+    final adopterName = report.adoptedByAccountName ?? "غير متوفر";
+    final adopterAccountId = report.adoptedByAccountId;
+
     return _buildSectionCard(
       icon: Icons.handshake_outlined,
       title: "الجهة المسؤولة عن الحل",
       subtitle: "الجهة التي تبنّت حل المشكلة وقامت بمعالجتها.",
       children: [
         const SizedBox(height: 4),
-        InfoRow(
-          label: "اسم الجهة المتبنية",
-          value: report.adoptedByAccountName ?? "غير متوفر",
-        ),
+        if (adopterAccountId != null)
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AccountInfoPage(accountId: adopterAccountId),
+                ),
+              );
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "اسم الجهة المتبنية: ",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Expanded(
+                  child: Text(
+                    adopterName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: kPrimaryColor,
+                      decoration: TextDecoration.underline,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: kPrimaryColor,
+                ),
+              ],
+            ),
+          )
+        else
+          InfoRow(label: "اسم الجهة المتبنية", value: adopterName),
         const SizedBox(height: 4),
       ],
     );
@@ -804,7 +845,11 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
             onPressed: () async {
               final result = await showDialog<bool>(
                 context: context,
-                builder: (_) => SolveReportDialog(reportId: report.id),
+                builder: (_) => SolveReportDialog(
+                  reportId: report.id,
+                  reportCode:
+                      report.reportCode, // ✅ تمرير رقم البلاغ لصفحة النجاح
+                ),
               );
               if (result == true) {
                 _loadReportDetails();

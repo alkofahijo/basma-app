@@ -1,5 +1,3 @@
-// lib/pages/report/create_report_with_ai_page.dart
-
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -83,6 +81,12 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
+  }
+
+  void _clearTextFields() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _notesController.clear();
   }
 
   // ========= Auth Guard =========
@@ -211,6 +215,17 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
     try {
       final types = await ApiService.listReportTypes();
+
+      // إعادة ترتيب القائمة بحيث تكون "أخرى" في النهاية دائماً
+      types.sort((a, b) {
+        final aIsOthers = a.nameAr.trim() == 'أخرى';
+        final bIsOthers = b.nameAr.trim() == 'أخرى';
+
+        if (aIsOthers == bIsOthers) return 0;
+        if (aIsOthers) return 1;
+        return -1;
+      });
+
       _safeSetState(() {
         _reportTypes = types;
         _isReportTypesLoading = false;
@@ -251,9 +266,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
         _imageErrorMessage = null;
         _generalErrorMessage = null;
 
-        _titleController.clear();
-        _descriptionController.clear();
-        _notesController.clear();
+        _clearTextFields();
       });
 
       await _analyzeImageWithAi();
@@ -496,7 +509,10 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
 
       if (!mounted) return;
 
-      Get.offAll(() => SuccessPage(reportCode: createdReport.reportCode));
+      // استخدام نسخة SuccessPage الخاصة بإنشاء بلاغ جديد
+      Get.offAll(
+        () => SuccessPage.forNewReport(reportCode: createdReport.reportCode),
+      );
     } catch (e) {
       _safeSetState(() {
         _generalErrorMessage = "فشل إرسال البلاغ: $e";
@@ -873,6 +889,7 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                                         _imageErrorMessage = null;
                                         _aiSuggestion = null;
                                         _selectedReportType = null;
+                                        _clearTextFields();
                                       });
                                     },
                               child: Container(
@@ -1017,8 +1034,14 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                         ),
                       )
                       .toList(),
-                  onChanged: (value) {
+                  onChanged: (ReportTypeOption? value) {
                     _safeSetState(() {
+                      if (value != null && value != _selectedReportType) {
+                        // عند تغيير نوع البلاغ يدويًا:
+                        // امسح الحقول + امسح اقتراح AI
+                        _clearTextFields();
+                        _aiSuggestion = null;
+                      }
                       _selectedReportType = value;
                     });
                   },
@@ -1036,7 +1059,9 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                   isExpanded: true,
                   dropdownColor: Colors.white,
                   validator: (ReportTypeOption? value) {
-                    if (value == null) return 'يرجى اختيار نوع البلاغ';
+                    if (value == null) {
+                      return 'يرجى اختيار نوع البلاغ';
+                    }
                     return null;
                   },
                 ),
