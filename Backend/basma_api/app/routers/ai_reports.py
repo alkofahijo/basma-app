@@ -271,12 +271,17 @@ async def ai_resolve_location(
         )
         if not dist:
             print("Creating new District:", dist_name, "for gov_id:", gov.id)
+            # ✅ إضافة name_en في الإدخال لتفادي خطأ NOT NULL
             db.execute(
                 text(
-                    "INSERT INTO districts (government_id, name_ar, is_active) "
-                    "VALUES (:gid, :name_ar, 1)"
+                    "INSERT INTO districts (government_id, name_ar, name_en, is_active) "
+                    "VALUES (:gid, :name_ar, :name_en, 1)"
                 ),
-                {"gid": gov.id, "name_ar": dist_name},
+                {
+                    "gid": gov.id,
+                    "name_ar": dist_name,
+                    "name_en": dist_name,
+                },
             )
             db.commit()
             dist = (
@@ -319,7 +324,7 @@ async def ai_resolve_location(
                 "| district_id:",
                 dist.id,
             )
-            # ✅ هنا الإصلاح: إضافة government_id في الـ INSERT
+            # سبق وأصلحناها: إضافة government_id + name_en
             db.execute(
                 text(
                     "INSERT INTO areas (government_id, district_id, name_ar, name_en, is_active) "
