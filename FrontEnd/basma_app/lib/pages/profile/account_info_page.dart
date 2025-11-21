@@ -1,27 +1,25 @@
-// lib/pages/profile/initiative_info_page.dart
-
 import 'package:flutter/material.dart';
 
-import 'package:basma_app/models/initiative_models.dart';
+import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/services/api_service.dart';
-import 'package:basma_app/widgets/info_row.dart';
-import 'package:basma_app/widgets/network_image_viewer.dart';
-import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/info_row.dart';
+import 'package:basma_app/widgets/loading_center.dart';
+import 'package:basma_app/widgets/network_image_viewer.dart';
 
 const Color _pageBackground = Color(0xFFEFF1F1);
 
-class InitiativeInfoPage extends StatefulWidget {
-  final int initiativeId;
+class AccountInfoPage extends StatefulWidget {
+  final int accountId;
 
-  const InitiativeInfoPage({super.key, required this.initiativeId});
+  const AccountInfoPage({super.key, required this.accountId});
 
   @override
-  State<InitiativeInfoPage> createState() => _InitiativeInfoPageState();
+  State<AccountInfoPage> createState() => _AccountInfoPageState();
 }
 
-class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
-  Initiative? _initiative;
+class _AccountInfoPageState extends State<AccountInfoPage> {
+  Account? _account;
   String? _err;
   bool _loading = true;
 
@@ -38,16 +36,16 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
     });
 
     try {
-      final initiative = await ApiService.getInitiative(widget.initiativeId);
+      final acc = await ApiService.getAccount(widget.accountId);
       if (!mounted) return;
       setState(() {
-        _initiative = initiative;
+        _account = acc;
         _loading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _err = 'تعذّر تحميل بيانات المبادرة';
+        _err = 'تعذّر تحميل بيانات الجهة';
         _loading = false;
       });
     }
@@ -67,7 +65,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
           backgroundColor: kPrimaryColor,
           elevation: 0,
           title: const Text(
-            "بيانات المبادرة",
+            "بيانات الجهة",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -79,7 +77,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
         body: SafeArea(
           child: _loading
               ? const LoadingCenter()
-              : _err != null || _initiative == null
+              : _err != null || _account == null
               ? Center(
                   child: Text(
                     _err ?? "حدث خطأ غير متوقع",
@@ -91,19 +89,15 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
                   child: ListView(
                     padding: EdgeInsets.zero,
                     children: [
-                      _buildHeader(_initiative!),
+                      _buildHeader(_account!),
                       const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           children: [
-                            _buildStatsRow(_initiative!),
+                            _buildStatsRow(_account!),
                             const SizedBox(height: 16),
-                            _buildInfoSection(_initiative!),
-                            const SizedBox(height: 16),
-                            if (_initiative!.joinFormLink != null &&
-                                _initiative!.joinFormLink!.trim().isNotEmpty)
-                              _buildJoinSection(_initiative!.joinFormLink!),
+                            _buildInfoSection(_account!),
                             const SizedBox(height: 24),
                           ],
                         ),
@@ -116,9 +110,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
     );
   }
 
-  // ======================= UI PARTS =======================
-
-  Widget _buildHeader(Initiative i) {
+  Widget _buildHeader(Account a) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
@@ -137,10 +129,10 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(55),
-              child: i.logoUrl != null && i.logoUrl!.isNotEmpty
-                  ? NetworkImageViewer(url: i.logoUrl!, height: 110)
+              child: a.logoUrl != null && a.logoUrl!.isNotEmpty
+                  ? NetworkImageViewer(url: a.logoUrl!, height: 110)
                   : const Icon(
-                      Icons.volunteer_activism,
+                      Icons.apartment,
                       size: 64,
                       color: Color.fromARGB(255, 47, 50, 47),
                     ),
@@ -148,7 +140,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            i.nameAr,
+            a.nameAr,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -161,11 +153,11 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
     );
   }
 
-  Widget _buildStatsRow(Initiative i) {
+  Widget _buildStatsRow(Account a) {
     return _buildStatCard(
       icon: Icons.done_all_rounded,
       title: "البلاغات المنجزة",
-      value: "${i.reportsCompletedCount}",
+      value: "${a.reportsCompletedCount}",
       color: kPrimaryColor,
     );
   }
@@ -220,7 +212,7 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
     );
   }
 
-  Widget _buildInfoSection(Initiative i) {
+  Widget _buildInfoSection(Account a) {
     return Card(
       color: Colors.white,
       elevation: 2,
@@ -235,78 +227,23 @@ class _InitiativeInfoPageState extends State<InitiativeInfoPage> {
                 Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                 SizedBox(width: 6),
                 Text(
-                  "تفاصيل المبادرة",
+                  "تفاصيل الجهة",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              "معلومات أساسية حول المبادرة وقنوات التواصل.",
+              "معلومات أساسية حول الجهة المساهمة في حل البلاغات.",
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 10),
             const Divider(height: 16),
-            InfoRow(label: "اسم المبادرة", value: i.nameAr),
-            InfoRow(label: "الاسم بالإنجليزية", value: i.nameEn),
-            InfoRow(label: "رقم الهاتف", value: i.mobileNumber),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJoinSection(String link) {
-    return Card(
-      color: Colors.white,
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.person_add_alt_1, size: 18, color: kPrimaryColor),
-                SizedBox(width: 6),
-                Text(
-                  "الانضمام إلى المبادرة",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "يمكنك التقدّم للانضمام للمبادرة من خلال الرابط التالي:",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: kPrimaryColor.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.link, size: 18, color: kPrimaryColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      link,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: kPrimaryColor,
-                        decoration: TextDecoration.underline,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            InfoRow(label: "الاسم بالعربية", value: a.nameAr),
+            InfoRow(label: "الاسم بالإنجليزية", value: a.nameEn ?? "غير متوفر"),
+            InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
+            if (a.joinFormLink != null && a.joinFormLink!.trim().isNotEmpty)
+              InfoRow(label: "رابط نموذج الانضمام", value: a.joinFormLink!),
           ],
         ),
       ),

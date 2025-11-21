@@ -2,19 +2,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import User, Citizen, Initiative
-from ..schemas import (
-    TokenOut,
-    CitizenCreate,
-    CitizenOut,
-    InitiativeCreate,
-    InitiativeOut,
-)
+from ..models import User, Account, Government, AccountType
+from ..schemas import TokenOut
 from ..security import (
     hash_password,
     verify_password,
@@ -25,94 +19,124 @@ from ..security import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# ------------------------------------------
+# ============================================================
 # REQUEST MODEL: CHANGE PASSWORD
-# ------------------------------------------
+# ============================================================
+
 class ChangePasswordIn(BaseModel):
-    new_password: str
+    new_password: str = Field(min_length=6)
 
 
-# ------------------------------------------
-# REGISTER CITIZEN
-# ------------------------------------------
-@router.post("/register/citizen", response_model=CitizenOut, status_code=201)
-def register_citizen(payload: CitizenCreate, db: Session = Depends(get_db)):
+# ============================================================
+# REQUEST MODEL: REGISTER ACCOUNT (UNIFIED)
+# ============================================================
 
-    # Unique username
-    if db.scalar(select(User).where(User.username == payload.username)):
+class AccountRegisterIn(BaseModel):
+    """
+    تستخدم لتسجيل أي نوع من الحسابات (حسب account_type_id)
+    مثل: مبادرة، بلدية، شركة، ... إلخ
+    """
+
+    # بيانات الحساب / الجهة
+    name_ar: str
+    name_en: str
+    mobile_number: str
+    government_id: int
+    account_type_id: int
+
+    # رابط عام للحساب (مثل نموذج انضمام، صفحة ويب، إلخ)
+    account_link: str | None = None
+
+    show_details: bool = True
+    logo_url: str | None = None
+
+    # بيانات الدخول
+    username: str
+    password: str = Field(min_length=6)
+
+
+# ============================================================
+# REGISTER ACCOUNT
+# ============================================================
+
+@router.post("/register/account", status_code=201)
+def register_account(payload: AccountRegisterIn, db: Session = Depends(get_db)):
+    """
+    إنشاء حساب جديد (أي نوع من أنواع الحسابات في جدول account_types)
+    + إنشاء مستخدم مرتبط بهذا الحساب في جدول users.
+
+    المنطق:
+      - التأكد من عدم تكرار اسم المستخدم أو رقم الهاتف
+      - التحقق من government_id
+      - التحقق من account_type_id
+      - إنشاء صف في accounts
+      - إنشاء صف في users بقيمة user_type=2 و account_id=الحساب الجديد
+    """
+
+    # 1) Unique username
+    existing_user = db.scalar(select(User).where(User.username == payload.username))
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
 
-    # Unique mobile
-    if db.scalar(select(Citizen).where(Citizen.mobile_number == payload.mobile_number)):
+    # 2) Unique mobile
+    existing_account = db.scalar(
+        select(Account).where(Account.mobile_number == payload.mobile_number),
+    )
+    if existing_account:
         raise HTTPException(status_code=400, detail="Mobile already exists")
 
-    # Create citizen
-    citizen = Citizen(
+    # 3) Validate government
+    gov = db.get(Government, payload.government_id)
+    if not gov or gov.is_active != 1:
+        raise HTTPException(status_code=400, detail="Invalid government_id")
+
+    # 4) Validate account_type
+    acc_type = db.get(AccountType, payload.account_type_id)
+    if not acc_type:
+        # لو أضفت عمود is_active في AccountType يمكنك التحقق منه هنا
+        raise HTTPException(status_code=400, detail="Invalid account_type_id")
+
+    # 5) Create account row
+    account = Account(
         name_ar=payload.name_ar,
         name_en=payload.name_en,
         mobile_number=payload.mobile_number,
         government_id=payload.government_id,
-    )
-    db.add(citizen)
-    db.flush()  # must flush so citizen.id is generated
-
-    # Create linked user
-    user = User(
-        username=payload.username,
-        hashed_password=hash_password(payload.password),
-        user_type=3,  # citizen
-        citizen_id=citizen.id,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(citizen)
-    return citizen
-
-
-# ------------------------------------------
-# REGISTER INITIATIVE
-# ------------------------------------------
-@router.post("/register/initiative", response_model=InitiativeOut, status_code=201)
-def register_initiative(payload: InitiativeCreate, db: Session = Depends(get_db)):
-
-    # Unique username
-    if db.scalar(select(User).where(User.username == payload.username)):
-        raise HTTPException(status_code=400, detail="Username already exists")
-
-    # Unique mobile (لو حابب تتأكد من عدم تكرار رقم الجوال للمبادرات أيضًا)
-    if db.scalar(
-        select(Initiative).where(Initiative.mobile_number == payload.mobile_number)
-    ):
-        raise HTTPException(status_code=400, detail="Mobile already exists")
-
-    # Create initiative
-    initiative = Initiative(
-        name_ar=payload.name_ar,
-        name_en=payload.name_en,  # 🔥 مهم جداً
-        mobile_number=payload.mobile_number,
-        join_form_link=payload.join_form_link,
-        government_id=payload.government_id,
+        account_type_id=payload.account_type_id,
+        # NOTE: تأكد أن لديك عمود account_link في جدول accounts لو تريد تخزينه
+        # أو غيّر الاسم إلى join_form_link حسب تصميمك
+        # مثلاً لو لديك join_form_link:
+        # join_form_link = payload.account_link,
         logo_url=payload.logo_url,
+        show_details=1 if payload.show_details else 0,
+        reports_completed_count=0,
+        is_active=1,
     )
-    db.add(initiative)
-    db.flush()  # حتى يتم توليد initiative.id
+    db.add(account)
+    db.flush()  # generate account.id
 
-    # Create linked user
+    # 6) Create linked user
+    # Normal users (linked to accounts) => user_type = 2
     user = User(
         username=payload.username,
         hashed_password=hash_password(payload.password),
-        user_type=2,  # initiative
-        initiative_id=initiative.id,
+        user_type=2,
+        account_id=account.id,
     )
     db.add(user)
+
     db.commit()
-    db.refresh(initiative)
-    return initiative
+
+    return {
+        "account_id": account.id,
+        "username": user.username,
+    }
 
 
-# ------------------------------------------
+# ============================================================
 # LOGIN
-# ------------------------------------------
+# ============================================================
+
 @router.post("/login", response_model=TokenOut)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -122,8 +146,12 @@ def login(
     Login using OAuth2 form:
       - username
       - password
+
     Returns signed JWT with:
-      sub, user_type, type, citizen_id/initiative_id
+      - sub       (user id)
+      - user_type (1=admin, 2=account)
+      - type      ("admin" / "account")
+      - account_id (if user linked to an account)
     """
 
     user = db.scalar(select(User).where(User.username == form_data.username))
@@ -137,16 +165,16 @@ def login(
     token = create_access_token(
         sub=str(user.id),
         user_type=user.user_type,
-        citizen_id=user.citizen_id,
-        initiative_id=user.initiative_id,
+        account_id=user.account_id,
     )
 
     return TokenOut(access_token=token)
 
 
-# ------------------------------------------
+# ============================================================
 # CHANGE PASSWORD (current logged-in user)
-# ------------------------------------------
+# ============================================================
+
 @router.post("/change-password", status_code=204)
 def change_password(
     payload: ChangePasswordIn,

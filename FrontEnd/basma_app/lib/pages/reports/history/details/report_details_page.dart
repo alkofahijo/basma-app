@@ -2,8 +2,6 @@
 
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/pages/auth/Login/login_page.dart';
-import 'package:basma_app/pages/profile/citizen_info_page.dart';
-import 'package:basma_app/pages/profile/initiative_info_page.dart';
 import 'package:basma_app/pages/reports/history/details/complete_report_page.dart';
 import 'package:basma_app/pages/reports/history/widgets/adopt_report_dialog.dart';
 import 'package:basma_app/pages/reports/history/widgets/view_location_page.dart';
@@ -250,7 +248,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     );
   }
 
-  // ======================= NEW MODERN RESPONSIVE HEADER =======================
+  // ======================= HEADER =======================
 
   Widget _buildHeaderCard(ReportDetail report) {
     return LayoutBuilder(
@@ -719,28 +717,14 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   }
 
   Widget _buildSolvedBySection(ReportDetail report) {
-    final bool hasAdopter =
-        report.adoptedById != null && report.adoptedByType != null;
+    final bool hasAdopter = report.adoptedByAccountId != null;
 
-    Widget nameWidget = const Text(
-      "تفاصيل الجهة ",
-      style: TextStyle(
-        fontSize: 14.5,
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-      ),
-    );
-
-    if (hasAdopter) {
-      nameWidget = GestureDetector(
-        onTap: () {
-          if (report.adoptedByType == 1) {
-            Get.to(() => CitizenInfoPage(citizenId: report.adoptedById!));
-          } else if (report.adoptedByType == 2) {
-            Get.to(() => InitiativeInfoPage(initiativeId: report.adoptedById!));
-          }
-        },
-        child: nameWidget,
+    if (!hasAdopter) {
+      return _buildSectionCard(
+        icon: Icons.handshake_outlined,
+        title: "الجهة المسؤولة عن الحل",
+        subtitle: "لم يتم ربط هذا البلاغ بأي جهة متبنية.",
+        children: const [],
       );
     }
 
@@ -750,15 +734,10 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       subtitle: "الجهة التي تبنّت حل المشكلة وقامت بمعالجتها.",
       children: [
         const SizedBox(height: 4),
-        if (report.adoptedByType != null)
-          InfoRow(
-            label: "نوع الجهة",
-            value: report.adoptedByType == 1
-                ? "مواطن"
-                : "مبادرة تطوعية أو بلدية",
-          ),
-        const SizedBox(height: 6),
-        nameWidget,
+        InfoRow(
+          label: "اسم الجهة المتبنية",
+          value: report.adoptedByAccountName ?? "غير متوفر",
+        ),
         const SizedBox(height: 4),
       ],
     );
@@ -767,6 +746,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   // ======================= Actions / Call To Action =======================
 
   Widget _buildActionSection(ReportDetail report) {
+    // غير مسجل دخول
     if (!_isAuthenticated) {
       if (report.statusId != 2) {
         return const SizedBox.shrink();
@@ -782,7 +762,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                "لتتمكن من تبنّي البلاغ والمشاركة في حل المشكلة، يرجى تسجيل الدخول أو إنشاء حساب كمواطن أو مبادرة.",
+                "لتتمكن من تبنّي البلاغ والمشاركة في حل المشكلة، يرجى تسجيل الدخول أو إنشاء حساب.",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13.5),
               ),
@@ -895,8 +875,8 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Text(
-              report.adoptedByName != null
-                  ? 'هذا البلاغ متبنّى بواسطة ${report.adoptedByName}. فقط الجهة المتبنية يمكنها إتمام البلاغ ورفع صور الحل.'
+              report.adoptedByAccountName != null
+                  ? 'هذا البلاغ متبنّى بواسطة ${report.adoptedByAccountName}. فقط الجهة المتبنية يمكنها إتمام البلاغ ورفع صور الحل.'
                   : 'هذا البلاغ متبنّى من قِبل جهة أخرى. فقط الجهة المتبنية يمكنها إتمام البلاغ.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13.5, color: Colors.grey.shade800),
@@ -914,29 +894,20 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   }
 
   bool _canCurrentUserComplete(ReportDetail report) {
-    if (_currentUserJson == null ||
-        report.adoptedById == null ||
-        report.adoptedByType == null) {
+    if (_currentUserJson == null) return false;
+
+    // admin (backend_type = 1) يمكنه إتمام أي بلاغ
+    final backendType = _currentUserJson!['backend_type'];
+    if (backendType == 1) {
+      return true;
+    }
+
+    final myAccountId = _parseOptionalInt(_currentUserJson!['account_id']);
+    if (myAccountId == null || report.adoptedByAccountId == null) {
       return false;
     }
 
-    final myCitizenId = _parseOptionalInt(_currentUserJson!['citizen_id']);
-    final myInitiativeId = _parseOptionalInt(
-      _currentUserJson!['initiative_id'],
-    );
-
-    if (report.adoptedByType == 1 &&
-        myCitizenId != null &&
-        myCitizenId == report.adoptedById) {
-      return true;
-    }
-
-    if (report.adoptedByType == 2 &&
-        myInitiativeId != null &&
-        myInitiativeId == report.adoptedById) {
-      return true;
-    }
-
-    return false;
+    // حساب عادي: يجب أن يكون هو نفس account الذي تبنّى البلاغ
+    return myAccountId == report.adoptedByAccountId;
   }
 }

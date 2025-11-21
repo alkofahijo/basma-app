@@ -61,6 +61,7 @@ class RegisterSuccessPage extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
+                    // ✅ تنظيف الstack والعودة لصفحة تسجيل الدخول
                     Get.offAll(() => LoginPage());
                   },
                   child: const Text(

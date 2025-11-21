@@ -11,8 +11,8 @@ from .routers.auth import router as auth_router
 from .routers.reports import router as reports_router
 
 from .routers.uploads import uploads_router, files_router
-from .routers.citizens import router as citizens_router
-from .routers.initiatives import router as initiatives_router
+
+from app.routers import accounts, auth
 from app.routers import ai_reports
 
 
@@ -41,8 +41,8 @@ app.include_router(reports_router)
 # ⬇️ include both, so /uploads and /files/upload are available
 app.include_router(uploads_router)
 app.include_router(files_router)
-app.include_router(citizens_router)
-app.include_router(initiatives_router)  # ⬅️ add this line
+app.include_router(auth.router)
+app.include_router(accounts.router)
 app.include_router(ai_reports.router)
 
 @app.get("/")

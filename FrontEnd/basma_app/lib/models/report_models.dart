@@ -163,9 +163,9 @@ class ReportDetail {
   final int statusId;
   final DateTime reportedAt;
 
-  final int? adoptedById;
-  final int? adoptedByType;
-  final String? adoptedByName;
+  // ✅ unified: adopted_by_account_id + adopted_by_account_name
+  final int? adoptedByAccountId;
+  final String? adoptedByAccountName;
 
   final int governmentId;
   final int districtId;
@@ -188,7 +188,7 @@ class ReportDetail {
   final String? areaNameAr;
   final String? locationNameAr;
 
-  // 🔥 جديد: إحداثيات الموقع
+  // إحداثيات الموقع
   final double? locationLongitude;
   final double? locationLatitude;
 
@@ -203,9 +203,8 @@ class ReportDetail {
     this.imageAfterUrl,
     required this.statusId,
     required this.reportedAt,
-    this.adoptedById,
-    this.adoptedByType,
-    this.adoptedByName,
+    this.adoptedByAccountId,
+    this.adoptedByAccountName,
     required this.governmentId,
     required this.districtId,
     required this.areaId,
@@ -236,9 +235,8 @@ class ReportDetail {
     imageAfterUrl: _asStringOrNull(json['image_after_url']),
     statusId: _asInt(json['status_id']),
     reportedAt: _asDate(json['reported_at']),
-    adoptedById: _asIntOrNull(json['adopted_by_id']),
-    adoptedByType: _asIntOrNull(json['adopted_by_type']),
-    adoptedByName: _asStringOrNull(json['adopted_by_name']),
+    adoptedByAccountId: _asIntOrNull(json['adopted_by_account_id']),
+    adoptedByAccountName: _asStringOrNull(json['adopted_by_account_name']),
     governmentId: _asInt(json['government_id']),
     districtId: _asInt(json['district_id']),
     areaId: _asInt(json['area_id']),
@@ -273,9 +271,8 @@ class ReportDetail {
     'image_after_url': imageAfterUrl,
     'status_id': statusId,
     'reported_at': reportedAt.toIso8601String(),
-    'adopted_by_id': adoptedById,
-    'adopted_by_type': adoptedByType,
-    'adopted_by_name': adoptedByName,
+    'adopted_by_account_id': adoptedByAccountId,
+    'adopted_by_account_name': adoptedByAccountName,
     'government_id': governmentId,
     'district_id': districtId,
     'area_id': areaId,

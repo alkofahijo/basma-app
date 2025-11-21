@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional, List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -10,19 +13,16 @@ from ..models import (
     ReportStatus,
     ReportType,
     Location,
-    Citizen,
-    Initiative,
     Government,
     District,
     Area,
+    Account,
 )
 from ..schemas import (
     ReportCreate,
     ReportOut,
     ReportStatusOut,
     ReportTypeOut,
-    AdoptRequest,
-    CompleteRequest,
     ReportPublicOut,
 )
 from ..security import get_current_user_payload
@@ -32,17 +32,44 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 # ============================================================
-# TYPES
+# LOCAL REQUEST MODELS
 # ============================================================
 
 
-@router.get("/types", response_model=list[ReportTypeOut])
+class AdoptReportRequest(BaseModel):
+    """
+    طلب تبنّي بلاغ من قبل حساب (Account).
+    في العادة سيُرسل الـ account_id المستخرج من الـ JWT في الواجهة الأمامية.
+    """
+    account_id: int
+
+
+class CompleteReportRequest(BaseModel):
+    """
+    طلب إكمال بلاغ مع رفع صورة "بعد المعالجة" وملاحظات اختيارية.
+    """
+    image_after_url: str
+    note: Optional[str] = None
+
+
+# ============================================================
+# LOOKUP: أنواع البلاغات / حالات البلاغ
+# ============================================================
+
+
+@router.get("/types", response_model=List[ReportTypeOut])
 def list_types(db: Session = Depends(get_db)):
+    """
+    إرجاع قائمة أنواع البلاغات (ReportType).
+    """
     return db.scalars(select(ReportType)).all()
 
 
-@router.get("/status", response_model=list[ReportStatusOut])
+@router.get("/status", response_model=List[ReportStatusOut])
 def list_status(db: Session = Depends(get_db)):
+    """
+    إرجاع قائمة حالات البلاغ (ReportStatus).
+    """
     return db.scalars(select(ReportStatus)).all()
 
 
@@ -51,7 +78,7 @@ def list_status(db: Session = Depends(get_db)):
 # ============================================================
 
 
-@router.get("/public", response_model=list[ReportPublicOut])
+@router.get("/public", response_model=List[ReportPublicOut])
 def list_public_reports(
     status_id: int | None = Query(None),
     government_id: int | None = Query(None),
@@ -62,6 +89,14 @@ def list_public_reports(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
+    """
+    قائمة عامة للبلاغات مع فلاتر بسيطة:
+      - الحالة
+      - المحافظة / اللواء / المنطقة
+      - نوع البلاغ
+
+    تستخدم في واجهة الضيوف / الخريطة العامة.
+    """
     stmt = (
         select(
             Report.id,
@@ -111,11 +146,11 @@ def list_public_reports(
 
 
 # ============================================================
-# MY REPORTS (for logged-in user: citizen / initiative)
+# MY REPORTS (for logged-in account user: adopted reports)
 # ============================================================
 
 
-@router.get("/my", response_model=list[ReportPublicOut])
+@router.get("/my", response_model=List[ReportPublicOut])
 def list_my_reports(
     status_id: int | None = Query(None),
     government_id: int | None = Query(None),
@@ -127,30 +162,20 @@ def list_my_reports(
     db: Session = Depends(get_db),
     current=Depends(get_current_user_payload),
 ):
+    """
+    قائمة البلاغات المتبنّاة من قبل الحساب الحالي (account_id في الـ JWT).
+    متاحة فقط لمستخدمي الحسابات (user_type=2).
+    """
     if not current:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    user_type = current.get("type")
-    adopted_by_type: int | None = None
-    adopted_by_id: int | None = None
+    account_id = current.get("account_id")
+    user_type = current.get("user_type")
 
-    if user_type == "citizen":
-        cid = current.get("citizen_id")
-        if cid is None:
-            raise HTTPException(status_code=400, detail="Missing citizen_id in token")
-        adopted_by_type = 1
-        adopted_by_id = int(cid)
-    elif user_type == "initiative":
-        iid = current.get("initiative_id")
-        if iid is None:
-            raise HTTPException(
-                status_code=400, detail="Missing initiative_id in token"
-            )
-        adopted_by_type = 2
-        adopted_by_id = int(iid)
-    else:
+    if user_type != 2 or account_id is None:
         raise HTTPException(
-            status_code=400, detail="User type not allowed to list own reports"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only normal account users can list their adopted reports",
         )
 
     stmt = (
@@ -180,8 +205,7 @@ def list_my_reports(
         .join(Area, Report.area_id == Area.id, isouter=True)
         .where(
             Report.is_active == 1,
-            Report.adopted_by_type == adopted_by_type,
-            Report.adopted_by_id == adopted_by_id,
+            Report.adopted_by_account_id == int(account_id),
         )
     )
 
@@ -206,11 +230,11 @@ def list_my_reports(
 
 
 # ============================================================
-# LIST REPORTS (internal)
+# LIST REPORTS (internal, raw list)
 # ============================================================
 
 
-@router.get("", response_model=list[ReportOut])
+@router.get("", response_model=List[ReportOut])
 def list_reports(
     area_id: int | None = Query(None),
     status_id: int | None = Query(None),
@@ -219,6 +243,10 @@ def list_reports(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
+    """
+    قائمة داخلية للبلاغات (قد تستخدم في لوحة تحكم المشرف).
+    ترجع كائن Report SQLAlchemy مباشرة.
+    """
     stmt = select(Report).order_by(Report.id.desc())
 
     if area_id:
@@ -243,6 +271,13 @@ def list_reports(
 
 @router.get("/{report_id}", response_model=ReportOut)
 def get_report(report_id: int, db: Session = Depends(get_db)):
+    """
+    جلب تفاصيل بلاغ واحد مع:
+      - أسماء عربية للمحافظة/اللواء/المنطقة/الموقع
+      - اسم نوع البلاغ وحالة البلاغ
+      - إحداثيات الموقع
+      - اسم الحساب المتبني (إن وجد)
+    """
     stmt = (
         select(
             Report.id,
@@ -255,8 +290,8 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
             Report.image_after_url,
             Report.status_id,
             Report.reported_at,
-            Report.adopted_by_type,
-            Report.adopted_by_id,
+            Report.adopted_by_account_id,
+            Account.name_ar.label("adopted_by_account_name"),
             Report.government_id,
             Government.name_ar.label("government_name_ar"),
             Report.district_id,
@@ -281,12 +316,13 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
         .join(District, Report.district_id == District.id, isouter=True)
         .join(Area, Report.area_id == Area.id, isouter=True)
         .join(Location, Report.location_id == Location.id, isouter=True)
+        .join(Account, Report.adopted_by_account_id == Account.id, isouter=True)
         .where(Report.id == report_id)
     )
 
     row = db.execute(stmt).mappings().first()
     if not row:
-        raise HTTPException(404, "Report not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
     return ReportOut(**row)
 
@@ -296,22 +332,29 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
 # ============================================================
 
 
-@router.post("", response_model=ReportOut, status_code=201)
+@router.post("", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
 def create_report(
     payload: ReportCreate,
     db: Session = Depends(get_db),
     current=Depends(get_current_user_payload),
 ):
+    """
+    إنشاء بلاغ جديد:
+      - يتأكد من حالة under_review
+      - يتحقق من صحة report_type_id
+      - ينشئ Location جديد إذا تم إرسال new_location
+      - يسجّل user_id من الـ JWT (إن وجد)
+    """
     # حالة under_review
-    st_under = db.scalar(
-        select(ReportStatus).where(ReportStatus.code == "under_review")
-    )
+    st_under = db.scalar(select(ReportStatus).where(ReportStatus.code == "under_review"))
     if not st_under:
-        raise HTTPException(500, "Missing status under_review")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Missing status 'under_review'")
 
     # تحقق من نوع البلاغ
     if not db.get(ReportType, payload.report_type_id):
-        raise HTTPException(400, "Invalid report_type_id")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Invalid report_type_id")
 
     # -------- 1) الموقع (Location) --------
     location_id: int
@@ -320,14 +363,16 @@ def create_report(
     if payload.location_id is not None:
         loc = db.get(Location, payload.location_id)
         if not loc:
-            raise HTTPException(400, "Invalid location_id")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Invalid location_id")
         location_id = loc.id
 
-    # إذا أرسل new_location → ننشئ صف جديد في locations دائماً
+    # إذا أرسل new_location → ننشئ صف جديد في locations
     else:
         nl = payload.new_location
         if not nl:
-            raise HTTPException(400, "Missing location")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Missing location information")
 
         loc = Location(
             area_id=nl.area_id,
@@ -339,7 +384,16 @@ def create_report(
         db.flush()  # للحصول على loc.id من قاعدة البيانات
         location_id = loc.id
 
-    # -------- 2) إنشاء البلاغ --------
+    # -------- 2) user_id من الـ JWT --------
+    user_id: Optional[int] = None
+    if current:
+        sub = current.get("sub")
+        try:
+            user_id = int(sub) if sub is not None else None
+        except (TypeError, ValueError):
+            user_id = None
+
+    # -------- 3) إنشاء البلاغ --------
     rp = Report(
         report_code=generate_report_code(prefix="UF"),
         report_type_id=payload.report_type_id,
@@ -352,7 +406,7 @@ def create_report(
         district_id=payload.district_id,
         area_id=payload.area_id,
         location_id=location_id,
-        user_id=int(current.get("sub")) if current else None,
+        user_id=user_id,
         reported_by_name=payload.reported_by_name,
     )
 
@@ -363,23 +417,30 @@ def create_report(
 
 
 # ============================================================
-# OPEN REPORT (1 → 2)
+# OPEN REPORT (under_review → open)
 # ============================================================
 
 
 @router.patch("/{report_id}/open", response_model=ReportOut)
 def open_report(report_id: int, db: Session = Depends(get_db)):
+    """
+    تحويل حالة البلاغ من under_review إلى open.
+    (يمكن تقييدها للمشرفين فقط عند الحاجة).
+    """
     rp = db.get(Report, report_id)
     if not rp:
-        raise HTTPException(404, "Report not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
-    st_under = db.scalar(
-        select(ReportStatus).where(ReportStatus.code == "under_review")
-    )
+    st_under = db.scalar(select(ReportStatus).where(ReportStatus.code == "under_review"))
     st_open = db.scalar(select(ReportStatus).where(ReportStatus.code == "open"))
 
+    if not st_under or not st_open:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Missing status configuration")
+
     if rp.status_id != st_under.id:
-        raise HTTPException(400, "Report must be under_review")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Report must be under_review")
 
     rp.status_id = st_open.id
     db.commit()
@@ -388,34 +449,69 @@ def open_report(report_id: int, db: Session = Depends(get_db)):
 
 
 # ============================================================
-# ADOPT REPORT (2 → 3)
+# ADOPT REPORT (open → in_progress)
 # ============================================================
 
 
 @router.patch("/{report_id}/adopt", response_model=ReportOut)
 def adopt_report(
     report_id: int,
-    payload: AdoptRequest,
+    payload: AdoptReportRequest,
     db: Session = Depends(get_db),
+    current=Depends(get_current_user_payload),
 ):
+    """
+    تبنّي البلاغ من قبل حساب (Account).
+    المنطق:
+      - البلاغ يجب أن يكون بحالة open
+      - التحقق من وجود الحساب وصلاحيته
+      - التحقق من أن المستخدم:
+          * إما admin (user_type=1) → يمكنه التبني نيابة عن أي حساب
+          * أو مستخدم حساب (user_type=2) ويجب أن يطابق account_id في الـ JWT
+    """
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(404, "Report not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
-    # هنا نعتمد أن 2 = open, 3 = in_progress في جدول report_status
-    if report.status_id != 2:  # open
-        raise HTTPException(400, "Cannot adopt a non-open report")
+    st_open = db.scalar(select(ReportStatus).where(ReportStatus.code == "open"))
+    st_in_progress = db.scalar(select(ReportStatus).where(ReportStatus.code == "in_progress"))
 
-    if payload.adopted_by_type == 1:
-        if not db.get(Citizen, payload.adopted_by_id):
-            raise HTTPException(400, "Citizen not found")
-    elif payload.adopted_by_type == 2:
-        if not db.get(Initiative, payload.adopted_by_id):
-            raise HTTPException(400, "Initiative not found")
+    if not st_open or not st_in_progress:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Missing status configuration")
 
-    report.adopted_by_id = payload.adopted_by_id
-    report.adopted_by_type = payload.adopted_by_type
-    report.status_id = 3  # in_progress
+    if report.status_id != st_open.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Cannot adopt a non-open report")
+
+    # تحقق من الحساب
+    account = db.get(Account, payload.account_id)
+    if not account or account.is_active != 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Account not found or inactive")
+
+    # تحقق الصلاحيات من الـ JWT
+    user_type = current.get("user_type")
+    current_account_id = current.get("account_id")
+
+    if user_type == 1:
+        # admin → مسموح له التبني لأي حساب
+        pass
+    elif user_type == 2:
+        # مستخدم حساب → يجب أن يتطابق account_id مع payload
+        if current_account_id is None or int(current_account_id) != account.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only adopt reports for your own account",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User type not allowed to adopt reports",
+        )
+
+    report.adopted_by_account_id = account.id
+    report.status_id = st_in_progress.id
 
     db.commit()
     db.refresh(report)
@@ -423,36 +519,75 @@ def adopt_report(
 
 
 # ============================================================
-# COMPLETE REPORT (3 → 4)
+# COMPLETE REPORT (in_progress → completed)
 # ============================================================
 
 
 @router.patch("/{report_id}/complete", response_model=ReportOut)
 def complete_report(
-    report_id: int, body: CompleteRequest, db: Session = Depends(get_db)
+    report_id: int,
+    body: CompleteReportRequest,
+    db: Session = Depends(get_db),
+    current=Depends(get_current_user_payload),
 ):
+    """
+    إكمال البلاغ:
+      - يجب أن يكون بحالة in_progress
+      - يجب أن يكون للحساب الذي تبنّاه (إلا لو admin)
+      - يتم حفظ صورة "بعد المعالجة" والملاحظات
+      - زيادة عدّاد reports_completed_count للحساب المتبنّي
+    """
     rp = db.get(Report, report_id)
     if not rp:
-        raise HTTPException(404, "Report not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
     st_prog = db.scalar(select(ReportStatus).where(ReportStatus.code == "in_progress"))
     st_done = db.scalar(select(ReportStatus).where(ReportStatus.code == "completed"))
 
-    if rp.status_id != st_prog.id:
-        raise HTTPException(400, "Report is not in progress")
+    if not st_prog or not st_done:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Missing status configuration")
 
+    if rp.status_id != st_prog.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Report is not in progress")
+
+    # تحقق الصلاحيات:
+    user_type = current.get("user_type")
+    current_account_id = current.get("account_id")
+
+    if user_type == 1:
+        # admin → مسموح يكمل أي بلاغ
+        pass
+    elif user_type == 2:
+        # مستخدم حساب → يجب أن يكون هذا الحساب هو المتبني للبلاغ
+        if not rp.adopted_by_account_id or current_account_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to complete this report",
+            )
+        if int(current_account_id) != int(rp.adopted_by_account_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to complete this report",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User type not allowed to complete reports",
+        )
+
+    # تحديث بيانات البلاغ
     rp.image_after_url = body.image_after_url
     rp.note = body.note
     rp.status_id = st_done.id
 
-    if rp.adopted_by_type == 1:
-        c = db.get(Citizen, rp.adopted_by_id)
-        if c:
-            c.reports_completed_count += 1
-    elif rp.adopted_by_type == 2:
-        i = db.get(Initiative, rp.adopted_by_id)
-        if i:
-            i.reports_completed_count += 1
+    # increment completed count for adopting account
+    if rp.adopted_by_account_id:
+        acc = db.get(Account, rp.adopted_by_account_id)
+        if acc:
+            acc.reports_completed_count += 1
+            db.add(acc)
 
     db.commit()
     db.refresh(rp)

@@ -1,16 +1,18 @@
+import 'package:basma_app/controllers/register_account_controller.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:basma_app/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../../../controllers/register_initiative_controller.dart';
+// ✅ استيراد صفحة النجاح
+import 'package:basma_app/pages/auth/Registeration/Widgets/reg_success.dart';
 
-class RegisterInitiativeAccountPage extends StatelessWidget {
-  const RegisterInitiativeAccountPage({super.key});
+class RegisterAccountCredentialsPage extends StatelessWidget {
+  const RegisterAccountCredentialsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<RegisterInitiativeController>();
+    final controller = Get.find<RegisterAccountController>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
@@ -30,6 +32,7 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
+              // ============ اسم المستخدم ============
               CustomTextField(
                 controller: controller.usernameCtrl,
                 label: 'اسم المستخدم',
@@ -39,6 +42,7 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
               ),
               const SizedBox(height: 18),
 
+              // ============ كلمة المرور ============
               CustomTextField(
                 controller: controller.passwordCtrl,
                 label: 'كلمة المرور',
@@ -49,6 +53,7 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
               ),
               const SizedBox(height: 30),
 
+              // ============ زر الإرسال ============
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -61,7 +66,17 @@ class RegisterInitiativeAccountPage extends StatelessWidget {
                   ),
                   onPressed: controller.isSubmitting.value
                       ? null
-                      : controller.submit,
+                      : () {
+                          // إغلاق الكيبورد
+                          FocusScope.of(context).unfocus();
+
+                          // استدعاء دالة التسجيل (ترجع void عندك)
+                          controller.submit();
+
+                          // بعد إنشاء الحساب ننتقل لصفحة النجاح
+                          // (استبدال الصفحة الحالية)
+                          Get.off(() => const RegisterSuccessPage());
+                        },
                   child: controller.isSubmitting.value
                       ? const SizedBox(
                           height: 24,

@@ -31,7 +31,9 @@ class Government(Base):
     # name_en موجود في الجدول لكن لا نحتاجه حالياً للـ API
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -41,6 +43,11 @@ class Government(Base):
     )
 
     districts = relationship("District", back_populates="government")
+    accounts = relationship("Account", back_populates="government")
+    reports = relationship("Report", back_populates="government")
+
+    def __repr__(self) -> str:
+        return f"<Government id={self.id} name_ar={self.name_ar!r}>"
 
 
 class District(Base):
@@ -48,14 +55,18 @@ class District(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     government_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("governments.id"),
+        nullable=False,
     )
 
     name_ar = Column(String(100), nullable=False)
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
 
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -66,6 +77,10 @@ class District(Base):
 
     government = relationship("Government", back_populates="districts")
     areas = relationship("Area", back_populates="district")
+    reports = relationship("Report", back_populates="district")
+
+    def __repr__(self) -> str:
+        return f"<District id={self.id} name_ar={self.name_ar!r}>"
 
 
 class Area(Base):
@@ -73,7 +88,9 @@ class Area(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     district_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("districts.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("districts.id"),
+        nullable=False,
     )
 
     name_ar = Column(String(100), nullable=False)
@@ -81,7 +98,9 @@ class Area(Base):
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
 
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -92,6 +111,10 @@ class Area(Base):
 
     district = relationship("District", back_populates="areas")
     locations = relationship("Location", back_populates="area")
+    reports = relationship("Report", back_populates="area")
+
+    def __repr__(self) -> str:
+        return f"<Area id={self.id} name_ar={self.name_ar!r}>"
 
 
 class Location(Base):
@@ -99,7 +122,9 @@ class Location(Base):
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     area_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("areas.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("areas.id"),
+        nullable=False,
     )
 
     name_ar = Column(String(150), nullable=False)
@@ -108,7 +133,9 @@ class Location(Base):
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
 
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -118,67 +145,79 @@ class Location(Base):
     )
 
     area = relationship("Area", back_populates="locations")
+    reports = relationship("Report", back_populates="location")
+
+    def __repr__(self) -> str:
+        return f"<Location id={self.id} name_ar={self.name_ar!r}>"
 
 
 # ============================================================
-# CITIZENS & INITIATIVES
+# ACCOUNTS & ACCOUNT TYPES (UNIFIED ACCOUNTS)
 # ============================================================
 
 
-class Citizen(Base):
-    __tablename__ = "citizens"
+class AccountType(Base):
+    __tablename__ = "account_types"
 
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
+    name_ar = Column(String(100), nullable=False)
+    name_en = Column(String(100), nullable=False)
+    code = Column(String(50), nullable=True, unique=True)
+
+    accounts = relationship("Account", back_populates="account_type")
+
+    def __repr__(self) -> str:
+        return f"<AccountType id={self.id} code={self.code!r}>"
+
+
+class Account(Base):
+    """
+    حساب موحّد:
+      - يمكن أن يمثّل: مواطن، مبادرة، بلدية، شركة، ... حسب account_type_id
+      - يتم الربط مع User (user_type=2) عبر account_id
+      - ويتم اعتماده في التبنّي عبر adopted_by_account_id في Report
+    """
+
+    __tablename__ = "accounts"
+
+    id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
+
+    account_type_id = Column(
+        MySQLInteger(unsigned=True),
+        ForeignKey("account_types.id"),
+        nullable=False,
+    )
+
     name_ar = Column(String(150), nullable=False)
     name_en = Column(String(200), nullable=False)
+
     mobile_number = Column(String(20), nullable=False, unique=True)
 
     government_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
-    )
-
-    reports_completed_count = Column(
-        MySQLInteger(unsigned=True), nullable=False, server_default=text("0")
-    )
-
-    is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
-
-    created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
-    )
-    updated_at = Column(
-        TIMESTAMP,
+        MySQLInteger(unsigned=True),
+        ForeignKey("governments.id"),
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
-        onupdate=text("CURRENT_TIMESTAMP"),
-    )
-
-
-class Initiative(Base):
-    __tablename__ = "initiatives"
-
-    id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
-    name_ar = Column(String(200), nullable=False)
-    name_en = Column(String(200), nullable=False)
-    mobile_number = Column(String(20), nullable=False, unique=True)
-    join_form_link = Column(String(500), nullable=True)
-
-    government_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
     )
 
     logo_url = Column(String(500), nullable=True)
-    members_count = Column(
-        MySQLInteger(unsigned=True), nullable=False, server_default=text("0")
-    )
+
+    # رابط نموذج الانضمام (اختياري) – مهم للمبادرات التطوعية ونحوها
+    join_form_link = Column(String(500), nullable=True)
+
     reports_completed_count = Column(
-        MySQLInteger(unsigned=True), nullable=False, server_default=text("0")
+        MySQLInteger(unsigned=True),
+        nullable=False,
+        server_default=text("0"),
     )
 
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
+    # هل نعرض تفاصيل هذا الحساب في الواجهات العامة
+    show_details = Column(SmallInteger, nullable=False, server_default=text("1"))
 
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -186,6 +225,23 @@ class Initiative(Base):
         server_default=text("CURRENT_TIMESTAMP"),
         onupdate=text("CURRENT_TIMESTAMP"),
     )
+
+    account_type = relationship("AccountType", back_populates="accounts")
+    government = relationship("Government", back_populates="accounts")
+    users = relationship("User", back_populates="account")
+    adopted_reports = relationship(
+        "Report",
+        back_populates="adopted_by_account",
+        foreign_keys="Report.adopted_by_account_id",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Account id={self.id} name_ar={self.name_ar!r}>"
+
+
+# ============================================================
+# USERS
+# ============================================================
 
 
 class User(Base):
@@ -194,23 +250,22 @@ class User(Base):
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     username = Column(String(150), nullable=False, unique=True)
     hashed_password = Column(String(255), nullable=False)
-    user_type = Column(SmallInteger, nullable=False)  # 1 admin, 2 initiative, 3 citizen
+
+    # 1 = admin / super admin, 2 = normal (linked to account)
+    user_type = Column(SmallInteger, nullable=False)
+
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
 
-    initiative_id = Column(
+    account_id = Column(
         MySQLInteger(unsigned=True),
-        ForeignKey("initiatives.id", onupdate="RESTRICT", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    citizen_id = Column(
-        MySQLInteger(unsigned=True),
-        ForeignKey("citizens.id", onupdate="RESTRICT", ondelete="SET NULL"),
+        ForeignKey("accounts.id", onupdate="RESTRICT", ondelete="SET NULL"),
         nullable=True,
     )
 
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -218,6 +273,12 @@ class User(Base):
         server_default=text("CURRENT_TIMESTAMP"),
         onupdate=text("CURRENT_TIMESTAMP"),
     )
+
+    account = relationship("Account", back_populates="users")
+    reports = relationship("Report", back_populates="user")
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} username={self.username!r}>"
 
 
 # ============================================================
@@ -232,6 +293,11 @@ class ReportType(Base):
     code = Column(String(50), nullable=False, unique=True)
     name_ar = Column(String(100), nullable=False)
 
+    reports = relationship("Report", back_populates="report_type")
+
+    def __repr__(self) -> str:
+        return f"<ReportType id={self.id} code={self.code!r}>"
+
 
 class ReportStatus(Base):
     __tablename__ = "report_status"
@@ -239,6 +305,11 @@ class ReportStatus(Base):
     id = Column(MySQLInteger(unsigned=True), primary_key=True, autoincrement=True)
     code = Column(String(50), nullable=False, unique=True)
     name_ar = Column(String(100), nullable=False)
+
+    reports = relationship("Report", back_populates="status")
+
+    def __repr__(self) -> str:
+        return f"<ReportStatus id={self.id} code={self.code!r}>"
 
 
 # ============================================================
@@ -253,55 +324,77 @@ class Report(Base):
     report_code = Column(String(100), nullable=False, unique=True)
 
     report_type_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("report_types.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("report_types.id"),
+        nullable=False,
     )
 
     name_ar = Column(String(200), nullable=False)
 
-    description_ar = Column(MySQLMediumText, nullable=False)
-    note = Column(MySQLMediumText, nullable=True)
+    description_ar = Column(MySQLMediumText(), nullable=False)
+    note = Column(MySQLMediumText(), nullable=True)
 
     image_before_url = Column(String(500), nullable=False)
     image_after_url = Column(String(500), nullable=True)
 
     status_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("report_status.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("report_status.id"),
+        nullable=False,
     )
 
-    reported_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+    reported_at = Column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
 
-    adopted_by_id = Column(MySQLInteger(unsigned=True), nullable=True)
-    adopted_by_type = Column(
-        MySQLInteger(unsigned=True), nullable=True
-    )  # 1= citizen, 2= initiative
+    # تبنّي موحّد: الحساب الذي تبنّى هذا البلاغ (مواطن، مبادرة، بلدية، ...)
+    adopted_by_account_id = Column(
+        MySQLInteger(unsigned=True),
+        ForeignKey("accounts.id", onupdate="RESTRICT", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     government_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("governments.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("governments.id"),
+        nullable=False,
     )
 
     district_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("districts.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("districts.id"),
+        nullable=False,
     )
 
     area_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("areas.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("areas.id"),
+        nullable=False,
     )
 
     location_id = Column(
-        MySQLInteger(unsigned=True), ForeignKey("locations.id"), nullable=False
+        MySQLInteger(unsigned=True),
+        ForeignKey("locations.id"),
+        nullable=False,
     )
 
+    # المستخدم الذي سجّل البلاغ (لو موجود)
     user_id = Column(
         MySQLInteger(unsigned=True),
         ForeignKey("users.id", onupdate="RESTRICT", ondelete="SET NULL"),
         nullable=True,
     )
 
+    # في حال البلاغ من زائر أو جهة بدون حساب
     reported_by_name = Column(String(200), nullable=True)
 
     is_active = Column(SmallInteger, nullable=False, server_default=text("1"))
     created_at = Column(
-        TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at = Column(
         TIMESTAMP,
@@ -310,10 +403,18 @@ class Report(Base):
         onupdate=text("CURRENT_TIMESTAMP"),
     )
 
-    # علاقات اختيارية لو احتجتها
-    report_type = relationship("ReportType")
-    status = relationship("ReportStatus")
-    government = relationship("Government")
-    district = relationship("District")
-    area = relationship("Area")
-    location = relationship("Location")
+    report_type = relationship("ReportType", back_populates="reports")
+    status = relationship("ReportStatus", back_populates="reports")
+    government = relationship("Government", back_populates="reports")
+    district = relationship("District", back_populates="reports")
+    area = relationship("Area", back_populates="reports")
+    location = relationship("Location", back_populates="reports")
+    adopted_by_account = relationship(
+        "Account",
+        back_populates="adopted_reports",
+        foreign_keys=[adopted_by_account_id],
+    )
+    user = relationship("User", back_populates="reports")
+
+    def __repr__(self) -> str:
+        return f"<Report id={self.id} code={self.report_code!r}>"

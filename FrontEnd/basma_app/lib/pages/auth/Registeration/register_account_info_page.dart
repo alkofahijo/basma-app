@@ -1,6 +1,10 @@
+// lib/pages/auth/register/register_choice_page.dart
+
 import 'dart:io';
 
+import 'package:basma_app/controllers/register_account_controller.dart';
 import 'package:basma_app/models/location_models.dart';
+import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:basma_app/widgets/custom_text_field.dart';
 import 'package:basma_app/widgets/loading_center.dart';
@@ -8,20 +12,23 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../../controllers/register_initiative_controller.dart';
-import 'register_initiative_account_page.dart';
+import 'register_account_credentials_page.dart';
 
-class RegisterInitiativeInfoPage extends StatelessWidget {
-  const RegisterInitiativeInfoPage({super.key});
+class RegisterChoicePage extends StatelessWidget {
+  const RegisterChoicePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(RegisterInitiativeController());
+    final controller = Get.put(RegisterAccountController());
     final picker = ImagePicker();
 
     return Obx(() {
-      if (controller.isLoadingGovs.value) {
-        return const LoadingCenter();
+      if (controller.isLoadingInitial.value) {
+        return const Scaffold(
+          backgroundColor: Color(0xFFEFF1F1),
+          appBar: BasmaAppBar(showBack: true),
+          body: LoadingCenter(),
+        );
       }
 
       if (controller.loadError.value.isNotEmpty) {
@@ -29,16 +36,24 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
           backgroundColor: const Color(0xFFEFF1F1),
           appBar: const BasmaAppBar(showBack: true),
           body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(controller.loadError.value),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: controller.fetchGovernments,
-                  child: const Text("إعادة المحاولة"),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    controller.loadError.value,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: controller
+                        .loadLookups, // دالة إعادة التحميل في الـ Controller
+                    child: const Text("إعادة المحاولة"),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -51,7 +66,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: ListView(
             children: [
-              // ===== Logo Picker =====
+              // ================= صورة/شعار الحساب =================
               Center(
                 child: Stack(
                   alignment: Alignment.bottomRight,
@@ -66,7 +81,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                             : null,
                         child: image == null
                             ? const Icon(
-                                Icons.person_outlined,
+                                Icons.account_circle_outlined,
                                 color: Colors.grey,
                                 size: 40,
                               )
@@ -105,7 +120,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               const SizedBox(height: 25),
 
               const Text(
-                'معلومات المبادرة',
+                'معلومات الحساب',
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 18,
@@ -114,6 +129,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
+              // الاسم بالعربية
               Obx(
                 () => CustomTextField(
                   controller: controller.nameArCtrl,
@@ -125,6 +141,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 18),
 
+              // الاسم بالإنجليزية
               Obx(
                 () => CustomTextField(
                   controller: controller.nameEnCtrl,
@@ -136,6 +153,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 18),
 
+              // رقم الهاتف
               Obx(
                 () => CustomTextField(
                   controller: controller.mobileCtrl,
@@ -148,13 +166,56 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 18),
 
+              // رابط الحساب / نموذج الانضمام
               CustomTextField(
-                controller: controller.joinFormCtrl,
-                label: "رابط نموذج الانضمام",
-                hint: "أدخل رابط النموذج (اختياري)",
+                controller: controller.linkCtrl,
+                label: "رابط الحساب / نموذج الانضمام",
+                hint: "أدخل رابط (اختياري)",
               ),
               const SizedBox(height: 18),
 
+              // ================= نوع الحساب =================
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  'نوع الحساب',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              Obx(
+                () => DropdownButtonFormField<AccountTypeOption>(
+                  value: controller.selectedAccountType.value,
+                  hint: const Text('اختر نوع الحساب'),
+                  items: controller.accountTypes
+                      .map(
+                        (t) =>
+                            DropdownMenuItem(value: t, child: Text(t.nameAr)),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    controller.selectedAccountType.value = v;
+                    controller.validateAccountType(v);
+                  },
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    errorText: controller.accountTypeError.value,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // ================= المحافظة =================
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text(
@@ -166,7 +227,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
 
               Obx(
                 () => DropdownButtonFormField<Government>(
-                  initialValue: controller.selectedGov.value,
+                  value: controller.selectedGov.value,
                   hint: const Text('اختر محافظتك'),
                   items: controller.governments
                       .map(
@@ -193,8 +254,19 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 18),
+
+              // إظهار التفاصيل
+              Obx(
+                () => SwitchListTile(
+                  title: const Text('إظهار تفاصيل الحساب في واجهة التطبيق'),
+                  value: controller.showDetails.value,
+                  onChanged: (v) => controller.showDetails.value = v,
+                ),
+              ),
               const SizedBox(height: 30),
 
+              // زر التالي
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -207,7 +279,7 @@ class RegisterInitiativeInfoPage extends StatelessWidget {
                   ),
                   onPressed: () {
                     if (controller.validateStep1()) {
-                      Get.to(() => const RegisterInitiativeAccountPage());
+                      Get.to(() => const RegisterAccountCredentialsPage());
                     }
                   },
                   child: const Text(

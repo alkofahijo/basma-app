@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-
+// lib/pages/reports/history/widgets/adopt_report_dialog.dart
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:flutter/material.dart';
 
 class SolveReportDialog extends StatefulWidget {
   final int reportId;
@@ -35,6 +35,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
     });
 
     try {
+      // اقرأ المستخدم الحالي من JWT (من AuthService.currentUser)
       final user = await AuthService.currentUser();
 
       if (user == null) {
@@ -45,48 +46,29 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
         return;
       }
 
+      // نتوقع type = "account" من الـ JWT (backend_type = 1 admin, 2 account)
       final String userType = (user["type"] ?? "").toString().trim();
-
-      int? adoptedByType; // 1: citizen, 2: initiative
-      int? adoptedById;
-
-      if (userType == "citizen") {
-        adoptedByType = 1;
-        adoptedById = _parseInt(user["citizen_id"]);
-
-        if (adoptedById == null) {
-          _safeSetState(() {
-            _errorMessage =
-                "لم يتم العثور على هوية المواطن، يرجى إعادة تسجيل الدخول.";
-            _isSubmitting = false;
-          });
-          return;
-        }
-      } else if (userType == "initiative") {
-        adoptedByType = 2;
-        adoptedById = _parseInt(user["initiative_id"]);
-
-        if (adoptedById == null) {
-          _safeSetState(() {
-            _errorMessage =
-                "لم يتم العثور على هوية المبادرة، يرجى إعادة تسجيل الدخول.";
-            _isSubmitting = false;
-          });
-          return;
-        }
-      } else {
+      if (userType != "account") {
         _safeSetState(() {
-          _errorMessage = "نوع مستخدم غير صالح لاعتماد البلاغ.";
+          _errorMessage = "فقط الحسابات المسجَّلة يمكنها اعتماد البلاغ.";
           _isSubmitting = false;
         });
         return;
       }
 
-      await ApiService.adopt(
-        reportId: widget.reportId,
-        adoptedById: adoptedById,
-        adoptedByType: adoptedByType,
-      );
+      // account_id من الـ JWT
+      final int? accountId = _parseInt(user["account_id"]);
+      if (accountId == null) {
+        _safeSetState(() {
+          _errorMessage =
+              "لم يتم العثور على رقم الحساب، يرجى إعادة تسجيل الدخول.";
+          _isSubmitting = false;
+        });
+        return;
+      }
+
+      // نادِ على API التبنّي الموحد (accounts)
+      await ApiService.adopt(reportId: widget.reportId, accountId: accountId);
 
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -140,7 +122,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
           children: [
             const SizedBox(height: 8),
             const Text(
-              "باستلامك لهذا البلاغ، سيتم تسجيلك كجهة مسؤولة عن حل المشكلة، "
+              "باستلامك لهذا البلاغ، سيتم تسجيل حسابك كجهة مسؤولة عن حل المشكلة، "
               "وسيتغيّر حالته إلى \"قيد التنفيذ\".",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14),

@@ -11,7 +11,19 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-// use central primary color
+// ===================== Nominatim Settings =====================
+
+// مهم جداً: هذا الـ User-Agent يُستخدم عند طلب Nominatim.
+// يحتوي على:
+// - اسم التطبيق: BasmaApp/1.0
+// - المنصات: Android & iOS
+// - إيميل تواصل حقيقي: futuretechvoljo@gmail.com
+//
+// هذا يتوافق مع شروط الاستخدام الخاصة بـ Nominatim.
+const String _nominatimUserAgent =
+    'BasmaApp/1.0 (Android & iOS; contact=futuretechvoljo@gmail.com)';
+
+// =============================================================
 
 class SelectLocationOnMapPage extends StatefulWidget {
   final double? initialLat;
@@ -138,7 +150,8 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
 
       _mapController.move(newPos, 16);
       _resolveSelectedLocation();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error while getting current location: $e');
       _showSnack("حدث خطأ أثناء جلب الموقع الحالي.");
     } finally {
       if (mounted) {
@@ -188,7 +201,8 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
       setState(() {
         _resolvedLocation = result;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error resolving location via backend: $e');
       if (!mounted) return;
       setState(() {
         _locationError = "فشل في جلب تفاصيل الموقع، حاول مرة أخرى.";
@@ -247,7 +261,8 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
           _mapController.move(point, 16);
           await _resolveSelectedLocation();
         }
-      } catch (_) {
+      } catch (e) {
+        debugPrint('Error parsing coordinates from search: $e');
         _showSnack("التنسيق غير صحيح. مثال: 32.5456, 35.8907");
       } finally {
         if (mounted) {
@@ -273,15 +288,20 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
       final resp = await http.get(
         uri,
         headers: {
-          // 👇 مهم جداً لتفادي 403 من Nominatim:
-          // عدّل الدومين والإيميل لبيانات حقيقية لتطبيقك.
-          'User-Agent':
-              'basma-app/1.0 (https://your-domain.example; contact@your-domain.example)',
+          // مهم جداً لتفادي 403 من Nominatim:
+          'User-Agent': _nominatimUserAgent,
+          'Accept': 'application/json',
         },
       );
 
+      debugPrint(
+        'Nominatim response status: ${resp.statusCode}, body: ${resp.body}',
+      );
+
       if (resp.statusCode == 403) {
-        _showSnack("خدمة البحث غير متاحة حالياً من مزود الخرائط (خطأ 403).");
+        _showSnack(
+          "خدمة البحث رفضت الطلب (403). تأكد أن معلومات User-Agent صحيحة مع إيميل حقيقي.",
+        );
         if (mounted) {
           setState(() {
             _searching = false;
@@ -356,7 +376,8 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
             ..addAll(results);
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error while searching Nominatim: $e');
       _showSnack("حدث خطأ أثناء البحث عن الموقع.");
     } finally {
       if (mounted) {
@@ -408,7 +429,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         textInputAction: TextInputAction.search,
         onSubmitted: (_) => _onSearchPressed(),
         decoration: InputDecoration(
-          hintText: "ابحث عن موقع  ",
+          hintText: "ابحث عن موقع",
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
           filled: true,
           fillColor: Colors.white,
@@ -446,7 +467,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: _searchResults.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
+          separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final item = _searchResults[index];
             return ListTile(

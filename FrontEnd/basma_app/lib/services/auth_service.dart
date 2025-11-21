@@ -1,19 +1,16 @@
-// lib/services/auth_service.dart
-
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// خدمة مسؤولة عن التوثيق وقراءة بيانات المستخدم من JWT.
 ///
-/// مثال على شكل الكاش داخل SharedPreferences:
+/// مثال على الكاش داخل SharedPreferences:
 /// {
 ///   "token": "jwt_token_here",
 ///   "user": {
 ///     "id": 3,
-///     "backend_type": 3,
-///     "citizen_id": 3,
-///     "initiative_id": null,
-///     "type": "citizen"
+///     "backend_type": 2,
+///     "account_id": 5,
+///     "type": "account"
 ///   }
 /// }
 class AuthService {
@@ -23,7 +20,7 @@ class AuthService {
   /// قراءة المستخدم الحالي من الـ JWT + الـ cache.
   ///
   /// ترجع:
-  /// - أو null إذا لم يكن هناك توكن أو التوكن غير صالح
+  /// - Map أو null إذا لم يكن هناك توكن أو التوكن غير صالح
   static Future<Map<String, dynamic>?> currentUser() async {
     final sp = await SharedPreferences.getInstance();
 
@@ -40,15 +37,16 @@ class AuthService {
         final cached = jsonDecode(cachedStr);
 
         if (cached is Map<String, dynamic>) {
-          final cachedToken = cached["token"];
-          final cachedUser = cached["user"];
+          final cachedToken = cached['token'];
+          final cachedUser = cached['user'];
 
           if (cachedToken == token && cachedUser is Map<String, dynamic>) {
+            // نرجع نسخة جديدة من الـ Map عشان ما يتعدل بالخطأ خارجياً
             return Map<String, dynamic>.from(cachedUser);
           }
         }
       } catch (_) {
-        // تجاهل أي خطأ
+        // تجاهل أي خطأ في فك JSON
       }
     }
 
@@ -60,8 +58,7 @@ class AuthService {
     }
 
     // ============== تخزين الكاش ==============
-    final envelope = {"token": token, "user": user};
-
+    final envelope = {'token': token, 'user': user};
     await sp.setString(_cachedUserKey, jsonEncode(envelope));
 
     return user;
@@ -74,15 +71,23 @@ class AuthService {
     await sp.remove(_cachedUserKey);
   }
 
-  // ==========================================================================
+  // ========================================================================
   // Helper: Decode JWT
-  // ==========================================================================
+  // ========================================================================
 
   /// يحلّل JWT ويستخرج معلومات المستخدم من الـ payload.
   ///
   /// يرجّع:
   /// - Map فيها بيانات المستخدم
   /// - أو null لو التوكن غير صالح
+  ///
+  /// نتوقّع payload مثل:
+  /// {
+  ///   "sub": "3",
+  ///   "user_type": 2,
+  ///   "account_id": 5,
+  ///   "type": "account"
+  /// }
   static Map<String, dynamic>? _parseUserFromToken(String token) {
     try {
       final parts = token.split('.');
@@ -98,26 +103,25 @@ class AuthService {
       if (data is! Map<String, dynamic>) return null;
 
       final sub = data['sub'];
-      final backendType = data['user_type']; // رقم نوع المستخدم
+      final backendType = data['user_type']; // 1=admin, 2=account user, ...إلخ
 
       if (sub == null || backendType == null) return null;
 
-      final citizenId = data['citizen_id'];
-      final initiativeId = data['initiative_id'];
+      // لو أردت دعم citizen / initiative ممكن تضيف:
+      // final citizenId = data['citizen_id'];
+      // final initiativeId = data['initiative_id'];
 
-      // نوع المستخدم نصيًا
-      final typeStr = switch (backendType) {
-        3 => 'citizen',
-        2 => 'initiative',
-        _ => 'unknown',
-      };
+      final accountId = data['account_id'];
+      final typeStr =
+          data['type']?.toString() ?? 'unknown'; // "admin" / "account" / ...
 
       return {
         'id': int.tryParse(sub.toString()) ?? sub,
         'backend_type': backendType,
-        'citizen_id': citizenId,
-        'initiative_id': initiativeId,
+        'account_id': accountId,
         'type': typeStr,
+        // 'citizen_id': citizenId,
+        // 'initiative_id': initiativeId,
       };
     } catch (_) {
       return null;
