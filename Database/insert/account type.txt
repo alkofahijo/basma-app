@@ -1,0 +1,16 @@
+INSERT INTO `basmadb`.`account_types`
+(`id`,
+ `name_ar`,
+ `name_en`,
+ `code`)
+VALUES
+(1, 'مواطن', 'Citizen', 'CITIZEN'),
+(2, 'فريق تطوعي / مبادرة', 'Volunteer Team / Initiative', 'INITIATIVE'),
+(3, 'مؤسسة حكومية', 'Government Institution', 'GOVERNMENT_ORG'),
+(4, 'بلدية / أمانة', 'Municipality / Secretariat', 'MUNICIPALITY'),
+(5, 'شركة خاصة', 'Private Company', 'PRIVATE_COMPANY'),
+(6, 'مؤسسة خاصة غير ربحية', 'Private Non-Profit Institution', 'NONPROFIT'),
+(7, 'منظمة (محلية/دولية)', 'Organization (Local/International)', 'ORGANIZATION'),
+(8, 'مؤسسة شبه حكومية', 'Semi-Governmental Institution', 'SEMI_GOV`);
+
+SELECT * FROM basmadb.account_types;
