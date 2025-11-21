@@ -6,7 +6,10 @@ import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+
+import 'package:basma_app/pages/reports/new/widgets/success_page.dart';
 
 const Color _pageBackground = Color(0xFFEFF1F1);
 
@@ -215,7 +218,13 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
       );
 
       if (!mounted) return;
-      Navigator.pop(context, true);
+
+      // بعد نجاح إكمال البلاغ → عرض صفحة النجاح الخاصة بإكمال البلاغ
+      Get.offAll(
+        () => SuccessPage.forCompletedReport(
+          reportCode: widget.report.reportCode,
+        ),
+      );
     } catch (e) {
       _showSnackBar("فشل إكمال البلاغ: $e");
     } finally {

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 # ============================================================
 # AUTH
@@ -174,7 +174,29 @@ class AccountOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # العلاقات كاملة (nested) – مهمة للـ Flutter لو حب يقرأ منها مباشرة
+    account_type: AccountTypeOut | None = None
+    government: GovernmentOut | None = None
+
     model_config = ConfigDict(from_attributes=True)
+
+    # ✅ تنظيف وملء الحقول المسطّحة من العلاقات لو كانت موجودة
+    @model_validator(mode="after")
+    def populate_flat_names_from_relations(self) -> "AccountOut":
+        # من account_type
+        if self.account_type is not None:
+            if self.account_type_name_ar is None:
+                self.account_type_name_ar = self.account_type.name_ar
+            if self.account_type_name_en is None:
+                self.account_type_name_en = self.account_type.name_en
+            if self.account_type_code is None:
+                self.account_type_code = self.account_type.code
+
+        # من government
+        if self.government is not None and self.government_name_ar is None:
+            self.government_name_ar = self.government.name_ar
+
+        return self
 
 
 # ============================================================

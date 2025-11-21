@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..db import get_db
 from ..models import Account, AccountType, Government, User, Report
 from ..schemas import (
     AccountCreate,
     AccountOut,
-    AccountTypeOut,  # ✅ استيراد السكيما الخاصة بأنواع الحسابات
+    AccountTypeOut,  # ✅ سكيما أنواع الحسابات
 )
 from ..security import hash_password
 
@@ -56,6 +56,7 @@ class AccountUpdate(BaseModel):
     is_active: Optional[int] = None
     show_details: Optional[int] = None
     reports_completed_count: Optional[int] = None
+    join_form_link: Optional[str] = None
 
     # optional linked user changes
     username: Optional[str] = None
@@ -83,8 +84,22 @@ def list_accounts(
       - المحافظة (government_id)
       - حالة التفعيل (is_active)
       - نص بحثي على الاسم أو رقم الجوال (q)
+
+    ✅ تم تفعيل تحميل العلاقات:
+      - account_type
+      - government
+    حتى تصل إلى الـ properties:
+      - account_type_name_ar / ...etc
+      - government_name_ar
     """
-    stmt = select(Account)
+
+    stmt = (
+        select(Account)
+        .options(
+            joinedload(Account.account_type),   # ✅ نوع الجهة
+            joinedload(Account.government),    # ✅ المحافظة
+        )
+    )
 
     if account_type_id is not None:
         stmt = stmt.where(Account.account_type_id == account_type_id)
@@ -108,7 +123,6 @@ def list_accounts(
     stmt = stmt.order_by(Account.id.desc()).limit(limit).offset(offset)
     rows = db.execute(stmt).scalars().all()
 
-    # العلاقات (account_type, government) سيتم تحميلها عند التحويل إلى AccountOut
     return rows
 
 
@@ -120,11 +134,28 @@ def list_accounts(
 @router.get("/{account_id}", response_model=AccountOut)
 def get_account(account_id: int, db: Session = Depends(get_db)):
     """
-    جلب حساب واحد عن طريق المعرف.
+    جلب حساب واحد عن طريق المعرف مع تحميل:
+      - account_type
+      - government
+    ليستفيد منها الـ properties مثل account_type_name_ar و government_name_ar.
     """
-    account = db.get(Account, account_id)
+
+    stmt = (
+        select(Account)
+        .options(
+            joinedload(Account.account_type),
+            joinedload(Account.government),
+        )
+        .where(Account.id == account_id)
+    )
+    account = db.execute(stmt).scalars().first()
+
     if not account:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found",
+        )
+
     return account
 
 
@@ -144,14 +175,25 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)):
 
     # validate references
     if not db.get(Government, payload.government_id):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid government_id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid government_id",
+        )
 
     if not db.get(AccountType, payload.account_type_id):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account_type_id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid account_type_id",
+        )
 
     # unique mobile
-    if db.scalar(select(Account).where(Account.mobile_number == payload.mobile_number)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mobile number already exists")
+    if db.scalar(
+        select(Account).where(Account.mobile_number == payload.mobile_number)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mobile number already exists",
+        )
 
     account = Account(
         account_type_id=payload.account_type_id,
@@ -170,14 +212,20 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)):
     except IntegrityError as e:
         db.rollback()
         # احتمال تعارض فريد على رقم الموبايل
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mobile number already exists") from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mobile number already exists",
+        ) from e
 
     # optional linked user
     if payload.username and payload.password:
         # unique username
         if db.scalar(select(User).where(User.username == payload.username)):
             db.rollback()
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists",
+            )
 
         user = User(
             username=payload.username,
@@ -190,11 +238,25 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)):
             db.flush()
         except IntegrityError as e:
             db.rollback()
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists") from e
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists",
+            ) from e
 
     db.commit()
-    db.refresh(account)
-    return account
+
+    # نعيد القراءة مع العلاقات لو حابب تطلعها أيضاً في الـ response
+    stmt = (
+        select(Account)
+        .options(
+            joinedload(Account.account_type),
+            joinedload(Account.government),
+        )
+        .where(Account.id == account.id)
+    )
+    account_with_rels = db.execute(stmt).scalars().first()
+
+    return account_with_rels or account
 
 
 # ============================================================
@@ -216,20 +278,29 @@ def update_account(
     """
     account = db.get(Account, account_id)
     if not account:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found",
+        )
 
     data = payload.model_dump(exclude_unset=True)
 
     # validate account_type_id
     if "account_type_id" in data and data["account_type_id"] is not None:
         if not db.get(AccountType, data["account_type_id"]):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account_type_id")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid account_type_id",
+            )
         account.account_type_id = data["account_type_id"]
 
     # validate government_id
     if "government_id" in data and data["government_id"] is not None:
         if not db.get(Government, data["government_id"]):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid government_id")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid government_id",
+            )
         account.government_id = data["government_id"]
 
     # simple fields on Account
@@ -260,7 +331,10 @@ def update_account(
                         User.id != user.id,
                     )
                 ):
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Username already exists",
+                    )
                 user.username = data["username"]
 
             if data.get("password"):
@@ -271,14 +345,21 @@ def update_account(
                 db.flush()
             except IntegrityError as e:
                 db.rollback()
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists") from e
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username already exists",
+                ) from e
 
         else:
             # create new linked user only if both username and password are provided
             if data.get("username") and data.get("password"):
-                if db.scalar(select(User).where(User.username == data["username"])):
-
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+                if db.scalar(
+                    select(User).where(User.username == data["username"])
+                ):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Username already exists",
+                    )
 
                 new_user = User(
                     username=data["username"],
@@ -291,7 +372,10 @@ def update_account(
                     db.flush()
                 except IntegrityError as e:
                     db.rollback()
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists") from e
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Username already exists",
+                    ) from e
             elif data.get("username") or data.get("password"):
                 # واحد فقط من الحقلين → نرجّع خطأ واضح
                 raise HTTPException(
@@ -304,10 +388,23 @@ def update_account(
     except IntegrityError as e:
         db.rollback()
         # غالباً تعارض في رقم الموبايل أو حقل فريد
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mobile number already exists") from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mobile number already exists",
+        ) from e
 
-    db.refresh(account)
-    return account
+    # نرجّع الحساب مع العلاقات
+    stmt = (
+        select(Account)
+        .options(
+            joinedload(Account.account_type),
+            joinedload(Account.government),
+        )
+        .where(Account.id == account.id)
+    )
+    updated_account = db.execute(stmt).scalars().first()
+
+    return updated_account or account
 
 
 # ============================================================
@@ -328,11 +425,16 @@ def delete_account(
     """
     account = db.get(Account, account_id)
     if not account:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found",
+        )
 
     if hard:
         # detach linked users
-        users = db.execute(select(User).where(User.account_id == account.id)).scalars().all()
+        users = db.execute(
+            select(User).where(User.account_id == account.id)
+        ).scalars().all()
         for u in users:
             u.account_id = None
             db.add(u)
@@ -353,7 +455,9 @@ def delete_account(
         db.add(account)
 
         # optionally deactivate linked users
-        users = db.execute(select(User).where(User.account_id == account.id)).scalars().all()
+        users = db.execute(
+            select(User).where(User.account_id == account.id)
+        ).scalars().all()
         for u in users:
             u.is_active = 0
             db.add(u)

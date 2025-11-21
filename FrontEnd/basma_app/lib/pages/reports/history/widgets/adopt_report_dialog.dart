@@ -1,13 +1,21 @@
 // lib/pages/reports/history/widgets/adopt_report_dialog.dart
+
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import 'package:basma_app/pages/reports/new/widgets/success_page.dart';
 
 class SolveReportDialog extends StatefulWidget {
+  /// رقم البلاغ في الـ backend
   final int reportId;
 
-  const SolveReportDialog({super.key, required this.reportId});
+  /// كود البلاغ لعرضه في صفحة النجاح (اختياري)
+  final String? reportCode;
+
+  const SolveReportDialog({super.key, required this.reportId, this.reportCode});
 
   @override
   State<SolveReportDialog> createState() => _SolveReportDialogState();
@@ -35,7 +43,7 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
     });
 
     try {
-      // اقرأ المستخدم الحالي من JWT (من AuthService.currentUser)
+      // اقرأ المستخدم الحالي من JWT
       final user = await AuthService.currentUser();
 
       if (user == null) {
@@ -67,11 +75,26 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
         return;
       }
 
-      // نادِ على API التبنّي الموحد (accounts)
+      // استدعاء API للتبنّي
       await ApiService.adopt(reportId: widget.reportId, accountId: accountId);
 
       if (!mounted) return;
-      Navigator.pop(context, true);
+
+      // ✅ لا نستخدم Navigator.pop هنا
+      // ✅ ننتقل مباشرة إلى صفحة النجاح ونمسح الـ stack
+      Get.offAll(
+        () => SuccessPage(
+          reportCode: widget.reportCode,
+          title: 'تم استلام البلاغ بنجاح',
+          statusText: 'قيد التنفيذ',
+          message:
+              'تم تسجيل حسابك كجهة مسؤولة عن حل هذا البلاغ. '
+              'يمكنك متابعة حالة التنفيذ من صفحة "بلاغاتي" في تبويب البلاغات قيد التنفيذ.',
+          primaryButtonText: 'الانتقال إلى بلاغاتي',
+          showReportCode: widget.reportCode != null,
+          showStatus: true,
+        ),
+      );
     } catch (e) {
       _safeSetState(() {
         _errorMessage = "فشل اعتماد البلاغ، حاول مرة أخرى.\n$e";
