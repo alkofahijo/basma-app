@@ -1,3 +1,5 @@
+// lib/pages/reports/new/widgets/success_page.dart
+
 import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +34,12 @@ class SuccessPage extends StatelessWidget {
   /// هل نعرض بوكس رقم البلاغ أم لا.
   final bool showReportCode;
 
+  /// أي تبويب رئيسي يُفتح في صفحة البلاغات: 'all' أو 'mine'
+  final String initialMainTab;
+
+  /// أي حالة تُفتح في صفحة البلاغات: 'open' أو 'in_progress' أو 'completed'
+  final String initialStatusTab;
+
   const SuccessPage({
     super.key,
     this.reportCode,
@@ -42,6 +50,8 @@ class SuccessPage extends StatelessWidget {
     this.imageAsset = "assets/images/success.png",
     this.showStatus = true,
     this.showReportCode = true,
+    this.initialMainTab = 'all',
+    this.initialStatusTab = 'open',
   }) : title = title ?? 'تم إرسال البلاغ بنجاح',
        message =
            message ??
@@ -62,6 +72,7 @@ class SuccessPage extends StatelessWidget {
       primaryButtonText: 'الانتقال إلى بلاغاتي',
       showReportCode: true,
       showStatus: true,
+      // ممكن لاحقاً نضبطها حسب سيناريو المستخدم
     );
   }
 
@@ -77,12 +88,20 @@ class SuccessPage extends StatelessWidget {
       primaryButtonText: 'الانتقال إلى بلاغاتي',
       showReportCode: true,
       showStatus: true,
+      // 👇 افتح صفحة البلاغات على "بلاغاتي / مكتمل"
+      initialMainTab: 'mine',
+      initialStatusTab: 'completed',
     );
   }
 
   void _goToReportsHistory() {
     // إرسال المستخدم إلى قائمة بلاغاته (سجل البلاغات)
-    Get.offAll(() => GuestReportsListPage());
+    Get.offAll(
+      () => GuestReportsListPage(
+        initialMainTab: initialMainTab,
+        initialStatusTab: initialStatusTab,
+      ),
+    );
   }
 
   @override

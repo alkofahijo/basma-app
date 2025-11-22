@@ -1,3 +1,5 @@
+// lib/pages/home/home_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -7,6 +9,7 @@ import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/pages/reports/history/reports_list_page.dart';
+import 'package:basma_app/pages/Accounts/accounts_list_page.dart';
 
 import '../reports/new/new_report_page.dart';
 
@@ -56,13 +59,14 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // العنوان الرئيسي
           Text(
             'اختر إجراءك!',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: size.width * 0.090,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.black,
               height: 1.3,
             ),
           ),
@@ -72,17 +76,23 @@ class _HomePageState extends State<HomePage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: size.width * 0.04,
-              color: Colors.black54,
+              color: Colors.black87,
               height: 1.4,
             ),
           ),
-          SizedBox(height: size.height * 0.08),
+          const SizedBox(height: 8),
+          const Text(
+            'اختر أحد الخيارات التالية للبدء:',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+          SizedBox(height: size.height * 0.07),
 
           // زر تقديم بلاغ
           HomeScreenButton(
             icon: Icons.camera_alt_outlined,
             title: 'تقديم بلاغ',
-            subtitle: 'تقديم بلاغ عن تشوّه بصري\nفي منطقتك.',
+            subtitle: 'قدّم بلاغًا عن تشوّه بصري في منطقتك.',
             onTap: () {
               Get.to(() => CreateReportWithAiPage());
             },
@@ -102,6 +112,20 @@ class _HomePageState extends State<HomePage> {
             },
             color: const Color(0xFFCAF2DB),
             iconColor: const Color.fromARGB(255, 19, 106, 32),
+          ),
+
+          SizedBox(height: size.height * 0.03),
+
+          // قائمة المتطوعين (تستخدم صفحة AccountsListPage)
+          HomeScreenButton(
+            icon: Icons.volunteer_activism,
+            title: 'قائمة المتطوعين',
+            subtitle: 'عرض  الجهات المشاركة في حل مشكلات التشوه البصري.',
+            onTap: () {
+              Get.to(() => const AccountsListPage());
+            },
+            color: const Color(0xFFFFF2CC), // لون دافئ يناسب العمل التطوعي
+            iconColor: const Color(0xFFB45F06),
           ),
 
           SizedBox(height: size.height * 0.03),

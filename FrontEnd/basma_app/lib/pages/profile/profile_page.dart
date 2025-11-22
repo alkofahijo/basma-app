@@ -1,21 +1,23 @@
 // lib/pages/profile/profile_page.dart
 
+import 'package:basma_app/config/base_url.dart';
 import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/pages/profile/edit_account_page.dart';
+import 'package:basma_app/pages/profile/change_password_page.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
-import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// ✅ لإضافة الدومين على المسار النسبي
-import 'package:basma_app/config/base_url.dart';
-// ✅ لعرض الصورة مع إمكانية التكبير
+// لعرض الصورة مع إمكانية التكبير
 import 'package:basma_app/pages/reports/history/widgets/zoomable_image.dart';
+
+// لفتح الروابط (رابط نموذج الانضمام / موقع الجهة)
+import 'package:url_launcher/url_launcher.dart';
 
 const Color _pageBackground = Color(0xFFEFF1F1);
 
@@ -29,7 +31,6 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   String? _err;
-
   Account? _account;
 
   @override
@@ -51,6 +52,28 @@ class _ProfilePageState extends State<ProfilePage> {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
     return "$y-$m-$d $hh:$mm";
+  }
+
+  String? _resolveLogoUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return '$kBaseUrl$raw';
+    return '$kBaseUrl/$raw';
+  }
+
+  Future<void> _openUrl(String url) async {
+    if (url.trim().isEmpty) return;
+
+    final String normalized = url.startsWith('http')
+        ? url.trim()
+        : 'https://${url.trim()}';
+
+    final uri = Uri.tryParse(normalized);
+    if (uri == null) return;
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -155,14 +178,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  /// نفس منطق BeforeAfterImages لتحويل المسار النسبي إلى URL كامل
-  String? _resolveLogoUrl(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    if (raw.startsWith('http')) return raw;
-    if (raw.startsWith('/')) return '$kBaseUrl$raw';
-    return '$kBaseUrl/$raw';
-  }
-
   @override
   Widget build(BuildContext context) {
     Widget bodyContent;
@@ -173,10 +188,28 @@ class _ProfilePageState extends State<ProfilePage> {
       bodyContent = Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text(
-            _err!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.redAccent),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _err!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _loadProfile,
+                icon: const Icon(Icons.refresh),
+                label: const Text("إعادة المحاولة"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -212,7 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // ============================================================
-  // ACCOUNT PROFILE (موحَّد لكل أنواع الحسابات)
+  // ACCOUNT PROFILE
   // ============================================================
 
   Widget _buildAccountProfile(Account a) {
@@ -226,69 +259,9 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: EdgeInsets.zero,
             children: [
               _buildAccountHeader(a),
-              const SizedBox(height: 12),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildAccountInfoSection(a),
-                    const SizedBox(height: 16),
-                    // زر تعديل بيانات الحساب
-                    SizedBox(
-                      width: 250,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          if (_account == null) return;
-                          final updated = await Navigator.push<Account?>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  EditAccountPage(account: _account!),
-                            ),
-                          );
-                          if (updated != null && mounted) {
-                            setState(() {
-                              _account = updated;
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.edit, color: Colors.white),
-                        label: const Text(
-                          "تعديل بيانات الحساب",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimaryColor,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // زر تسجيل الخروج
-                    SizedBox(
-                      width: 250,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _logout(context),
-                        icon: const Icon(Icons.logout, color: Colors.white),
-                        label: const Text(
-                          "تسجيل الخروج",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: _buildAccountInfoSection(a),
               ),
             ],
           ),
@@ -297,65 +270,153 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // ====================== Header (الصورة + الاسم + Chips) ======================
+
   Widget _buildAccountHeader(Account a) {
     final resolvedLogoUrl = _resolveLogoUrl(a.logoUrl);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Column(
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(
-                255,
-                97,
-                102,
-                97,
-              ).withValues(alpha: 0.06),
-              shape: BoxShape.circle,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(55),
-              child: resolvedLogoUrl != null
-                  ? ZoomableImage(imageUrl: resolvedLogoUrl)
-                  : const Icon(
-                      Icons.account_balance,
-                      size: 64,
-                      color: Color.fromARGB(255, 47, 50, 47),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Card(
+        color: Colors.white,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          child: Column(
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(
+                    255,
+                    97,
+                    102,
+                    97,
+                  ).withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(55),
+                  child: resolvedLogoUrl != null
+                      ? ZoomableImage(imageUrl: resolvedLogoUrl)
+                      : const Icon(
+                          Icons.account_balance,
+                          size: 64,
+                          color: Color.fromARGB(255, 47, 50, 47),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                a.nameAr,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (a.accountTypeNameAr != null &&
+                      a.accountTypeNameAr!.isNotEmpty)
+                    Chip(
+                      label: Text(
+                        a.accountTypeNameAr!,
+                        style: const TextStyle(fontSize: 11.5),
+                      ),
+                      backgroundColor: const Color(0xFFEAF5FF),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-            ),
+                  if (a.governmentNameAr != null &&
+                      a.governmentNameAr!.isNotEmpty)
+                    Chip(
+                      label: Text(
+                        a.governmentNameAr!,
+                        style: const TextStyle(fontSize: 11.5),
+                      ),
+                      backgroundColor: const Color(0xFFEFF7EB),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            a.nameAr,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  // ========= Helper: سطر معلومات مع أيقونة صغيرة =========
+
+  Widget _iconInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
+  // ======================= تفاصيل الحساب + الأزرار =======================
+
   Widget _buildAccountInfoSection(Account a) {
-    // أسماء نوع الحساب والمحافظة
-    final accountTypeName = a.accountTypeNameAr ?? "غير محدد";
-    final governmentName = a.governmentNameAr ?? "غير محدد";
+    final String? joinLink = a.joinFormLink?.trim().isNotEmpty == true
+        ? a.joinFormLink!.trim()
+        : null;
+
+    // showDetails هي bool جاهزة من الموديل
+    final bool isPublicDetails = a.showDetails;
+    final String visibilityText = isPublicDetails
+        ? "تفاصيل الحساب ظاهرة للعامة"
+        : "تفاصيل الحساب غير ظاهرة للعامة";
 
     return Card(
       color: Colors.white,
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // عنوان القسم
             Row(
               children: const [
                 Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
@@ -368,65 +429,185 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              "معلومات أساسية حول الحساب المساهم في حل البلاغات.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 10),
+
+            const SizedBox(height: 12),
             const Divider(height: 16),
 
-            // ✅ جميع البيانات المهمّة للحساب
-
-            // نوع الحساب من account_types.name_ar
-            InfoRow(label: "نوع الحساب", value: accountTypeName),
-
-            // الاسم بالعربية / الإنجليزية
-            InfoRow(label: "الاسم بالعربية", value: a.nameAr),
-            InfoRow(label: "الاسم بالإنجليزية", value: a.nameEn ?? "---"),
-
-            // المحافظة من governments.name_ar
-            InfoRow(label: "المحافظة", value: governmentName),
-
-            // رقم الهاتف (في الملف الشخصي نعرضه دائماً لصاحب الحساب)
-            InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
-
-            // عدد البلاغات المنجزة
-            InfoRow(
+            _iconInfoRow(
+              icon: Icons.badge_outlined,
+              label: "الاسم بالعربية",
+              value: a.nameAr,
+            ),
+            _iconInfoRow(
+              icon: Icons.translate,
+              label: "الاسم بالإنجليزية",
+              value: a.nameEn?.trim().isNotEmpty == true
+                  ? a.nameEn!.trim()
+                  : "---",
+            ),
+            _iconInfoRow(
+              icon: Icons.phone,
+              label: "رقم الهاتف",
+              value: a.mobileNumber,
+            ),
+            _iconInfoRow(
+              icon: Icons.done_all_rounded,
               label: "عدد البلاغات المنجزة",
               value: a.reportsCompletedCount.toString(),
             ),
-
-            // رابط نموذج الانضمام (إن وجد)
-            if (a.joinFormLink != null && a.joinFormLink!.trim().isNotEmpty)
-              InfoRow(label: "رابط نموذج الانضمام", value: a.joinFormLink!),
-
-            // تاريخ إنشاء الحساب
             if (a.createdAt != null)
-              InfoRow(
+              _iconInfoRow(
+                icon: Icons.calendar_today_outlined,
                 label: "تاريخ إنشاء الحساب",
                 value: _formatDateTime(a.createdAt!),
               ),
 
-            const SizedBox(height: 12),
-            Center(
-              child: SizedBox(
-                width: 250,
-                child: ElevatedButton.icon(
-                  onPressed: _showChangePasswordDialog,
-                  icon: const Icon(Icons.lock_reset, color: Colors.white),
-                  label: const Text(
-                    "تغيير كلمة المرور",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: kPrimaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+            // حالة ظهور تفاصيل الحساب
+            _iconInfoRow(
+              icon: isPublicDetails ? Icons.visibility : Icons.visibility_off,
+              label: "حالة ظهور تفاصيل الحساب",
+              value: visibilityText,
+            ),
+
+            // رابط نموذج الانضمام / موقع الجهة
+            if (joinLink != null) ...[
+              const SizedBox(height: 10),
+              const Text(
+                "رابط نموذج الانضمام / موقع أو صفحة الجهة",
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => _openUrl(joinLink),
+                borderRadius: BorderRadius.circular(6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.link, size: 18, color: Colors.blue),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        joinLink,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            const Divider(height: 18),
+            const SizedBox(height: 8),
+
+            // ================================
+            // الأزرار الأخيرة (RTL + تصميم)
+            // ================================
+
+            // زر تعديل الحساب
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (_account == null) return;
+                  final updated = await Navigator.push<Account?>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditAccountPage(account: _account!),
+                    ),
+                  );
+                  if (updated != null && mounted) {
+                    setState(() {
+                      _account = updated;
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text("تعديل بيانات الحساب", style: TextStyle(fontSize: 15)),
+                    SizedBox(width: 8),
+                    Icon(Icons.edit, size: 20),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // زر تغيير كلمة المرور
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final changed = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordPage(),
+                    ),
+                  );
+                  if (changed == true && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("تم تغيير كلمة المرور بنجاح."),
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor.withValues(alpha: 0.95),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text("تغيير كلمة المرور", style: TextStyle(fontSize: 15)),
+                    SizedBox(width: 8),
+                    Icon(Icons.lock_reset, size: 20),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // زر تسجيل الخروج
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => _logout(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text("تسجيل الخروج", style: TextStyle(fontSize: 15)),
+                    SizedBox(width: 8),
+                    Icon(Icons.logout, size: 20),
+                  ],
                 ),
               ),
             ),
@@ -434,185 +615,5 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
-  }
-
-  // ============================================================
-  // CHANGE PASSWORD (لأي حساب مسجَّل)
-  // ============================================================
-
-  Future<void> _showChangePasswordDialog() async {
-    final passCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    String? error;
-    bool saving = false;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: StatefulBuilder(
-            builder: (ctx, setStateDialog) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                title: const Text(
-                  "تغيير كلمة المرور",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: passCtrl,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: "كلمة المرور الجديدة",
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: confirmCtrl,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: "تأكيد كلمة المرور",
-                        ),
-                      ),
-                      if (error != null) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          error!,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: saving
-                        ? null
-                        : () => Navigator.of(ctx).pop(false),
-                    child: const Text(
-                      "إلغاء",
-                      style: TextStyle(color: Colors.black),
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            final p1 = passCtrl.text.trim();
-                            final p2 = confirmCtrl.text.trim();
-
-                            if (p1.isEmpty || p2.isEmpty) {
-                              setStateDialog(() {
-                                error =
-                                    "يرجى إدخال كلمة المرور وتأكيدها بشكل صحيح.";
-                              });
-                              return;
-                            }
-                            if (p1.length < 8) {
-                              setStateDialog(() {
-                                error =
-                                    "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
-                              });
-                              return;
-                            }
-                            if (p1 != p2) {
-                              setStateDialog(() {
-                                error = "كلمتا المرور غير متطابقتين.";
-                              });
-                              return;
-                            }
-
-                            final confirm = await showDialog<bool>(
-                              context: ctx,
-                              builder: (cctx) => Directionality(
-                                textDirection: TextDirection.rtl,
-                                child: AlertDialog(
-                                  title: const Text('تأكيد'),
-                                  content: const Text(
-                                    'هل أنت متأكد من رغبتك في تغيير كلمة المرور؟',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(cctx).pop(false),
-                                      child: const Text(
-                                        'لا',
-                                        style: TextStyle(color: Colors.black),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: kPrimaryColor,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () =>
-                                          Navigator.of(cctx).pop(true),
-                                      child: const Text('نعم'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-
-                            if (confirm != true) return;
-
-                            setStateDialog(() {
-                              saving = true;
-                              error = null;
-                            });
-
-                            try {
-                              await ApiService.changePassword(p1);
-                              if (!mounted) return;
-                              Navigator.of(context).pop(true);
-                            } catch (_) {
-                              setStateDialog(() {
-                                saving = false;
-                                error =
-                                    "تعذّر تغيير كلمة المرور، حاول مرة أخرى.";
-                              });
-                            }
-                          },
-                    child: saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text("حفظ"),
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("تم تغيير كلمة المرور بنجاح.")),
-      );
-    }
   }
 }

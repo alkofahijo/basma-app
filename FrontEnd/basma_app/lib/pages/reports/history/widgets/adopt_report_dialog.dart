@@ -80,8 +80,8 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
 
       if (!mounted) return;
 
-      // ✅ لا نستخدم Navigator.pop هنا
-      // ✅ ننتقل مباشرة إلى صفحة النجاح ونمسح الـ stack
+      // الانتقال مباشرة إلى صفحة النجاح، وضبط التبويب الافتراضي إلى:
+      // بلاغاتي / قيد التنفيذ
       Get.offAll(
         () => SuccessPage(
           reportCode: widget.reportCode,
@@ -93,6 +93,9 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
           primaryButtonText: 'الانتقال إلى بلاغاتي',
           showReportCode: widget.reportCode != null,
           showStatus: true,
+          // 👇 مهم: نفتح صفحة البلاغات على "بلاغاتي / قيد التنفيذ"
+          initialMainTab: 'mine',
+          initialStatusTab: 'in_progress',
         ),
       );
     } catch (e) {

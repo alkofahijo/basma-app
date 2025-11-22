@@ -1,12 +1,13 @@
 // lib/pages/profile/account_info_page.dart
 
+import 'package:basma_app/config/base_url.dart';
 import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
-import 'package:basma_app/widgets/info_row.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const Color _pageBackground = Color(0xFFEFF1F1);
 
@@ -28,6 +29,30 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  // ========= Helpers =========
+
+  String? _resolveImageUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return '$kBaseUrl$raw';
+    return '$kBaseUrl/$raw';
+  }
+
+  Future<void> _openUrl(String url) async {
+    if (url.trim().isEmpty) return;
+
+    final String normalized = url.startsWith('http')
+        ? url.trim()
+        : 'https://${url.trim()}';
+
+    final uri = Uri.tryParse(normalized);
+    if (uri == null) return;
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _load() async {
@@ -62,8 +87,84 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return "$y-$m-$d $hh:$mm";
   }
 
+  // ========= Helper: سطر معلومات مع أيقونة صغيرة =========
+
+  Widget _iconInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    Widget body;
+
+    if (_loading) {
+      body = const LoadingCenter();
+    } else if (_err != null || _account == null) {
+      body = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _err ?? "حدث خطأ غير متوقع",
+                style: const TextStyle(color: Colors.redAccent),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: const Text("إعادة المحاولة"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      body = _buildAccountView(_account!);
+    }
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -85,83 +186,122 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           ),
           centerTitle: true,
         ),
-        body: SafeArea(
-          child: _loading
-              ? const LoadingCenter()
-              : _err != null || _account == null
-              ? Center(
-                  child: Text(
-                    _err ?? "حدث خطأ غير متوقع",
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      _buildHeader(_account!),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            _buildStatsRow(_account!),
-                            const SizedBox(height: 16),
-                            _buildInfoSection(_account!),
-                            const SizedBox(height: 24),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        body: SafeArea(child: body),
+      ),
+    );
+  }
+
+  // ========================= ACCOUNT VIEW =========================
+
+  Widget _buildAccountView(Account a) {
+    return Container(
+      color: _pageBackground,
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _buildHeader(a),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: Column(
+                children: [
+                  _buildStatsRow(a),
+                  const SizedBox(height: 16),
+                  _buildInfoSection(a),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ====================== Header (الصورة + الاسم) ======================
+  // ====================== Header (الصورة + الاسم + Chips) ======================
 
   Widget _buildHeader(Account a) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Column(
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(
-                255,
-                97,
-                102,
-                97,
-              ).withValues(alpha: 0.06),
-              shape: BoxShape.circle,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(55),
-              child: a.logoUrl != null && a.logoUrl!.isNotEmpty
-                  ? NetworkImageViewer(url: a.logoUrl!, height: 110)
-                  : const Icon(
-                      Icons.apartment,
-                      size: 64,
-                      color: Color.fromARGB(255, 47, 50, 47),
+    final imageUrl = _resolveImageUrl(a.logoUrl);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Card(
+        color: Colors.white,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          child: Column(
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(
+                    255,
+                    97,
+                    102,
+                    97,
+                  ).withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(55),
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? NetworkImageViewer(url: imageUrl, height: 110)
+                      : const Icon(
+                          Icons.apartment,
+                          size: 64,
+                          color: Color.fromARGB(255, 47, 50, 47),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                a.nameAr,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 10),
+
+              // Chips للحالة ونوع الجهة والمحافظة والخصوصية
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (a.accountTypeNameAr != null &&
+                      a.accountTypeNameAr!.isNotEmpty)
+                    Chip(
+                      label: Text(
+                        a.accountTypeNameAr!,
+                        style: const TextStyle(fontSize: 11.5),
+                      ),
+                      backgroundColor: const Color(0xFFEAF5FF),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-            ),
+                  if (a.governmentNameAr != null &&
+                      a.governmentNameAr!.isNotEmpty)
+                    Chip(
+                      label: Text(
+                        a.governmentNameAr!,
+                        style: const TextStyle(fontSize: 11.5),
+                      ),
+                      backgroundColor: const Color(0xFFEFF7EB),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            a.nameAr,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -169,20 +309,6 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   // ================ بطاقة إحصائية للبلاغات المنجزة =================
 
   Widget _buildStatsRow(Account a) {
-    return _buildStatCard(
-      icon: Icons.done_all_rounded,
-      title: "البلاغات المنجزة",
-      value: "${a.reportsCompletedCount}",
-      color: kPrimaryColor,
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
     return Card(
       color: Colors.white,
       elevation: 3,
@@ -195,10 +321,14 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: kPrimaryColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: const Icon(
+                Icons.done_all_rounded,
+                color: kPrimaryColor,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -206,16 +336,16 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    "البلاغات المنجزة بواسطة هذه الجهة",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    value,
-                    style: TextStyle(
+                    "${a.reportsCompletedCount}",
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: color,
+                      color: kPrimaryColor,
                     ),
                   ),
                 ],
@@ -227,27 +357,33 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
-  // ===================== تفاصيل الجهة (الأعمدة المطلوبة) =====================
+  // ===================== تفاصيل الجهة =====================
 
   Widget _buildInfoSection(Account a) {
     final bool canShowDetails = a.showDetails;
+    final String? joinLink = a.joinFormLink?.trim().isNotEmpty == true
+        ? a.joinFormLink!.trim()
+        : null;
 
     return Card(
       color: Colors.white,
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // عنوان القسم
             Row(
               children: const [
                 Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                 SizedBox(width: 6),
-                Text(
-                  "تفاصيل الجهة",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                Expanded(
+                  child: Text(
+                    "تفاصيل الجهة",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             ),
@@ -259,43 +395,98 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
             const SizedBox(height: 10),
             const Divider(height: 16),
 
-            // 1) الاسم بالعربية
-            InfoRow(label: "الاسم بالعربية", value: a.nameAr),
+            // الاسم بالعربية
+            _iconInfoRow(
+              icon: Icons.badge_outlined,
+              label: "الاسم بالعربية",
+              value: a.nameAr,
+            ),
 
-            // 2) الاسم بالإنجليزية
-            InfoRow(label: "الاسم بالإنجليزية", value: a.nameEn ?? "غير متوفر"),
+            // الاسم بالإنجليزية
+            _iconInfoRow(
+              icon: Icons.translate,
+              label: "الاسم بالإنجليزية",
+              value: a.nameEn?.trim().isNotEmpty == true
+                  ? a.nameEn!.trim()
+                  : "غير متوفر",
+            ),
 
-            // 3) نوع الجهة
-            InfoRow(
+            // نوع الجهة
+            _iconInfoRow(
+              icon: Icons.category_outlined,
               label: "نوع الجهة",
               value: a.accountTypeNameAr ?? "غير متوفر",
             ),
 
-            // 4) المحافظة
-            InfoRow(
+            // المحافظة
+            _iconInfoRow(
+              icon: Icons.location_city_outlined,
               label: "المحافظة",
               value: a.governmentNameAr ?? "غير متوفر",
             ),
 
-            // 5) رقم الهاتف (لو show_details=true فقط)
+            // رقم الهاتف (فقط إذا التفاصيل ظاهرة للعامة)
             if (canShowDetails)
-              InfoRow(label: "رقم الهاتف", value: a.mobileNumber),
+              _iconInfoRow(
+                icon: Icons.phone,
+                label: "رقم الهاتف",
+                value: a.mobileNumber,
+              ),
 
-            // 6) رابط نموذج الانضمام
-            if (a.joinFormLink != null && a.joinFormLink!.trim().isNotEmpty)
-              InfoRow(label: "رابط نموذج الانضمام", value: a.joinFormLink!),
+            // رابط نموذج الانضمام / موقع الجهة
+            if (joinLink != null) ...[
+              const SizedBox(height: 10),
+              const Text(
+                "رابط نموذج الانضمام / موقع أو صفحة الجهة",
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => _openUrl(joinLink),
+                borderRadius: BorderRadius.circular(6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.link, size: 18, color: Colors.blue),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        joinLink,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
-            // 7) عدد البلاغات المنجزة
-            InfoRow(
-              label: "عدد البلاغات المنجزة",
-              value: "${a.reportsCompletedCount}",
-            ),
+            const SizedBox(height: 12),
 
-            // 8) تاريخ الإنشاء
-            InfoRow(
-              label: "تاريخ إنشاء الجهة",
+            // تاريخ الانضمام
+            _iconInfoRow(
+              icon: Icons.calendar_today_outlined,
+              label: "تاريخ الانضمام",
               value: _formatDateTime(a.createdAt),
             ),
+
+            const SizedBox(height: 4),
+
+            // ملاحظة عن الخصوصية لو التفاصيل مخفية
+            if (!canShowDetails)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  "صاحب الحساب لم يفعّل عرض بيانات التواصل للعامة.",
+                  style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                ),
+              ),
           ],
         ),
       ),

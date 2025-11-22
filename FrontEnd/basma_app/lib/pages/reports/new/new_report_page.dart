@@ -950,8 +950,8 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        "اقتراح الذكاء الاصطناعي: ${_aiSuggestion!.reportTypeNameAr} "
-                        "(ثقة ${(100 * _aiSuggestion!.confidence).toStringAsFixed(1)}%)",
+                        "تحليل الذكاء الاصطناعي: ${_aiSuggestion!.reportTypeNameAr} ",
+
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),

@@ -348,7 +348,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                "رقم البلاغ: ${report.reportCode}",
+                                " ${report.reportCode}",
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12.5,

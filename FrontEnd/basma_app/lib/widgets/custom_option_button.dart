@@ -95,14 +95,6 @@ class HomeScreenButton extends StatelessWidget {
                 ],
               ),
             ),
-
-            SizedBox(width: size.width * 0.02),
-
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.black.withValues(alpha: 0.45),
-              size: size.width * 0.075,
-            ),
           ],
         ),
       ),

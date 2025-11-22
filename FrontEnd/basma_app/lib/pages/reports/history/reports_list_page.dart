@@ -1,3 +1,5 @@
+// lib/pages/reports/history/reports_list_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,7 +22,14 @@ class GuestReportsListPage extends StatefulWidget {
   /// 'all' أو 'mine'
   final String initialMainTab;
 
-  const GuestReportsListPage({super.key, this.initialMainTab = 'all'});
+  /// 'open' / 'in_progress' / 'completed'
+  final String initialStatusTab;
+
+  const GuestReportsListPage({
+    super.key,
+    this.initialMainTab = 'all',
+    this.initialStatusTab = 'open',
+  });
 
   @override
   State<GuestReportsListPage> createState() => _GuestReportsListPageState();
@@ -39,8 +48,19 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   // ---- Reports ----
   List<ReportPublicSummary> _allReports = [];
   List<ReportPublicSummary> _visibleReports = [];
-  bool _isLoading = true;
+
+  // loading flags
+  bool _isLoading = true; // أول تحميل / إعادة تحميل كاملة
+  bool _isLoadingMore = false; // تحميل الصفحة التالية
   String? _loadErrorMessage;
+
+  // ---- Pagination ----
+  static const int _pageSize = 20;
+  int _currentOffset = 0;
+  bool _hasMore = true;
+
+  // Scroll controller للـ infinite scroll
+  late final ScrollController _scrollController;
 
   // ---- Filters (IDs + lists) ----
   List<GovernmentOption> _governments = [];
@@ -58,12 +78,20 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   @override
   void initState() {
     super.initState();
+
+    // ضبط القيم الابتدائية القادمة من SuccessPage أو غيرها
     _mainTab = widget.initialMainTab;
+    _statusTab = widget.initialStatusTab;
+
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+
     _checkLoginAndInitialize();
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -88,10 +116,24 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
 
       _safeSetState(() {
         _isLoggedIn = loggedIn;
+
         if (!_isLoggedIn) {
+          // لو لم يكن هناك تسجيل دخول، نعرض "الكل"
           _mainTab = 'all';
-        } else if (_mainTab == 'mine') {
-          _statusTab = 'in_progress';
+          // نترك _statusTab كما هو (open / in_progress / completed) للعرض العام
+        } else {
+          // في حالة الدخول
+          if (_mainTab != 'all' && _mainTab != 'mine') {
+            _mainTab = 'all';
+          }
+
+          if (_mainTab == 'mine') {
+            // في "بلاغاتي" لا معنى لـ 'open'، فلو كانت القيمة 'open'
+            // (أي لم يتم تمرير قيمة خاصة)، نضبطها إلى 'in_progress'
+            if (_statusTab == 'open') {
+              _statusTab = 'in_progress';
+            }
+          }
         }
       });
 
@@ -115,7 +157,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _governments = results[0] as List<GovernmentOption>;
       _reportTypes = results[1] as List<ReportTypeOption>;
 
-      await _loadReports();
+      await _loadReports(reset: true);
     } catch (_) {
       _safeSetState(() {
         _isLoading = false;
@@ -124,7 +166,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
-  // ========= Backend-loading =========
+  // ========= Backend-loading + Pagination =========
 
   int _statusIdForTab(String tab) {
     switch (tab) {
@@ -139,53 +181,105 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
-  Future<void> _loadReports() async {
-    _safeSetState(() {
-      _isLoading = true;
-      _loadErrorMessage = null;
-    });
+  Future<void> _loadReports({bool reset = false}) async {
+    // في حالة إعادة التحميل بالكامل (تغيير التبويب / الفلاتر / الدخول)
+    if (reset) {
+      _currentOffset = 0;
+      _hasMore = true;
+      _safeSetState(() {
+        _isLoading = true;
+        _isLoadingMore = false;
+        _loadErrorMessage = null;
+        _allReports = [];
+        _visibleReports = [];
+        _searchQuery = '';
+        _searchController.clear();
+      });
+    } else {
+      // تحميل صفحة جديدة
+      if (_isLoading || _isLoadingMore || !_hasMore) return;
+      _safeSetState(() {
+        _isLoadingMore = true;
+        _loadErrorMessage = null;
+      });
+    }
 
     try {
       final int statusId = _statusIdForTab(_statusTab);
       final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
 
-      late final List<ReportPublicSummary> list;
+      late final List<ReportPublicSummary> page;
 
       if (isMyReports) {
-        list = await ApiService.listMyReports(
+        page = await ApiService.listMyReports(
           statusId: statusId,
           governmentId: _selectedGovernmentId,
           districtId: _selectedDistrictId,
           areaId: _selectedAreaId,
           reportTypeId: _selectedReportTypeId,
+          limit: _pageSize,
+          offset: _currentOffset,
         );
       } else {
-        list = await ApiService.listPublicReports(
+        page = await ApiService.listPublicReports(
           statusId: statusId,
           governmentId: _selectedGovernmentId,
           districtId: _selectedDistrictId,
           areaId: _selectedAreaId,
           reportTypeId: _selectedReportTypeId,
+          limit: _pageSize,
+          offset: _currentOffset,
         );
       }
 
       _safeSetState(() {
-        _allReports = list;
-        _searchQuery = '';
-        _searchController.clear();
-      });
+        if (reset) {
+          _allReports = page;
+        } else {
+          _allReports.addAll(page);
+        }
 
-      _applySearchFilter();
+        _currentOffset = _allReports.length;
+
+        // إذا جاءت صفحة أقل من limit فهذا يعني لا مزيد من البيانات
+        if (page.length < _pageSize) {
+          _hasMore = false;
+        }
+
+        // إعادة تطبيق البحث (على البيانات المحمّلة فقط)
+        _applySearchFilter();
+      });
     } catch (_) {
       _safeSetState(() {
-        _allReports = [];
-        _visibleReports = [];
-        _loadErrorMessage = 'تعذّر تحميل البلاغات، يرجى المحاولة لاحقاً.';
+        if (reset) {
+          _allReports = [];
+          _visibleReports = [];
+          _loadErrorMessage = 'تعذّر تحميل البلاغات، يرجى المحاولة لاحقاً.';
+        }
       });
     } finally {
       _safeSetState(() {
-        _isLoading = false;
+        if (reset) {
+          _isLoading = false;
+          _isLoadingMore = false;
+        } else {
+          _isLoadingMore = false;
+        }
       });
+    }
+  }
+
+  // مستمع الـ ScrollController للـ infinite scroll
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+
+    final thresholdPixels = 200.0;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+
+    if (maxScroll - currentScroll <= thresholdPixels) {
+      _loadReports(); // صفحة جديدة
     }
   }
 
@@ -203,7 +297,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _statusTab = newTab;
     });
 
-    _loadReports();
+    _loadReports(reset: true);
   }
 
   // ========= Filters (IDs only) =========
@@ -214,7 +308,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _selectedDistrictId = null;
       _selectedAreaId = null;
     });
-    await _loadReports();
+    await _loadReports(reset: true);
   }
 
   Future<void> _onDistrictChanged(int? districtId) async {
@@ -222,21 +316,21 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _selectedDistrictId = districtId;
       _selectedAreaId = null;
     });
-    await _loadReports();
+    await _loadReports(reset: true);
   }
 
   Future<void> _onAreaChanged(int? areaId) async {
     _safeSetState(() {
       _selectedAreaId = areaId;
     });
-    await _loadReports();
+    await _loadReports(reset: true);
   }
 
   Future<void> _onReportTypeChanged(int? typeId) async {
     _safeSetState(() {
       _selectedReportTypeId = typeId;
     });
-    await _loadReports();
+    await _loadReports(reset: true);
   }
 
   // ========= Search (client-side) =========
@@ -514,8 +608,28 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
 
     return ListView.builder(
-      itemCount: _visibleReports.length,
+      controller: _scrollController,
+      itemCount: _visibleReports.length + (_hasMore ? 1 : 0),
       itemBuilder: (_, index) {
+        // عنصر تحميل الصفحة التالية في النهاية
+        if (_hasMore && index == _visibleReports.length) {
+          if (_isLoadingMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          } else {
+            // عنصر شفاف صغير بحيث لا يأخذ مساحة إذا لم نكن نحمل الآن
+            return const SizedBox.shrink();
+          }
+        }
+
         final report = _visibleReports[index];
         return GuestReportCard(
           report: report,
