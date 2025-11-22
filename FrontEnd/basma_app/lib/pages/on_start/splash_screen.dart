@@ -22,7 +22,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _decideNext() async {
-    // نعرض الشعار ثانيتين مثلاً
     await Future.delayed(const Duration(seconds: 2));
 
     final sp = await SharedPreferences.getInstance();
@@ -31,10 +30,8 @@ class _SplashScreenState extends State<SplashScreen> {
     Widget next;
 
     if (token != null && token.isNotEmpty) {
-      // ✅ مستخدم مسجّل دخول → مباشرة إلى HomePage
       next = const HomePage();
     } else {
-      // ❌ ضيف → إلى شاشة الـ OnBoarding
       next = const OnBoardingScreen();
     }
 

@@ -1,7 +1,6 @@
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:flutter/material.dart';
 
-/// AppBar موحّد بشعار بسمة + إعداد شريط الحالة الأخضر
 class BasmaAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;

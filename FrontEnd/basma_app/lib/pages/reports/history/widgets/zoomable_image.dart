@@ -12,9 +12,7 @@ class ZoomableImage extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => _FullImageView(imageUrl: imageUrl),
-          ),
+          MaterialPageRoute(builder: (_) => _FullImageView(imageUrl: imageUrl)),
         );
       },
       child: ClipRRect(
@@ -43,12 +41,9 @@ class _FullImageView extends StatelessWidget {
           children: [
             PhotoView(
               imageProvider: NetworkImage(imageUrl),
-              backgroundDecoration: const BoxDecoration(
-                color: Colors.black,
-              ),
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
             ),
 
-            // Close button
             Positioned(
               top: 20,
               right: 20,

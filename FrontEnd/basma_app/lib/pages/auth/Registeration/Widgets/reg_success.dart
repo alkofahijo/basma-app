@@ -21,7 +21,6 @@ class RegisterSuccessPage extends StatelessWidget {
             children: [
               SizedBox(height: size.height * 0.06),
 
-              // Success Image
               Image.asset(
                 "assets/images/success.png",
                 width: 180,
@@ -30,7 +29,6 @@ class RegisterSuccessPage extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.04),
 
-              // Title
               const Text(
                 'تم التسجيل بنجاح!',
                 style: TextStyle(
@@ -41,7 +39,6 @@ class RegisterSuccessPage extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.01),
 
-              // Subtitle
               const Text(
                 'تم تسجيل حسابك.',
                 textAlign: TextAlign.center,
@@ -49,7 +46,6 @@ class RegisterSuccessPage extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.18),
 
-              // Back Button
               SizedBox(
                 width: size.width * 0.8,
                 height: 50,

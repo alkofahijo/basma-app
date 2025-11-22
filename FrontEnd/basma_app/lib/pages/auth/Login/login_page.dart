@@ -1,5 +1,3 @@
-// lib/pages/on_start/login_page.dart
-
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/basma_app_bar.dart';
@@ -8,7 +6,7 @@ import 'package:get/get.dart';
 
 import '../../../controllers/login_controller.dart';
 import '../Registeration/register_account_info_page.dart';
-import 'forgot_credentials_help_page.dart'; // ✅ استيراد صفحة المساعدة
+import 'forgot_credentials_help_page.dart';
 
 class LoginPage extends StatelessWidget {
   LoginPage({super.key});
@@ -31,7 +29,7 @@ class LoginPage extends StatelessWidget {
           vertical: size.height * 0.04,
         ),
         child: Directionality(
-          textDirection: TextDirection.rtl, // ✅ RTL
+          textDirection: TextDirection.rtl,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -77,7 +75,6 @@ class LoginPage extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.01),
 
-              // ===== اسم المستخدم =====
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
                 child: const Text(
@@ -108,7 +105,6 @@ class LoginPage extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.02),
 
-              // ===== كلمة المرور =====
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
                 child: const Text(

@@ -1,5 +1,3 @@
-// lib/pages/on_start/landing_page.dart
-
 import 'package:basma_app/widgets/basma_app_bar.dart';
 import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:flutter/material.dart';

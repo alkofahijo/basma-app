@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:basma_app/theme/app_colors.dart';
 
-/// مكان واحد نعرّف فيه شكل شريط الحالة وشريط التنقل
 class AppSystemUi {
   static final SystemUiOverlayStyle green = SystemUiOverlayStyle(
     statusBarColor: kPrimaryColor,
@@ -11,7 +10,6 @@ class AppSystemUi {
     systemNavigationBarIconBrightness: Brightness.light,
   );
 
-  /// نستخدمها في main مرة واحدة
   static void applyGreen() {
     SystemChrome.setSystemUIOverlayStyle(green);
   }
