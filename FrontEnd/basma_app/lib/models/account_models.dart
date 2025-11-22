@@ -151,3 +151,29 @@ class Account {
     'created_at': createdAt?.toIso8601String(),
   };
 }
+
+class PaginatedAccountsResult {
+  final int total;
+  final int page;
+  final int pageSize;
+  final List<Account> items;
+
+  PaginatedAccountsResult({
+    required this.total,
+    required this.page,
+    required this.pageSize,
+    required this.items,
+  });
+
+  factory PaginatedAccountsResult.fromJson(Map<String, dynamic> json) {
+    final itemsJson = json['items'] as List<dynamic>? ?? [];
+    return PaginatedAccountsResult(
+      total: (json['total'] as num).toInt(),
+      page: (json['page'] as num).toInt(),
+      pageSize: (json['page_size'] as num).toInt(),
+      items: itemsJson
+          .map((e) => Account.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}

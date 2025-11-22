@@ -61,7 +61,7 @@ def list_status(db: Session = Depends(get_db)):
 
 
 # ============================================================
-# PUBLIC LIST REPORTS
+# PUBLIC LIST REPORTS (مع limit / offset)
 # ============================================================
 
 
@@ -72,7 +72,7 @@ def list_public_reports(
     district_id: int | None = Query(None),
     area_id: int | None = Query(None),
     report_type_id: int | None = Query(None),
-    limit: int = Query(100, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
@@ -121,7 +121,7 @@ def list_public_reports(
 
 
 # ============================================================
-# MY REPORTS
+# MY REPORTS (مع limit / offset)
 # ============================================================
 
 
@@ -132,7 +132,7 @@ def list_my_reports(
     district_id: int | None = Query(None),
     area_id: int | None = Query(None),
     report_type_id: int | None = Query(None),
-    limit: int = Query(100, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current=Depends(get_current_user_payload),
@@ -208,7 +208,7 @@ def list_reports(
     area_id: int | None = Query(None),
     status_id: int | None = Query(None),
     status_code: str | None = Query(None),
-    limit: int = Query(100, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):

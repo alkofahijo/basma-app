@@ -18,7 +18,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   final List<Map<String, String>> onboardingData = [
     {
       "image": "assets/images/on-boarding-1.png",
-      "title": "أبلغ عن المخالفات البصرية بدقة",
+      "title": "الإبلاغ عن التشوّهات البصرية باستخدام الذكاء الاصطناعي بدقة",
       "subtitle": "التقط الصورة وحدّد الموقع خلال لحظات.",
     },
     {
@@ -69,7 +69,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                         onboardingData[index]["title"]!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: size.width * 0.06,
+                          fontSize: size.width * 0.05,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

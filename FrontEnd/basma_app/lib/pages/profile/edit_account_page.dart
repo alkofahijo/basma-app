@@ -2,8 +2,8 @@
 
 import 'dart:io';
 
+import 'package:basma_app/config/base_url.dart';
 import 'package:basma_app/models/account_models.dart';
-
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +42,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
   // الشعار
   final ImagePicker _picker = ImagePicker();
   File? _logoFile; // صورة جديدة من الجهاز (إن وُجدت)
-  String? _currentLogoUrl; // رابط الشعار الحالي من الـ backend
+  String? _currentLogoUrl; // رابط الشعار الحالي من الـ backend (نسبي غالباً)
 
   @override
   void initState() {
@@ -71,6 +71,14 @@ class _EditAccountPageState extends State<EditAccountPage> {
     _mobileCtrl.dispose();
     _joinFormCtrl.dispose();
     super.dispose();
+  }
+
+  /// تحويل المسار النسبي من الـ backend إلى رابط كامل قابل للعرض
+  String? _resolveLogoUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return '$kBaseUrl$raw';
+    return '$kBaseUrl/$raw';
   }
 
   Future<void> _loadLookups() async {
@@ -102,21 +110,21 @@ class _EditAccountPageState extends State<EditAccountPage> {
   }
 
   Future<void> _save() async {
+    // يتحقق من كل الـ validators بما فيها الدروب داونز
     if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedAccountTypeId == null || _selectedGovernmentId == null) {
-      setState(() {
-        _error = "يرجى اختيار نوع الحساب والمحافظة.";
-      });
-      return;
-    }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: const Text('تأكيد التعديل'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text(
+            'تأكيد التعديل',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: const Text(
             'هل أنت متأكد من حفظ التعديلات على بيانات الحساب؟',
           ),
@@ -150,31 +158,22 @@ class _EditAccountPageState extends State<EditAccountPage> {
       String? logoUrlToSend;
       if (_logoFile != null) {
         final bytes = await _logoFile!.readAsBytes();
-        // اسم افتراضي للملف
         final fileName = 'account_logo_${widget.account.id}.jpg';
         logoUrlToSend = await ApiService.uploadImage(bytes, fileName);
         _currentLogoUrl = logoUrlToSend;
       }
 
-      // 2) تجهيز البودي
+      // 2) تجهيز البودي (كل الحقول مطلوبة الآن)
       final payload = <String, dynamic>{
         'name_ar': _nameArCtrl.text.trim(),
-        'name_en': _nameEnCtrl.text.trim().isEmpty
-            ? null
-            : _nameEnCtrl.text.trim(),
+        'name_en': _nameEnCtrl.text.trim(),
         'mobile_number': _mobileCtrl.text.trim(),
-        'join_form_link': _joinFormCtrl.text.trim().isEmpty
-            ? null
-            : _joinFormCtrl.text.trim(),
+        'join_form_link': _joinFormCtrl.text.trim(),
         'account_type_id': _selectedAccountTypeId,
         'government_id': _selectedGovernmentId,
         'show_details': _showDetails ? 1 : 0,
-        // نرسل logo_url فقط لو رفعنا شعار جديد
         if (logoUrlToSend != null) 'logo_url': logoUrlToSend,
       };
-
-      // إزالة nulls من البودي
-      payload.removeWhere((key, value) => value == null);
 
       // 3) استدعاء API للتعديل
       final updated = await ApiService.updateAccount(
@@ -199,13 +198,32 @@ class _EditAccountPageState extends State<EditAccountPage> {
     }
   }
 
+  /// label مع نجمة حمراء للحقل الإلزامي
+  Widget _buildRequiredLabel(String text) {
+    return RichText(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(color: Colors.grey.shade800, fontSize: 14),
+        children: const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: Colors.red, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogoPicker() {
     ImageProvider? bgImage;
 
     if (_logoFile != null) {
       bgImage = FileImage(_logoFile!);
     } else if (_currentLogoUrl != null && _currentLogoUrl!.isNotEmpty) {
-      bgImage = NetworkImage(_currentLogoUrl!);
+      final resolved = _resolveLogoUrl(_currentLogoUrl);
+      if (resolved != null) {
+        bgImage = NetworkImage(resolved);
+      }
     }
 
     return Center(
@@ -216,25 +234,33 @@ class _EditAccountPageState extends State<EditAccountPage> {
             children: [
               CircleAvatar(
                 radius: 60,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: const Color(0xFFE5E7EB),
                 backgroundImage: bgImage,
                 child: bgImage == null
                     ? const Icon(
-                        Icons.account_circle_outlined,
+                        Icons.account_balance,
                         color: Colors.grey,
-                        size: 40,
+                        size: 46,
                       )
                     : null,
               ),
               Positioned(
-                bottom: 0,
-                right: 0,
+                bottom: 2,
+                right: 2,
                 child: InkWell(
                   onTap: _saving ? null : _pickLogoImage,
+                  borderRadius: BorderRadius.circular(20),
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _saving ? Colors.grey : kPrimaryColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     padding: const EdgeInsets.all(6),
                     child: const Icon(
@@ -262,6 +288,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: const Color(0xFFEFF1F1),
         appBar: AppBar(
           backgroundColor: kPrimaryColor,
           title: const Text(
@@ -270,168 +297,252 @@ class _EditAccountPageState extends State<EditAccountPage> {
           ),
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
         ),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                children: [
-                  // شعار الحساب
-                  _buildLogoPicker(),
-                  const SizedBox(height: 20),
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      _buildLogoPicker(),
+                      const SizedBox(height: 20),
 
-                  TextFormField(
-                    controller: _nameArCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم بالعربية',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'الاسم بالعربية مطلوب';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _nameEnCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم بالإنجليزية (اختياري)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _mobileCtrl,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الهاتف',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) {
-                      final val = v?.trim() ?? '';
-                      if (val.isEmpty) {
-                        return 'رقم الهاتف مطلوب';
-                      }
-                      if (val.length < 9) {
-                        return 'يرجى إدخال رقم هاتف صحيح';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _joinFormCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'رابط نموذج الانضمام (اختياري)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // نوع الحساب
-                  DropdownButtonFormField<int>(
-                    initialValue: _selectedAccountTypeId,
-                    decoration: const InputDecoration(
-                      labelText: 'نوع الحساب',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _accountTypes
-                        .map(
-                          (e) => DropdownMenuItem<int>(
-                            value: e.id,
-                            child: Text(e.nameAr),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedAccountTypeId = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // المحافظة (مع التعامل مع null في GovernmentOption)
-                  DropdownButtonFormField<int>(
-                    initialValue: _selectedGovernmentId,
-                    decoration: const InputDecoration(
-                      labelText: 'المحافظة',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _governments
-                        // ignore: unnecessary_null_comparison
-                        .where((g) => g.id != null)
-                        .map(
-                          (g) => DropdownMenuItem<int>(
-                            value: g.id,
-                            child: Text(g.nameAr),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedGovernmentId = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  SwitchListTile(
-                    title: const Text('عرض تفاصيل الحساب للعامة'),
-                    subtitle: const Text(
-                      'في حال الإيقاف لن يظهر رقم الهاتف/التفاصيل في الواجهة العامة.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _showDetails,
-                    activeThumbColor: kPrimaryColor,
-                    onChanged: (v) {
-                      setState(() {
-                        _showDetails = v;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_error != null) ...[
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save, color: Colors.white),
-                      label: Text(
-                        _saving ? 'جاري الحفظ...' : 'حفظ التعديلات',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      const Text(
+                        'بيانات الجهة',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 10),
+
+                      // الاسم بالعربية (إلزامي)
+                      TextFormField(
+                        controller: _nameArCtrl,
+                        decoration: InputDecoration(
+                          label: _buildRequiredLabel('الاسم بالعربية'),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'الاسم بالعربية مطلوب';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // الاسم بالإنجليزية (إلزامي)
+                      TextFormField(
+                        controller: _nameEnCtrl,
+                        decoration: InputDecoration(
+                          label: _buildRequiredLabel('الاسم بالإنجليزية'),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'الاسم بالإنجليزية مطلوب';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // رقم الهاتف (إلزامي، 10 أرقام، يبدأ بـ 07)
+                      TextFormField(
+                        controller: _mobileCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          label: _buildRequiredLabel('رقم الهاتف'),
+                          hintText: 'مثال: 07XXXXXXXX',
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) {
+                          final val = v?.trim() ?? '';
+                          if (val.isEmpty) {
+                            return 'رقم الهاتف مطلوب';
+                          }
+                          final regex = RegExp(r'^07\d{8}$');
+                          if (!regex.hasMatch(val)) {
+                            return 'رقم الهاتف يجب أن يبدأ بـ 07 ويتكون من 10 أرقام';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // رابط نموذج التقديم / موقع أو صفحة الجهة (إلزامي فقط)
+                      TextFormField(
+                        controller: _joinFormCtrl,
+                        decoration: InputDecoration(
+                          label: _buildRequiredLabel(
+                            'رابط نموذج التقديم / موقع أو صفحة الجهة',
+                          ),
+                          hintText: 'مثال: https://example.com',
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) {
+                          final val = v?.trim() ?? '';
+                          if (val.isEmpty) {
+                            return 'هذا الحقل مطلوب';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // نوع الحساب (إلزامي)
+                      DropdownButtonFormField<int>(
+                        value: _selectedAccountTypeId,
+                        decoration: InputDecoration(
+                          label: _buildRequiredLabel('نوع الحساب'),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: _accountTypes
+                            .map(
+                              (e) => DropdownMenuItem<int>(
+                                value: e.id,
+                                child: Text(e.nameAr),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedAccountTypeId = val;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'نوع الحساب مطلوب';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // المحافظة (إلزامية)
+                      DropdownButtonFormField<int>(
+                        value: _selectedGovernmentId,
+                        decoration: InputDecoration(
+                          label: _buildRequiredLabel('المحافظة'),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: _governments
+                            .map(
+                              (g) => DropdownMenuItem<int>(
+                                value: g.id,
+                                child: Text(g.nameAr),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedGovernmentId = val;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'المحافظة مطلوبة';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+
+                      // عرض التفاصيل للعامة (اختياري سويتش)
+                      SwitchListTile(
+                        title: const Text('عرض تفاصيل الحساب للعامة'),
+                        subtitle: const Text(
+                          'في حال الإيقاف لن يظهر رقم الهاتف/التفاصيل في الواجهة العامة.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: _showDetails,
+                        activeColor: kPrimaryColor,
+                        onChanged: (v) {
+                          setState(() {
+                            _showDetails = v;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (_error != null) ...[
+                        Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _saving ? null : _save,
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.save, color: Colors.white),
+                          label: Text(
+                            _saving ? 'جاري الحفظ...' : 'حفظ التعديلات',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

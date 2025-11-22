@@ -235,6 +235,43 @@ class ApiService {
         .toList();
   }
 
+  // =================== PAGINATED ACCOUNTS (NEW) ===================
+
+  /// إرجاع قائمة الحسابات (جهات / متطوعين) مع:
+  /// - فلاتر على المحافظة و نوع الحساب و حالة التفعيل (اختياري)
+  /// - تقسيم صفحات (page, pageSize)
+  /// - نص بحثي اختياري (search) يرسل على شكل q
+  static Future<PaginatedAccountsResult> listAccountsPaged({
+    int? governmentId,
+    int? accountTypeId,
+    int? isActive,
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+  }) async {
+    final query = <String, String>{'page': '$page', 'page_size': '$pageSize'};
+
+    if (governmentId != null) query['government_id'] = '$governmentId';
+    if (accountTypeId != null) query['account_type_id'] = '$accountTypeId';
+    if (isActive != null) query['is_active'] = '$isActive';
+    if (search != null && search.trim().isNotEmpty) {
+      query['q'] = search.trim();
+    }
+
+    final uri = Uri.parse(
+      '$base/accounts/paged',
+    ).replace(queryParameters: query);
+
+    final res = await http.get(uri);
+
+    if (res.statusCode != 200) {
+      _throwHttp(res, fallback: 'فشل تحميل قائمة الحسابات');
+    }
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return PaginatedAccountsResult.fromJson(data);
+  }
+
   // -------------------------------------------------------------
   // LOCATIONS (main models)
   // -------------------------------------------------------------

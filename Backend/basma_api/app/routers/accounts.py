@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -38,7 +38,7 @@ def list_account_types(db: Session = Depends(get_db)):
 
 
 # ============================================================
-# REQUEST MODELS
+# REQUEST / RESPONSE MODELS
 # ============================================================
 
 
@@ -63,8 +63,18 @@ class AccountUpdate(BaseModel):
     password: Optional[str] = None
 
 
+class AccountPaginatedOut(BaseModel):
+    """
+    استجابة مقسّمة لصفحات (pagination) لقائمة الحسابات.
+    """
+    total: int
+    page: int
+    page_size: int
+    items: List[AccountOut]
+
+
 # ============================================================
-# LIST ACCOUNTS
+# LIST ACCOUNTS (OLD, SIMPLE LIST)
 # ============================================================
 
 
@@ -124,6 +134,87 @@ def list_accounts(
     rows = db.execute(stmt).scalars().all()
 
     return rows
+
+
+# ============================================================
+# LIST ACCOUNTS WITH PAGINATION (NEW)
+# ============================================================
+
+
+@router.get("/paged", response_model=AccountPaginatedOut)
+def list_accounts_paged(
+    db: Session = Depends(get_db),
+    account_type_id: Optional[int] = Query(None),
+    government_id: Optional[int] = Query(None),
+    is_active: Optional[int] = Query(None, description="1 or 0"),
+    q: Optional[str] = Query(None, description="search name_ar/name_en/mobile"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+):
+    """
+    إرجاع قائمة الحسابات مع:
+      - فلاتر حسب نوع الحساب / المحافظة / حالة التفعيل / بحث نصّي
+      - تقسيم على صفحات (page, page_size)
+      - إرجاع total لعدد السجلات المطابقة
+
+    مناسب لقوائم "قائمة المتطوعين" في الواجهات مع أزرار التالي / السابق.
+    """
+
+    # بناء استعلام أساسي مع العلاقات
+    base_stmt = (
+        select(Account)
+        .options(
+            joinedload(Account.account_type),
+            joinedload(Account.government),
+        )
+    )
+
+    # تطبيق الفلاتر
+    if account_type_id is not None:
+        base_stmt = base_stmt.where(Account.account_type_id == account_type_id)
+
+    if government_id is not None:
+        base_stmt = base_stmt.where(Account.government_id == government_id)
+
+    if is_active is not None:
+        base_stmt = base_stmt.where(Account.is_active == is_active)
+
+    if q:
+        like = f"%{q}%"
+        base_stmt = base_stmt.where(
+            or_(
+                Account.name_ar.like(like),
+                Account.name_en.like(like),
+                Account.mobile_number.like(like),
+            )
+        )
+
+    # إجمالي السجلات المطابقة
+    total_stmt = select(func.count(Account.id))
+    # نعيد تطبيق نفس شروط الفلتر على total_stmt
+    for crit in base_stmt._where_criteria:  # type: ignore[attr-defined]
+        total_stmt = total_stmt.where(crit)
+
+    total = db.execute(total_stmt).scalar_one()
+
+    # pagination
+    offset = (page - 1) * page_size
+
+    stmt = (
+        base_stmt
+        .order_by(Account.id.desc())
+        .limit(page_size)
+        .offset(offset)
+    )
+
+    items = db.execute(stmt).scalars().all()
+
+    return AccountPaginatedOut(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=items,
+    )
 
 
 # ============================================================
