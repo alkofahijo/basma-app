@@ -76,6 +76,12 @@ class GovernmentOut(BaseModel):
 
 # ============ ACCOUNTS ============
 
+class AccountOptionOut(BaseModel):
+    id: int
+    name_ar: str
+
+    model_config = ConfigDict(from_attributes=True)
+    
 class AdminAccountCreate(BaseModel):
     account_type_id: int
     name_ar: Annotated[str, StringConstraints(min_length=1, max_length=150)]
