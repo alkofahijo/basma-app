@@ -3,14 +3,20 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from ..models import Government
+from ..schemas import GovernmentOut
 
 from ..deps import get_db
-from ..models import ReportStatus, AccountType, Government
-from ..schemas import ReportStatusOut, AccountTypeOut
-from ..schemas_admin import GovernmentOut
+from ..models import ReportStatus, AccountType, ReportType, Account
+from ..schemas import (
+    ReportStatusOut,
+    AccountTypeOut,
+    ReportTypeOut,
+    AccountOptionOut,
+)
 
 router = APIRouter(
-    prefix="",  # المسارات ستكون مباشرة مثل /report-status و /account-types و /governments
+    prefix="",   # المسارات: /report-status, /account-types, /report-types, /account-options
     tags=["Lookups"],
 )
 
@@ -33,10 +39,29 @@ def list_account_types(db: Session = Depends(get_db)):
     return rows
 
 
+@router.get("/report-types", response_model=list[ReportTypeOut])
+def list_report_types(db: Session = Depends(get_db)):
+    """
+    إرجاع أنواع البلاغات (تشوه بصري، حفر، نفايات...) لاستخدامها في شاشة تعديل البلاغات.
+    """
+    rows = db.query(ReportType).order_by(ReportType.id).all()
+    return rows
+
 @router.get("/governments", response_model=list[GovernmentOut])
 def list_governments(db: Session = Depends(get_db)):
-    """
-    إرجاع جميع المحافظات لاستخدامها في صفحات الحسابات والبلاغات كـ dropdown.
-    """
     rows = db.query(Government).order_by(Government.id).all()
+    return rows
+
+@router.get("/account-options", response_model=list[AccountOptionOut])
+def list_account_options(db: Session = Depends(get_db)):
+    """
+    إرجاع قائمة مبسطة للحسابات (id + name_ar) لاستخدامها كـ dropdown
+    لاختيار الحساب المتبني للبلاغ.
+    """
+    rows = (
+      db.query(Account)
+      .filter(Account.is_active == 1)
+      .order_by(Account.name_ar)
+      .all()
+    )
     return rows

@@ -203,7 +203,12 @@ class AccountOut(BaseModel):
 # REPORT LOOKUP
 # ============================================================
 
+class AccountOptionOut(BaseModel):
+    id: int
+    name_ar: str
 
+    model_config = ConfigDict(from_attributes=True)
+    
 class ReportTypeOut(BaseModel):
     id: int
     code: str

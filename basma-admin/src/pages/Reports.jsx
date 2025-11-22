@@ -12,24 +12,39 @@ import {
   TextField,
   MenuItem,
   Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useSnackbar } from 'notistack';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import api from '../services/api';
 import DashboardLayout from './Dashboard';
 
 const Reports = () => {
   const { enqueueSnackbar } = useSnackbar();
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // lookups
   const [statusOptions, setStatusOptions] = useState([]);
+  const [reportTypes, setReportTypes] = useState([]);
+  const [accountOptions, setAccountOptions] = useState([]);
+
+  // filters
   const [filterStatusId, setFilterStatusId] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
 
+  // edit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+
   const [form, setForm] = useState({
+    id: '',
+    report_code: '',
     report_type_id: '',
     name_ar: '',
     description_ar: '',
@@ -37,8 +52,11 @@ const Reports = () => {
     status_id: '',
     adopted_by_account_id: '',
     government_id: '',
+    government_name_ar: '',
     district_id: '',
+    district_name_ar: '',
     area_id: '',
+    area_name_ar: '',
     location_id: '',
     image_before_url: '',
     image_after_url: '',
@@ -50,11 +68,31 @@ const Reports = () => {
 
   const loadStatusOptions = async () => {
     try {
-      const res = await api.get('/report-status'); // backend: GET /report-status
+      const res = await api.get('/report-status');
       setStatusOptions(res.data || []);
     } catch (err) {
       console.error(err);
       enqueueSnackbar('تعذر تحميل حالات البلاغات', { variant: 'error' });
+    }
+  };
+
+  const loadReportTypes = async () => {
+    try {
+      const res = await api.get('/report-types');
+      setReportTypes(res.data || []);
+    } catch (err) {
+      console.error(err);
+      enqueueSnackbar('تعذر تحميل أنواع البلاغات', { variant: 'error' });
+    }
+  };
+
+  const loadAccountOptions = async () => {
+    try {
+      const res = await api.get('/account-options');
+      setAccountOptions(res.data || []);
+    } catch (err) {
+      console.error(err);
+      enqueueSnackbar('تعذر تحميل الحسابات المتبنية', { variant: 'error' });
     }
   };
 
@@ -64,6 +102,7 @@ const Reports = () => {
       const params = {};
       if (filterStatusId) params.status_id = filterStatusId;
       if (filterSearch) params.q = filterSearch;
+
       const res = await api.get('/admin/reports', { params });
       setRows(res.data || []);
     } catch (err) {
@@ -76,6 +115,8 @@ const Reports = () => {
 
   useEffect(() => {
     loadStatusOptions();
+    loadReportTypes();
+    loadAccountOptions();
   }, []);
 
   useEffect(() => {
@@ -87,11 +128,31 @@ const Reports = () => {
     loadData();
   };
 
+  // =================== Helpers ===================
+
+  const statusName = (id) => {
+    const s = statusOptions.find((st) => st.id === id);
+    return s ? s.name_ar : id;
+  };
+
+  const reportTypeName = (id) => {
+    const t = reportTypes.find((rt) => rt.id === id);
+    return t ? t.name_ar : id;
+  };
+
+  const accountName = (id) => {
+    if (!id) return 'بدون';
+    const a = accountOptions.find((acc) => acc.id === id);
+    return a ? a.name_ar : id;
+  };
+
   // =================== Dialog helpers (تعديل فقط) ===================
 
   const openEditDialog = (row) => {
     setEditing(row);
     setForm({
+      id: row.id,
+      report_code: row.report_code || '',
       report_type_id: row.report_type_id || '',
       name_ar: row.name_ar || '',
       description_ar: row.description_ar || '',
@@ -99,8 +160,11 @@ const Reports = () => {
       status_id: row.status_id || '',
       adopted_by_account_id: row.adopted_by_account_id || '',
       government_id: row.government_id || '',
+      government_name_ar: row.government_name_ar || '',
       district_id: row.district_id || '',
+      district_name_ar: row.district_name_ar || '',
       area_id: row.area_id || '',
+      area_name_ar: row.area_name_ar || '',
       location_id: row.location_id || '',
       image_before_url: row.image_before_url || '',
       image_after_url: row.image_after_url || '',
@@ -134,12 +198,10 @@ const Reports = () => {
       adopted_by_account_id: form.adopted_by_account_id
         ? Number(form.adopted_by_account_id)
         : null,
-      government_id: form.government_id
-        ? Number(form.government_id)
-        : undefined,
-      district_id: form.district_id ? Number(form.district_id) : undefined,
-      area_id: form.area_id ? Number(form.area_id) : undefined,
-      location_id: form.location_id ? Number(form.location_id) : undefined,
+      government_id: form.government_id || undefined,
+      district_id: form.district_id || undefined,
+      area_id: form.area_id || undefined,
+      location_id: form.location_id || undefined,
       image_before_url: form.image_before_url || null,
       image_after_url: form.image_after_url || null,
       reported_by_name: form.reported_by_name || null,
@@ -173,6 +235,7 @@ const Reports = () => {
     }
   };
 
+  // اعتماد البلاغ: على مستوى الـ backend يجب أن يغير الحالة إلى 2 (جديد)
   const handleApprove = async (id) => {
     try {
       await api.post(`/admin/reports/${id}/approve`);
@@ -187,22 +250,24 @@ const Reports = () => {
     }
   };
 
-  // =================== Helpers ===================
-
-  const statusName = (id) => {
-    const s = statusOptions.find((st) => st.id === id);
-    return s ? s.name_ar : id;
-  };
-
   // =================== DataGrid columns ===================
 
   const columns = [
-    { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'id', headerName: 'ID', width: 80 },
     { field: 'report_code', headerName: 'كود البلاغ', width: 160 },
+    {
+      field: 'report_type_id',
+      headerName: 'نوع البلاغ',
+      width: 180,
+      renderCell: (params) => (
+        <span>{reportTypeName(params.row?.report_type_id)}</span>
+      ),
+    },
     {
       field: 'name_ar',
       headerName: 'عنوان البلاغ',
       flex: 1,
+      minWidth: 200,
     },
     {
       field: 'status_id',
@@ -214,9 +279,12 @@ const Reports = () => {
       },
     },
     {
-      field: 'reported_by_name',
-      headerName: 'مقدّم البلاغ',
-      width: 160,
+      field: 'adopted_by_account_id',
+      headerName: 'الحساب المتبني',
+      width: 200,
+      renderCell: (params) => (
+        <span>{accountName(params.row?.adopted_by_account_id)}</span>
+      ),
     },
     {
       field: 'reported_at',
@@ -231,36 +299,47 @@ const Reports = () => {
     {
       field: 'actions',
       headerName: 'إجراءات',
-      width: 260,
-      renderCell: (params) => (
-        <Box display="flex" gap={1}>
-          {params.row?.status_id === 1 && (
-            <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              onClick={() => handleApprove(params.row.id)}
-            >
-              اعتماد
-            </Button>
-          )}
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => openEditDialog(params.row)}
-          >
-            تعديل
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            color="error"
-            onClick={() => handleDelete(params.row.id)}
-          >
-            حذف
-          </Button>
-        </Box>
-      ),
+      width: 160,
+      sortable: false,
+      filterable: false,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const statusId = params.row?.status_id;
+        return (
+          <Box display="flex" gap={0.5}>
+            {statusId === 1 && (
+              <Tooltip title="اعتماد البلاغ">
+                <IconButton
+                  size="small"
+                  color="success"
+                  onClick={() => handleApprove(params.row.id)}
+                >
+                  <CheckCircleIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="تعديل">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={() => openEditDialog(params.row)}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="حذف">
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => handleDelete(params.row.id)}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
     },
   ];
 
@@ -273,50 +352,75 @@ const Reports = () => {
           إدارة البلاغات
         </Typography>
 
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          alignItems="center"
-          mb={2}
+        {/* فلاتر البحث */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 2,
+            borderRadius: 3,
+          }}
         >
-          <TextField
-            label="بحث (كود / عنوان)"
-            size="small"
-            value={filterSearch}
-            onChange={(e) => setFilterSearch(e.target.value)}
-          />
-          <TextField
-            label="حالة البلاغ"
-            select
-            size="small"
-            sx={{ minWidth: 180 }}
-            value={filterStatusId}
-            onChange={(e) => setFilterStatusId(e.target.value)}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
           >
-            <MenuItem value="">الكل</MenuItem>
-            {statusOptions.map((st) => (
-              <MenuItem key={st.id} value={st.id}>
-                {st.name_ar}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Button variant="outlined" onClick={handleSearch}>
-            تطبيق البحث
-          </Button>
-          <Box flexGrow={1} />
-          {/* تم إزالة زر "بلاغ جديد" */}
-        </Stack>
+            <TextField
+              label="بحث (كود / عنوان)"
+              size="small"
+              fullWidth
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+            />
+            <TextField
+              label="حالة البلاغ"
+              select
+              size="small"
+              sx={{ minWidth: 180 }}
+              value={filterStatusId}
+              onChange={(e) => setFilterStatusId(e.target.value)}
+            >
+              <MenuItem value="">الكل</MenuItem>
+              {statusOptions.map((st) => (
+                <MenuItem key={st.id} value={st.id}>
+                  {st.name_ar}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              variant="contained"
+              onClick={handleSearch}
+              sx={{ minWidth: 140 }}
+            >
+              تطبيق البحث
+            </Button>
+            <Box flexGrow={1} />
+          </Stack>
+        </Paper>
       </Box>
 
-      <Paper sx={{ height: 550, width: '100%' }}>
+      {/* جدول البلاغات */}
+      <Paper
+        sx={{
+          height: 550,
+          width: '100%',
+          borderRadius: 3,
+          overflow: 'hidden',
+        }}
+      >
         <DataGrid
           rows={rows}
           columns={columns}
           loading={loading}
-          pageSizeOptions={[10, 25, 50]}
-          pageSize={10}
-          disableSelectionOnClick
           getRowId={(row) => row.id}
+          pageSizeOptions={[10, 25, 50]}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 10, page: 0 },
+            },
+          }}
+          disableSelectionOnClick
         />
       </Paper>
 
@@ -333,15 +437,41 @@ const Reports = () => {
         <DialogTitle>تعديل بلاغ</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} mt={1}>
+            {/* ID + report_code (غير قابلة للتعديل) */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="ID"
+                value={form.id}
+                fullWidth
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="كود البلاغ"
+                value={form.report_code}
+                fullWidth
+                InputProps={{ readOnly: true }}
+              />
+            </Stack>
+
+            {/* نوع البلاغ */}
             <TextField
-              label="نوع البلاغ (ID)"
+              label="نوع البلاغ"
+              select
               value={form.report_type_id}
               onChange={(e) =>
                 setForm({ ...form, report_type_id: e.target.value })
               }
-            />
+            >
+              {reportTypes.map((rt) => (
+                <MenuItem key={rt.id} value={rt.id}>
+                  {rt.name_ar}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {/* العنوان + الوصف */}
             <TextField
-              label="العنوان (name_ar)"
+              label="عنوان البلاغ"
               value={form.name_ar}
               onChange={(e) => setForm({ ...form, name_ar: e.target.value })}
             />
@@ -354,6 +484,8 @@ const Reports = () => {
                 setForm({ ...form, description_ar: e.target.value })
               }
             />
+
+            {/* ملاحظات */}
             <TextField
               label="ملاحظات"
               multiline
@@ -361,6 +493,8 @@ const Reports = () => {
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
             />
+
+            {/* حالة البلاغ */}
             <TextField
               label="حالة البلاغ"
               select
@@ -375,60 +509,63 @@ const Reports = () => {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* الحساب المتبني */}
             <TextField
-              label="ID الحساب المتبني (اختياري)"
-              value={form.adopted_by_account_id}
+              label="الحساب المتبني"
+              select
+              value={form.adopted_by_account_id || ''}
               onChange={(e) =>
                 setForm({
                   ...form,
-                  adopted_by_account_id: e.target.value,
+                  adopted_by_account_id: e.target.value || '',
                 })
               }
-            />
+              helperText="يمكن تركه فارغاً لعدم وجود حساب متبنٍ"
+            >
+              <MenuItem value="">بدون</MenuItem>
+              {accountOptions.map((acc) => (
+                <MenuItem key={acc.id} value={acc.id}>
+                  {acc.name_ar}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {/* الموقع الإداري (عرض فقط) */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
-                label="Government ID"
-                value={form.government_id}
-                onChange={(e) =>
-                  setForm({ ...form, government_id: e.target.value })
-                }
+                label="المحافظة"
+                value={form.government_name_ar}
+                fullWidth
+                InputProps={{ readOnly: true }}
               />
               <TextField
-                label="District ID"
-                value={form.district_id}
-                onChange={(e) =>
-                  setForm({ ...form, district_id: e.target.value })
-                }
+                label="اللواء / المنطقة"
+                value={form.district_name_ar}
+                fullWidth
+                InputProps={{ readOnly: true }}
               />
               <TextField
-                label="Area ID"
-                value={form.area_id}
-                onChange={(e) =>
-                  setForm({ ...form, area_id: e.target.value })
-                }
-              />
-              <TextField
-                label="Location ID"
-                value={form.location_id}
-                onChange={(e) =>
-                  setForm({ ...form, location_id: e.target.value })
-                }
+                label="الحي"
+                value={form.area_name_ar}
+                fullWidth
+                InputProps={{ readOnly: true }}
               />
             </Stack>
+
+            {/* روابط الصور (عرض فقط) */}
             <TextField
               label="رابط الصورة قبل"
               value={form.image_before_url}
-              onChange={(e) =>
-                setForm({ ...form, image_before_url: e.target.value })
-              }
+              InputProps={{ readOnly: true }}
             />
             <TextField
               label="رابط الصورة بعد"
               value={form.image_after_url}
-              onChange={(e) =>
-                setForm({ ...form, image_after_url: e.target.value })
-              }
+              InputProps={{ readOnly: true }}
             />
+
+            {/* اسم مقدم البلاغ */}
             <TextField
               label="اسم مقدم البلاغ (لو زائر)"
               value={form.reported_by_name}
@@ -436,13 +573,19 @@ const Reports = () => {
                 setForm({ ...form, reported_by_name: e.target.value })
               }
             />
+
+            {/* مفعل / غير مفعل */}
             <TextField
-              label="مفعل (1/0)"
+              label="حالة التفعيل"
+              select
               value={form.is_active}
               onChange={(e) =>
-                setForm({ ...form, is_active: e.target.value })
+                setForm({ ...form, is_active: Number(e.target.value) })
               }
-            />
+            >
+              <MenuItem value={1}>مفعل</MenuItem>
+              <MenuItem value={0}>غير مفعل</MenuItem>
+            </TextField>
           </Stack>
         </DialogContent>
         <DialogActions>
