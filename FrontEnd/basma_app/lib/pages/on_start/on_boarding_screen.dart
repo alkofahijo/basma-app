@@ -89,7 +89,6 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
             ),
           ),
 
-          // ----- المؤشر + الزر السفلي -----
           Padding(
             padding: EdgeInsets.only(bottom: size.height * 0.04),
             child: Column(

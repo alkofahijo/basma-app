@@ -39,10 +39,8 @@ class _LoadingCenterState extends State<LoadingCenter>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              /// 🔥 YOUR LOGO in the center
               Image.asset("assets/images/logo-arabic-side.png", width: 80),
 
-              /// 🔥 Rotating circle
               AnimatedBuilder(
                 animation: _controller,
                 builder: (_, child) {

@@ -9,13 +9,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ إعداد شريط الحالة/التنقل الأخضر للتطبيق كله
   AppSystemUi.applyGreen();
 
   final sp = await SharedPreferences.getInstance();
   final token = sp.getString('token');
 
-  // لو ما في توكن اعتبره ضيف ونمسح أي بقايا من مستخدم قديم
   if (token == null || token.isEmpty) {
     await sp.clear();
   }

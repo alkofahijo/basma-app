@@ -7,8 +7,6 @@ import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/pages/profile/profile_page.dart';
 import 'package:basma_app/pages/reports/history/reports_list_page.dart';
 
-// use central primary color
-
 class BasmaBottomNavPage extends StatefulWidget {
   final int currentIndex;
 
@@ -137,10 +135,8 @@ class _BasmaBottomNavPageState extends State<BasmaBottomNavPage> {
   }
 
   int _normalizedIndex(int raw) {
-    // Some pages pass `3` for profile (historical), while the nav uses `2`.
-    // Normalize older values so the correct icon shows active.
     if (raw < 0) return -1;
-    if (raw == 3) return 2; // treat 3 as profile
+    if (raw == 3) return 2;
     return raw;
   }
 }

@@ -10,7 +10,6 @@ import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/models/report_models.dart';
 
-// custom widgets
 import 'details/report_details_page.dart';
 import 'widgets/reports_status_tabs.dart';
 import 'widgets/reports_filters_card.dart';

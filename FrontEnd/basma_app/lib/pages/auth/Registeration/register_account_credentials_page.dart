@@ -4,7 +4,6 @@ import 'package:basma_app/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// ✅ استيراد صفحة النجاح
 import 'package:basma_app/pages/auth/Registeration/Widgets/reg_success.dart';
 
 class RegisterAccountCredentialsPage extends StatelessWidget {
@@ -32,7 +31,6 @@ class RegisterAccountCredentialsPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // ============ اسم المستخدم ============
               CustomTextField(
                 controller: controller.usernameCtrl,
                 label: 'اسم المستخدم',
@@ -42,7 +40,6 @@ class RegisterAccountCredentialsPage extends StatelessWidget {
               ),
               const SizedBox(height: 18),
 
-              // ============ كلمة المرور ============
               CustomTextField(
                 controller: controller.passwordCtrl,
                 label: 'كلمة المرور',
@@ -53,7 +50,6 @@ class RegisterAccountCredentialsPage extends StatelessWidget {
               ),
               const SizedBox(height: 30),
 
-              // ============ زر الإرسال ============
               SizedBox(
                 width: double.infinity,
                 height: 55,

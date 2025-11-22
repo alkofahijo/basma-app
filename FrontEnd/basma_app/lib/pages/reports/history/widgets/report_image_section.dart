@@ -29,7 +29,6 @@ class BeforeAfterImages extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ========== LOGIC HERE ==========
           after == null
               ? _buildCard("الصورة قبل", before) // FULL WIDTH
               : Row(
