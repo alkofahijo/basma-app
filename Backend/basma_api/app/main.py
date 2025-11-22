@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .routers import admin_auth, admin_users, admin_accounts, admin_reports ,  report_lookups
+
 from .db import engine
 from .models import Base
 from .routers.locations import router as locations_router
@@ -44,6 +46,12 @@ app.include_router(files_router)
 app.include_router(auth.router)
 app.include_router(accounts.router)
 app.include_router(ai_reports.router)
+# Admins 
+app.include_router(admin_auth.router)
+app.include_router(admin_users.router)
+app.include_router(admin_accounts.router)
+app.include_router(admin_reports.router)
+app.include_router(report_lookups.router)
 
 @app.get("/")
 def root():
