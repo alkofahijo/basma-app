@@ -18,18 +18,19 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   final List<Map<String, String>> onboardingData = [
     {
       "image": "assets/images/on-boarding-1.png",
-      "title": "الإبلاغ عن التشوّهات البصرية باستخدام الذكاء الاصطناعي بدقة",
-      "subtitle": "التقط الصورة وحدّد الموقع خلال لحظات.",
+      "title": "بلّغ عن تشوّه بصري",
+      "subtitle":
+          "صوّر المشكلة، ودع بصمة يحدّد نوع التشوّه وموقعه بالذكاء الاصطناعي .",
     },
     {
       "image": "assets/images/on-boarding-2.png",
-      "title": "متابعة فورية وإجراءات سريعة",
-      "subtitle": "الجهات المختصة تتعامل مع بلاغك بكل كفاءة.",
+      "title": "تابِع بلاغك بخطوات واضحة",
+      "subtitle": "شاهد حالة البلاغ والتحديثات أولًا بأول حتى يتم التعامل معه.",
     },
     {
       "image": "assets/images/on-boarding-3.png",
-      "title": "نحو بيئة أجمل ومستدامة",
-      "subtitle": "مشاركتك تصنع فرقًا في تحسين بلدنا.",
+      "title": "معًا لمدينة أنظف وأجمل",
+      "subtitle": "كل بلاغ منك يقربنا من بيئة مرتبة ومنظر حضاري يليق ببلدنا.",
     },
   ];
 
@@ -52,6 +53,8 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 });
               },
               itemBuilder: (context, index) {
+                final item = onboardingData[index];
+
                 return Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: size.width * 0.08,
@@ -60,22 +63,22 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                   child: Column(
                     children: [
                       Image.asset(
-                        onboardingData[index]["image"]!,
+                        item["image"]!,
                         height: size.height * 0.35,
                         fit: BoxFit.contain,
                       ),
                       SizedBox(height: size.height * 0.05),
                       Text(
-                        onboardingData[index]["title"]!,
+                        item["title"]!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: size.width * 0.05,
+                          fontSize: size.width * 0.06,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       SizedBox(height: size.height * 0.015),
                       Text(
-                        onboardingData[index]["subtitle"]!,
+                        item["subtitle"]!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: size.width * 0.04,
@@ -88,7 +91,6 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
               },
             ),
           ),
-
           Padding(
             padding: EdgeInsets.only(bottom: size.height * 0.04),
             child: Column(
@@ -112,7 +114,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPrimaryColor,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     onPressed: () {
