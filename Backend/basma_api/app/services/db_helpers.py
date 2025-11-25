@@ -10,7 +10,8 @@ def get_or_create_government(db: Session, name_ar: str, name_en: Optional[str] =
     obj = db.query(models.Government).filter(models.Government.name_ar == name_ar).first()
     if obj:
         return obj
-    obj = models.Government(name_ar=name_ar, name_en=name_en or name_ar, is_active=1)
+    # `Government` model currently only stores `name_ar`; avoid passing `name_en` which is not a column.
+    obj = models.Government(name_ar=name_ar, is_active=1)
     db.add(obj)
     db.commit()
     db.refresh(obj)
@@ -25,7 +26,8 @@ def get_or_create_district(db: Session, government_id: int, name_ar: str, name_e
     )
     if obj:
         return obj
-    obj = models.District(government_id=government_id, name_ar=name_ar, name_en=name_en or name_ar, is_active=1)
+    # `District` model only defines `name_ar` (no `name_en` column). Do not pass `name_en`.
+    obj = models.District(government_id=government_id, name_ar=name_ar, is_active=1)
     db.add(obj)
     db.commit()
     db.refresh(obj)
