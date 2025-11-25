@@ -1,0 +1,7 @@
+# Development / test dependencies (not required for production runtime)
+inference==0.61.0
+inference-cli==0.61.0
+inference-exp==0.16.3
+inference-sdk==0.60.0
+pytest
+# add any other dev/test-only packages here

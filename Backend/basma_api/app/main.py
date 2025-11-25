@@ -3,6 +3,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from .middlewares.logging_middleware import RequestLoggingMiddleware
+from .middlewares.error_middleware import ErrorHandlingMiddleware
 
 from .routers import admin_auth, admin_users, admin_accounts, admin_reports ,  report_lookups
 
@@ -30,6 +32,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request logging (keeps behavior same but provides consistent logging)
+app.add_middleware(RequestLoggingMiddleware)
+# Central error handler (catches unhandled exceptions and returns safe 500 responses)
+app.add_middleware(ErrorHandlingMiddleware)
 
 # Static files (images)
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
