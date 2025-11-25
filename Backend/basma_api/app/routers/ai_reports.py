@@ -1,3 +1,4 @@
+# app/routers/ai_reports.py
 from __future__ import annotations
 
 from typing import Optional, Tuple, Dict, Any
@@ -10,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import get_db  # returns a database Session
-from app import models  # SQLAlchemy models
+from app import models      # SQLAlchemy models
 from app.ml.report_classifier import ReportClassifierService
 
 router = APIRouter(prefix="/ai", tags=["AI"])
@@ -19,28 +20,33 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 # MODEL / CLASSIFIER SETUP
 # ============================================================
 
-# Load the classification model once (singleton pattern)
+# Singleton instance
 classifier_service: Optional[ReportClassifierService] = None
 
-# Confidence threshold: if below this, classify as "OTHERS"
-CONFIDENCE_THRESHOLD = 0.2
+# عتبة الثقة على مستوى الـ API:
+# إذا كانت الثقة النهائية (best_conf) أقل من هذا → نرجع OTHERS
+CONFIDENCE_THRESHOLD = 0.25
 
-# Path to the local YOLOv8 model file
-MODEL_PATH = "app/models/best.pt"
+# مسار ملف نموذج التشوّه البصري (YOLOv5 .pt)
+MODEL_PATH = "app/models/vp.pt"
 
-# ثابت لمعرّف "OTHERS" في قاعدة البيانات
-# تأكد أن هذا يطابق السجل في جدول report_types
+# قيم خاصة بفئة "OTHERS" في قاعدة البيانات
 OTHERS_REPORT_TYPE_ID = 11
+OTHERS_CODE = "OTHERS"
+OTHERS_NAME_AR = "أخرى"
 
 
 def get_classifier_service() -> ReportClassifierService:
     """
-    Returns a singleton instance of ReportClassifierService.
-    This service uses a local YOLOv8 model to classify visual pollution.
+    إرجاع نسخة واحدة (singleton) من خدمة التصنيف.
+    يعتمد على نموذج YOLOv5 محلي (vp.pt).
     """
     global classifier_service
     if classifier_service is None:
-        classifier_service = ReportClassifierService(model_path=MODEL_PATH)
+        classifier_service = ReportClassifierService(
+            model_path=MODEL_PATH,
+            model_conf_threshold=0.1,  # يمكن تعديلها (0.05 ~ 0.2) حسب تجاربك
+        )
     return classifier_service
 
 
@@ -92,7 +98,7 @@ class AnalyzeImageResponse(BaseModel):
 
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
     """
-    Use Nominatim (OpenStreetMap) to reverse geocode coordinates into an address.
+    استدعاء خدمة Nominatim (OpenStreetMap) لتحويل الإحداثيات إلى عنوان.
     """
     url = "https://nominatim.openstreetmap.org/reverse"
     params = {
@@ -121,9 +127,8 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
 
 def _clean_admin_name(value: str) -> str:
     """
-    Clean up the governorate/district name by removing English words like
+    تنظيف أسماء المحافظات / الألوية من الكلمات الإنجليزية العامة مثل:
     "Governorate", "District", "Municipality".
-    (Keeps Arabic text as-is to match DB entries.)
     """
     if not value:
         return ""
@@ -135,25 +140,25 @@ def _clean_admin_name(value: str) -> str:
 
 def _clean_area_name(value: str) -> str:
     """
-    Clean up the area name by removing generic Arabic terms like "ناحية", "لواء",
-    "قضاء", "بلدية", "مدينة" for consistency.
+    تنظيف اسم المنطقة من الكلمات العربية العامة:
+    "ناحية", "لواء", "قضاء", "بلدية", "مدينة" ...إلخ
     """
     if not value:
         return ""
     value = value.strip()
     for token in ["ناحية", "لواء", "قضاء", "بلدية", "مدينة"]:
         value = value.replace(token, "")
-    # Remove extra whitespace
+    # إزالة المسافات الزائدة
     return " ".join(value.split())
 
 
 def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
     """
-    Extract relevant address components from Nominatim response:
-      - gov_name: from address["state"]
-      - dist_name: from address["state_district"] or fallback to address["county"]
-      - area_name: from one of (village, neighbourhood, suburb, city, county)
-      - loc_name: the full display_name of the location
+    استخراج مكوّنات العنوان من رد Nominatim:
+      - gov_name: من address["state"]
+      - dist_name: من address["state_district"] أو address["county"]
+      - area_name: من village/neighbourhood/suburb/city/county
+      - loc_name: display_name الكامل للموقع
     """
     address = geo.get("address", {}) or {}
     gov_name = address.get("state") or ""
@@ -191,7 +196,7 @@ async def ai_resolve_location(
     lat = payload.latitude
     lon = payload.longitude
 
-    # Reverse geocode the coordinates to get location names
+    # Reverse geocode
     geo = await reverse_geocode(lat, lon)
     gov_raw, dist_raw, area_raw, loc_raw = extract_components(geo)
 
@@ -215,15 +220,14 @@ async def ai_resolve_location(
     )
 
     if not gov_name or not dist_name:
-        # If we could not determine a governorate or district, return error
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="غير قادر على تحديد المحافظة أو اللواء من الإحداثيات.",
         )
     if not area_name:
-        area_name = "منطقة بدون اسم"  # Default name if area is undefined
+        area_name = "منطقة بدون اسم"
 
-    # --------- Ensure Government exists in DB ---------
+    # --------- Government ---------
     try:
         gov = (
             db.query(models.Government)
@@ -231,7 +235,6 @@ async def ai_resolve_location(
             .first()
         )
         if not gov:
-            # Create a new government entry if not found
             print("Creating new Government:", gov_name)
             db.execute(
                 text(
@@ -259,7 +262,7 @@ async def ai_resolve_location(
             detail="حدث خطأ أثناء حفظ بيانات المحافظة.",
         ) from e
 
-    # --------- Ensure District exists in DB ---------
+    # --------- District ---------
     try:
         dist = (
             db.query(models.District)
@@ -271,7 +274,6 @@ async def ai_resolve_location(
         )
         if not dist:
             print("Creating new District:", dist_name, "for gov_id:", gov.id)
-            # ✅ إضافة name_en في الإدخال لتفادي خطأ NOT NULL
             db.execute(
                 text(
                     "INSERT INTO districts (government_id, name_ar, name_en, is_active) "
@@ -305,7 +307,7 @@ async def ai_resolve_location(
             detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء.",
         ) from e
 
-    # --------- Ensure Area exists in DB ---------
+    # --------- Area ---------
     try:
         area = (
             db.query(models.Area)
@@ -324,7 +326,6 @@ async def ai_resolve_location(
                 "| district_id:",
                 dist.id,
             )
-            # سبق وأصلحناها: إضافة government_id + name_en
             db.execute(
                 text(
                     "INSERT INTO areas (government_id, district_id, name_ar, name_en, is_active) "
@@ -359,7 +360,7 @@ async def ai_resolve_location(
             detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
         ) from e
 
-    # --------- Ensure Location exists in DB (optional detailed location) ---------
+    # --------- Location (اختياري) ---------
     location_obj: Optional[models.Location] = None
     if loc_name:
         try:
@@ -403,7 +404,7 @@ async def ai_resolve_location(
             print("Error while creating Location:", e)
             location_obj = None
 
-    # Prepare the response with the resolved location info
+    # إعداد الرد
     location_point = None
     if location_obj:
         location_point = LocationPoint(
@@ -446,73 +447,71 @@ def generate_text_suggestions(
     area_name_ar: str,
 ) -> Tuple[str, str]:
     """
-    Generate a suggested report title and description in Arabic based on the
-    report type code and location. Uses the Arabic name for the report type.
+    توليد عنوان ووصف مقترحين بالعربية بناءً على نوع التشوّه البصري + الموقع.
     """
     location_text = f"في منطقة {area_name_ar} / {dist_name_ar} / {gov_name_ar}"
 
-    if report_type_code == "GRAFFITI":
-        title = "بلاغ عن كتابة على الجدران"
+    if report_type_code == "CONSTRUCTION_ROAD":
+        title = "بلاغ عن أعمال إنشاء طرق"
         desc = (
-            f"توجد كتابة على الجدران أو رسومات غرافيتي {location_text}. "
-            "نرجو إزالة الكتابات وتنظيف الجدران لتحسين المظهر العام."
+            f"توجد أعمال إنشاء أو صيانة طرق {location_text} "
+            "قد تسبب إزعاجاً أو خطراً للمارة والمركبات. نرجو تنظيم الموقع ووضع لوحات تحذيرية واضحة ومعالجة التشوه البصري."
         )
-    elif report_type_code == "FADED_SIGNAGE":
-        title = "بلاغ عن لافتة باهتة"
+    elif report_type_code == "BAD_BILLBOARD":
+        title = "بلاغ عن لوحة إعلانية مخالِفة"
         desc = (
-            f"توجد لافتة طريق باهتة أو لوحة إرشادية متآكلة {location_text}. "
-            "نرجو إعادة طلائها أو استبدالها لتحسين وضوح المعلومات."
-        )
-    elif report_type_code == "POTHOLES":
-        title = "بلاغ عن حفر في الشارع"
-        desc = (
-            f"توجد حفر أو تلف في سطح الطريق {location_text} "
-            "مما يعرض المركبات والمارة للخطر. نرجو صيانة الطريق ومعالجة الحفر."
+            f"توجد لوحة إعلانية مخالِفة أو مشوِّهة للمظهر العام {location_text}. "
+            "نرجو مراجعة وضع اللوحة، والتأكد من التزامها بالأنظمة وإزالة أو تعديل اللوحة عند الحاجة."
         )
     elif report_type_code == "GARBAGE":
         title = "بلاغ عن نفايات وتشوه بصري"
         desc = (
             f"يوجد تراكم للنفايات أو مخلفات متناثرة {location_text}. "
-            "نرجو إزالة النفايات وتنظيف الموقع لتحسين المظهر العام."
+            "نرجو إزالة النفايات وتنظيف الموقع وتحسين النظافة العامة."
         )
-    elif report_type_code == "CONSTRUCTION_ROAD":
-        title = "بلاغ عن طريق قيد الإنشاء"
+    elif report_type_code == "GRAFFITI":
+        title = "بلاغ عن كتابات جدارية (غرافيتي)"
         desc = (
-            f"يوجد طريق قيد الإنشاء أو أعمال حفريات {location_text} "
-            "قد تسبب إزعاجاً أو خطراً للمارة. نرجو تأمين الموقع ووضع لوحات تحذيرية واضحة."
-        )
-    elif report_type_code == "BROKEN_SIGNAGE":
-        title = "بلاغ عن لافتة مكسورة"
-        desc = (
-            f"توجد لافتة طريق أو لوحة إرشادية مكسورة {location_text}. "
-            "نرجو إصلاح أو استبدال اللافتة للحفاظ على سلامة الطريق."
-        )
-    elif report_type_code == "BAD_BILLBOARD":
-        title = "بلاغ عن لوحة إعلانات تالفة"
-        desc = (
-            f"توجد لوحة إعلانات تالفة أو مهملة {location_text}. "
-            "نرجو صيانة اللوحة أو إزالتها إذا كانت غير صالحة لتحسين المنظر العام."
-        )
-    elif report_type_code == "SAND_ON_ROAD":
-        title = "بلاغ عن تراكم أتربة على الطريق"
-        desc = (
-            f"يوجد تراكم للأتربة أو الرمال على الطريق {location_text} "
-            "مما قد يسبب انزلاق المركبات. نرجو إزالة الأتربة وتنظيف الطريق."
+            f"توجد كتابات جدارية (غرافيتي) أو رسومات غير مناسبة {location_text}. "
+            "نرجو إزالة الكتابات وتنظيف الجدران بما يحافظ على المظهر الحضاري."
         )
     elif report_type_code == "CLUTTER_SIDEWALK":
-        title = "بلاغ عن رصيف غير صالح للمشي"
+        title = "بلاغ عن عوائق على الرصيف"
         desc = (
             f"يوجد رصيف مليء بالعوائق أو المخلفات {location_text} "
-            "مما يعيق حركة المشاة. نرجو تنظيف الرصيف وإزالة العوائق."
+            "مما يعيق حركة المشاة ويؤثر على سلامتهم. نرجو إزالة العوائق وتنظيم الرصيف."
+        )
+    elif report_type_code == "POTHOLES":
+        title = "بلاغ عن حفر في الطريق"
+        desc = (
+            f"توجد حفر أو تلف في سطح الطريق {location_text} "
+            "مما يعرض المركبات والمارة للخطر. نرجو صيانة الطريق ومعالجة الحفر في أسرع وقت."
+        )
+    elif report_type_code == "SAND_ON_ROAD":
+        title = "بلاغ عن رمال على الطريق"
+        desc = (
+            f"يوجد تراكم للرمال أو الأتربة على الطريق {location_text} "
+            "مما قد يسبب انزلاق المركبات ويؤثر على الرؤية. نرجو إزالة الرمال وتنظيف الطريق."
         )
     elif report_type_code == "UNKEPT_FACADE":
-        title = "بلاغ عن واجهة مبنى مشوهة"
+        title = "بلاغ عن واجهة مبنى مهملة"
         desc = (
-            f"توجد واجهة مبنى سيئة المظهر أو متضررة {location_text}. "
-            "نرجو تجديد الواجهة لتحسين المظهر الجمالي للمنطقة."
+            f"توجد واجهة مبنى مهملة أو متضررة {location_text}. "
+            "نرجو صيانة أو تجديد الواجهة لتحسين المظهر الجمالي للمنطقة."
+        )
+    elif report_type_code == "FADED_SIGNAGE":
+        title = "بلاغ عن لافتات باهتة"
+        desc = (
+            f"توجد لافتة أو أكثر باهتة وغير واضحة {location_text}. "
+            "نرجو إعادة طلائها أو استبدالها لتحسين وضوح المعلومات على الطريق."
+        )
+    elif report_type_code == "BROKEN_SIGNAGE":
+        title = "بلاغ عن لافتات مكسورة"
+        desc = (
+            f"توجد لافتة طريق أو لوحة إرشادية مكسورة {location_text}. "
+            "نرجو إصلاح أو استبدال اللافتة للحفاظ على سلامة مستخدمي الطريق."
         )
     else:
-        # Default case for unknown or "OTHERS"
         title = "بلاغ عن تشوه بصري"
         desc = (
             f"هناك تشوه بصري أو مشكلة في المظهر العام {location_text}. "
@@ -537,8 +536,8 @@ async def ai_analyze_image(
     clf: ReportClassifierService = Depends(get_classifier_service),
 ):
     """
-    يقبل صورة من المستخدم ويستخدم نموذج YOLOv8 لتحليلها،
-    ويرجع نوع التشوه البصري المتوقع مع درجة الثقة
+    يقبل صورة من المستخدم ويستخدم نموذج YOLOv5 لتحليلها،
+    ويرجع نوع التشوّه البصري المتوقع مع درجة الثقة
     بالإضافة إلى عنوان ووصف مقترحين للبلاغ.
     """
     image_bytes = await file.read()
@@ -548,7 +547,7 @@ async def ai_analyze_image(
             detail="ملف الصورة فارغ.",
         )
 
-    # Run the classifier on the image
+    # تشغيل خدمة التصنيف
     try:
         report_type_id, confidence, info = clf.predict(image_bytes)
     except Exception as e:
@@ -558,7 +557,7 @@ async def ai_analyze_image(
             detail="حدث خطأ أثناء تحليل الصورة.",
         ) from e
 
-    # Retrieve location names (Arabic) if IDs are provided
+    # أسماء المواقع (اختياري)
     gov = db.get(models.Government, gov_id) if gov_id else None
     dist = db.get(models.District, dist_id) if dist_id else None
     area = db.get(models.Area, area_id) if area_id else None
@@ -567,23 +566,23 @@ async def ai_analyze_image(
     dist_name_ar = dist.name_ar if dist else "غير محدد"
     area_name_ar = area.name_ar if area else "غير محدد"
 
-    # Extract classification info
-    report_type_name_ar = info.get("name_ar", "أخرى")
-    report_type_code = info.get("code", "OTHERS")
+    # معلومات التصنيف من خدمة YOLO
+    report_type_name_ar = info.get("name_ar", OTHERS_NAME_AR)
+    report_type_code = info.get("code", OTHERS_CODE)
     model_class_id = info.get("model_class_id")
 
-    # If confidence is below threshold, override to "OTHERS"
+    # فلتر "OTHERS" على مستوى الـ API
     if confidence < CONFIDENCE_THRESHOLD:
         print(
             f"[AI] Low confidence ({confidence:.3f}) → mapping to OTHERS (id={OTHERS_REPORT_TYPE_ID}). "
             f"Original prediction: {report_type_code}"
         )
         report_type_id = OTHERS_REPORT_TYPE_ID
-        report_type_name_ar = "أخرى"
-        report_type_code = "OTHERS"
-        model_class_id = OTHERS_REPORT_TYPE_ID
+        report_type_name_ar = OTHERS_NAME_AR
+        report_type_code = OTHERS_CODE
+        # model_class_id يمكن أن يبقى كما هو لأغراض debugging
 
-    # Generate suggested report title and description based on type and location
+    # توليد عنوان ووصف مقترحين بالعربية
     suggested_title, suggested_description = generate_text_suggestions(
         report_type_code,
         report_type_name_ar,
@@ -604,14 +603,15 @@ async def ai_analyze_image(
 
 
 # ============================================================
-# Debug endpoint: raw reverse geocoding (for development)
+# Debug endpoint: raw reverse geocoding (للاختبار فقط)
 # ============================================================
 
 
 @router.post("/debug-reverse-geo")
 async def debug_reverse_geo(payload: ResolveLocationRequest):
     """
-    Debug endpoint: returns raw reverse geocoding result (for development use only).
+    نقطة اختبار: ترجع رد Nominatim الخام بدون أي معالجة.
+    لا تُستخدم في الإنتاج.
     """
     geo = await reverse_geocode(payload.latitude, payload.longitude)
     print("=== RAW GEO ===")
