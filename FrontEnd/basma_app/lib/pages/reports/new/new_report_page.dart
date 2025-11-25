@@ -951,7 +951,6 @@ class _CreateReportWithAiPageState extends State<CreateReportWithAiPage> {
                     Expanded(
                       child: Text(
                         "تحليل الذكاء الاصطناعي: ${_aiSuggestion!.reportTypeNameAr} ",
-
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
