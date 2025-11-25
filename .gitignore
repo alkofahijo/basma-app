@@ -1,3 +1,31 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Pytest cache
+.pytest_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Optional: ignore model and uploads (uncomment if desired)
+# Backend/basma_api/app/models/
+# Backend/basma_api/app/static/uploads/
 .venv/
 Backend/.venv.rar
 Backend/basma_api/.venv/
