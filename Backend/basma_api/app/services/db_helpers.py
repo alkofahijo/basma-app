@@ -40,7 +40,8 @@ def get_or_create_area(db: Session, government_id: int, district_id: int, name_a
     )
     if obj:
         return obj
-    obj = models.Area(government_id=government_id, district_id=district_id, name_ar=name_ar, name_en=name_en or name_ar, is_active=1)
+    # Note: `Area` model does not have a `government_id` column; only `district_id` is stored.
+    obj = models.Area(district_id=district_id, name_ar=name_ar, name_en=name_en or name_ar, is_active=1)
     db.add(obj)
     db.commit()
     db.refresh(obj)
