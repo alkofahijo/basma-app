@@ -3,6 +3,7 @@
 import 'package:basma_app/config/base_url.dart';
 import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/network_exceptions.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
@@ -44,7 +45,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   Future<void> _openUrl(String url) async {
     if (url.trim().isEmpty) return;
 
-    final String normalized = url.startsWith('http')
+    final String normalized = url.trim().startsWith('http')
         ? url.trim()
         : 'https://${url.trim()}';
 
@@ -63,10 +64,27 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     });
 
     try {
+      // نحاول دائماً جلب بيانات الجهة سواء المستخدم ضيف أو مسجّل
       final acc = await ApiService.getAccount(widget.accountId);
       if (!mounted) return;
       setState(() {
         _account = acc;
+        _loading = false;
+      });
+    } on NetworkException catch (e) {
+      if (!mounted) return;
+      String msg;
+      if (e.error.statusCode == 401) {
+        // لو حصل 401 فعلياً من الـ backend (في حال تغيرت سياسة الحماية لاحقاً)
+        msg =
+            'هذه البيانات غير متاحة حالياً بدون تسجيل الدخول. يمكنك تسجيل الدخول لعرض تفاصيل الجهة.';
+      } else {
+        msg = e.error.message.isNotEmpty
+            ? e.error.message
+            : 'تعذّر تحميل بيانات الجهة، يرجى المحاولة لاحقاً.';
+      }
+      setState(() {
+        _err = msg;
         _loading = false;
       });
     } catch (_) {
@@ -278,10 +296,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 10),
 
-              // Chips للحالة ونوع الجهة والمحافظة والخصوصية
+              // Chips للحالة ونوع الجهة والمحافظة
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -387,8 +404,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // عنوان القسم
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.info_outline, size: 18, color: kPrimaryColor),
                 SizedBox(width: 6),
                 Expanded(

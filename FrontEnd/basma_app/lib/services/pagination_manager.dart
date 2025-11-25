@@ -1,5 +1,6 @@
 // lib/services/pagination_manager.dart
 import 'package:flutter/foundation.dart';
+import 'package:basma_app/services/network_exceptions.dart';
 
 typedef PageFetcher<T> =
     Future<PaginatedResult<T>> Function(int page, int pageSize);
@@ -46,7 +47,11 @@ class PaginationController<T> extends ChangeNotifier {
       total = res.total;
       errorMessage = null;
     } catch (e) {
-      errorMessage = e.toString();
+      if (e is NetworkException) {
+        errorMessage = e.error.message;
+      } else {
+        errorMessage = e.toString();
+      }
     } finally {
       isLoading = false;
       notifyListeners();
@@ -66,7 +71,11 @@ class PaginationController<T> extends ChangeNotifier {
       total = res.total;
       page = nextPage;
     } catch (e) {
-      errorMessage = e.toString();
+      if (e is NetworkException) {
+        errorMessage = e.error.message;
+      } else {
+        errorMessage = e.toString();
+      }
     } finally {
       isLoadingMore = false;
       notifyListeners();
@@ -84,7 +93,11 @@ class PaginationController<T> extends ChangeNotifier {
       page = newPage;
       errorMessage = null;
     } catch (e) {
-      errorMessage = e.toString();
+      if (e is NetworkException) {
+        errorMessage = e.error.message;
+      } else {
+        errorMessage = e.toString();
+      }
     } finally {
       isLoading = false;
       notifyListeners();

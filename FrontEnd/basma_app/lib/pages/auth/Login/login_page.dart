@@ -145,7 +145,7 @@ class LoginPage extends StatelessWidget {
                   children: [
                     const Text('ليس لديك حساب؟ '),
                     GestureDetector(
-                      onTap: () => Get.to(() => const RegisterChoicePage()),
+                      onTap: () => Get.to(() => RegisterChoicePage()),
                       child: const Text(
                         'إنشاء حساب',
                         style: TextStyle(

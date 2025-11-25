@@ -26,15 +26,12 @@ class AccountsListPage extends StatefulWidget {
   State<AccountsListPage> createState() => _AccountsListPageState();
 }
 
-// Top-level reusable Filters card used by AccountsListPage.
-// (Old filters card removed; new compact search + modal filter implemented below.)
-
 class _AccountsListPageState extends State<AccountsListPage> {
   // ---- Data ----
   late final PaginationController<Account> _pager;
   List<GovernmentOption> _governments = [];
   List<AccountTypeOption> _accountTypes = [];
-  // (Removed old _FiltersCard) -- new compact filter flow implemented below.
+
   // ---- Filters ----
   int? _selectedGovernmentId;
   int? _selectedAccountTypeId;
@@ -48,11 +45,13 @@ class _AccountsListPageState extends State<AccountsListPage> {
 
   // ---- Loading / Error ----
   String? _loadErrorMessage;
+  bool _isGuestRestricted = false;
 
   @override
   void initState() {
     super.initState();
-    // create a placeholder pager so builds can safely read its state
+
+    // إنشاء الـ pager مرة واحدة فقط
     _pager = PaginationController<Account>(
       fetcher: (page, pageSize) => _pageFetcher(page, pageSize),
       pageSize: _pageSize,
@@ -120,28 +119,68 @@ class _AccountsListPageState extends State<AccountsListPage> {
   Future<void> _initialize() async {
     _safeSetState(() {
       _loadErrorMessage = null;
+      _isGuestRestricted = false;
     });
 
+    // تحميل خيارات الفلاتر
+    List<GovernmentOption> govs = [];
+    List<AccountTypeOption> types = [];
+
     try {
-      final results = await Future.wait([
-        ApiService.listGovernments(),
-        ApiService.listAccountTypes(),
-      ]);
+      govs = await ApiService.listGovernments();
+    } catch (e) {
+      if (e is NetworkException && e.error.statusCode == 401) {
+        // الضيف لا يمكنه رؤية هذه البيانات، لكن نكمل تحميل الحسابات
+        _safeSetState(() {
+          _isGuestRestricted = true;
+        });
+        govs = [];
+      } else {
+        String message = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
+        if (e is NetworkException) message = e.error.message;
+        _safeSetState(() {
+          _loadErrorMessage = message;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+        return;
+      }
+    }
 
-      _governments = results[0] as List<GovernmentOption>;
-      _accountTypes = results[1] as List<AccountTypeOption>;
+    try {
+      types = await ApiService.listAccountTypes();
+    } catch (e) {
+      if (e is NetworkException && e.error.statusCode == 401) {
+        _safeSetState(() {
+          _isGuestRestricted = true;
+        });
+        types = [];
+      } else {
+        String message = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
+        if (e is NetworkException) message = e.error.message;
+        _safeSetState(() {
+          _loadErrorMessage = message;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+        return;
+      }
+    }
 
-      // dispose placeholder before replacing with real pager
-      try {
-        _pager.dispose();
-      } catch (_) {}
+    // تحديث الخيارات في الحالة
+    _safeSetState(() {
+      _governments = govs;
+      _accountTypes = types;
+    });
 
-      _pager = PaginationController<Account>(
-        fetcher: (page, pageSize) => _pageFetcher(page, pageSize),
-        pageSize: _pageSize,
-      );
-      _pager.addListener(() => _safeSetState(() {}));
-
+    // تحديث قائمة الحسابات عبر الـ pager نفسه (بدون إعادة إنشائه)
+    try {
       await _pager.refresh();
     } catch (e) {
       String message = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
@@ -149,7 +188,6 @@ class _AccountsListPageState extends State<AccountsListPage> {
       _safeSetState(() {
         _loadErrorMessage = message;
       });
-      // show snackbar
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -159,14 +197,22 @@ class _AccountsListPageState extends State<AccountsListPage> {
   }
 
   Future<PaginatedResult<Account>> _pageFetcher(int page, int pageSize) async {
-    final res = await ApiService.listAccountsPaged(
-      page: page,
-      pageSize: pageSize,
-      governmentId: _selectedGovernmentId,
-      accountTypeId: _selectedAccountTypeId,
-      search: _searchQuery.isEmpty ? null : _searchQuery,
-    );
-    return PaginatedResult<Account>(res.items, res.total);
+    try {
+      final res = await ApiService.listAccountsPaged(
+        page: page,
+        pageSize: pageSize,
+        governmentId: _selectedGovernmentId,
+        accountTypeId: _selectedAccountTypeId,
+        search: _searchQuery.isEmpty ? null : _searchQuery,
+      );
+      return PaginatedResult<Account>(res.items, res.total);
+    } catch (e) {
+      // في حال الـ endpoint يتطلب تسجيل دخول واليوزر ضيف، نرجع صفحة فارغة
+      if (e is NetworkException && e.error.statusCode == 401) {
+        return PaginatedResult<Account>([], 0);
+      }
+      rethrow;
+    }
   }
 
   int get _totalPages {
@@ -174,8 +220,6 @@ class _AccountsListPageState extends State<AccountsListPage> {
     if (total <= 0) return 1;
     return ((total + _pageSize - 1) ~/ _pageSize).clamp(1, 999999);
   }
-
-  // ========= Filters =========
 
   // ========= UI: Filters Bar =========
 
@@ -198,7 +242,7 @@ class _AccountsListPageState extends State<AccountsListPage> {
             ),
           ),
           const SizedBox(width: 8),
-          // Filter button
+          // زر الفلاتر
           Builder(
             builder: (ctx) {
               final bool hasFilters =
@@ -267,7 +311,7 @@ class _AccountsListPageState extends State<AccountsListPage> {
                                           const Divider(),
                                           const SizedBox(height: 8),
 
-                                          // Government
+                                          // المحافظة
                                           AppDropdownFormField<int?>(
                                             value: localGov,
                                             items: [
@@ -282,15 +326,17 @@ class _AccountsListPageState extends State<AccountsListPage> {
                                                 ),
                                               ),
                                             ],
-                                            onChanged: (v) => setModalState(
-                                              () => localGov = v,
-                                            ),
+                                            onChanged: (v) {
+                                              setModalState(() {
+                                                localGov = v;
+                                              });
+                                            },
                                             label: 'المحافظة',
                                             hint: 'الكل',
                                           ),
                                           const SizedBox(height: 12),
 
-                                          // Account type
+                                          // نوع الحساب
                                           AppDropdownFormField<int?>(
                                             value: localType,
                                             items: [
@@ -305,9 +351,11 @@ class _AccountsListPageState extends State<AccountsListPage> {
                                                 ),
                                               ),
                                             ],
-                                            onChanged: (v) => setModalState(
-                                              () => localType = v,
-                                            ),
+                                            onChanged: (v) {
+                                              setModalState(() {
+                                                localType = v;
+                                              });
+                                            },
                                             label: 'نوع الحساب',
                                             hint: 'الكل',
                                           ),
@@ -332,7 +380,7 @@ class _AccountsListPageState extends State<AccountsListPage> {
                                               Expanded(
                                                 child: ElevatedButton(
                                                   onPressed: () {
-                                                    // apply
+                                                    // تطبيق الفلاتر
                                                     setState(() {
                                                       _selectedGovernmentId =
                                                           localGov;
@@ -556,10 +604,38 @@ class _AccountsListPageState extends State<AccountsListPage> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            _loadErrorMessage!,
-            style: const TextStyle(color: Colors.red, fontSize: 14),
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _loadErrorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => _initialize(),
+                child: const Text('إعادة المحاولة'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_isGuestRestricted) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Text(
+                'يتطلب هذا المحتوى تسجيل الدخول لعرض النتائج الكاملة. يمكنك تسجيل الدخول أو المحاولة مرة أخرى.',
+                style: TextStyle(color: Colors.black87, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       );

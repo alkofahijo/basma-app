@@ -8,6 +8,7 @@ import 'package:basma_app/pages/reports/history/widgets/adopt_report_dialog.dart
 import 'package:basma_app/pages/reports/history/widgets/view_location_page.dart';
 import 'package:basma_app/services/report_details_service.dart';
 import 'package:basma_app/services/auth_service.dart';
+import 'package:basma_app/services/network_exceptions.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
@@ -104,7 +105,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
   @override
   void dispose() {
-    // no-op: comments pagination removed
     super.dispose();
   }
 
@@ -126,7 +126,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
       _currentUserJson = null;
     }
 
-    // Delegate to service which throws on error; caller (FutureBuilder) will handle it.
+    // نحاول دائماً تحميل تفاصيل البلاغ سواء ضيف أو مسجّل
     return await ReportDetailsService.getReport(widget.reportId);
   }
 
@@ -138,7 +138,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     try {
       await _reportFuture;
     } catch (_) {
-      // Let FutureBuilder show the error; no local state to set.
+      // FutureBuilder سيتكفل بعرض الخطأ
     }
   }
 
@@ -190,16 +190,51 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
         if (snapshot.hasError) {
           final err = snapshot.error;
-          final msg = (err is Exception)
-              ? err.toString()
-              : 'تعذّر تحميل بيانات البلاغ.';
+          String msg = 'تعذّر تحميل بيانات البلاغ.';
+
+          if (err is NetworkException) {
+            if (err.error.statusCode == 404) {
+              msg = 'هذا البلاغ غير موجود أو تم حذفه.';
+            } else if (err.error.statusCode == 401) {
+              // لو backend قرر يمنع الضيف – حالياً بعد تعديل الـ API لن يحصل هذا
+              msg =
+                  'لا يمكن عرض تفاصيل هذا البلاغ بدون تسجيل الدخول. يرجى تسجيل الدخول ثم المحاولة مرة أخرى.';
+            } else if (err.error.message.isNotEmpty) {
+              msg = err.error.message;
+            }
+          } else if (err is Exception) {
+            msg = err.toString();
+          }
+
           return Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                msg,
-                style: const TextStyle(color: Colors.red, fontSize: 14),
-                textAlign: TextAlign.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    msg,
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _reportFuture = _initializePage();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text("إعادة المحاولة"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -209,7 +244,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            // reassign future to re-run load
             setState(() {
               _reportFuture = _initializePage();
             });
@@ -241,9 +275,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                   const SizedBox(height: 24),
                   _buildActionSection(report),
                   const SizedBox(height: 24),
-
-                  // COMMENTS / ATTACHMENTS
-                  // Comments/attachments removed per request
                 ],
               );
             },
@@ -552,7 +583,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
             final isNarrow = constraints.maxWidth < 360;
 
             if (isNarrow) {
-              // خريطة فوق + تفاصيل تحت للشاشات الصغيرة
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -563,7 +593,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
               );
             }
 
-            // Row للشاشات الأوسع
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -851,8 +880,7 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
                 context: context,
                 builder: (_) => SolveReportDialog(
                   reportId: report.id,
-                  reportCode:
-                      report.reportCode, // ✅ تمرير رقم البلاغ لصفحة النجاح
+                  reportCode: report.reportCode,
                 ),
               );
               if (result == true) {
@@ -959,6 +987,4 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     // حساب عادي: يجب أن يكون هو نفس account الذي تبنّى البلاغ
     return myAccountId == report.adoptedByAccountId;
   }
-
-  // Comments and attachments UI removed.
 }
