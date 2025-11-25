@@ -17,6 +17,13 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // Load signing properties if present (key.properties at project root)
+    val keystorePropertiesFile = rootProject.file("key.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    }
+
     // إعدادات Java للـ Android module
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -32,13 +39,6 @@ android {
         // عدّل الـ applicationId لو حابب اسم مختلف
         applicationId = "com.basma.volunteering"
 
-        // Load signing properties if present (key.properties at project root)
-        val keystorePropertiesFile = rootProject.file("key.properties")
-        val keystoreProperties = Properties()
-        if (keystorePropertiesFile.exists()) {
-            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-        }
-
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -46,13 +46,22 @@ android {
     }
 
     signingConfigs {
-        // Release signing will be configured from key.properties when available.
-        if (project.file("key.properties").exists()) {
+        // Release signing will be configured from key.properties when available and complete.
+        val storeFileProp = keystoreProperties.getProperty("storeFile")
+        val storePasswordProp = keystoreProperties.getProperty("storePassword")
+        val keyAliasProp = keystoreProperties.getProperty("keyAlias")
+        val keyPasswordProp = keystoreProperties.getProperty("keyPassword")
+
+        if (keystorePropertiesFile.exists()
+            && !storeFileProp.isNullOrBlank()
+            && !storePasswordProp.isNullOrBlank()
+            && !keyAliasProp.isNullOrBlank()
+            && !keyPasswordProp.isNullOrBlank()) {
             create("release") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keyAliasProp
+                keyPassword = keyPasswordProp
+                storeFile = file(storeFileProp)
+                storePassword = storePasswordProp
             }
         }
     }
