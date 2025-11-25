@@ -11,3 +11,7 @@ Backend/basma_api/app/static/uploads/
 Backend/basma_api/app/__pycache__/
 Backend/basma_api/app/ml/__pycache__/
 Backend/basma_api/app/routers/__pycache__/
+
+
+Backend/basma_api/app/models/vp.pt
+

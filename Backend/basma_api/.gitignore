@@ -1,2 +1,5 @@
 .venv/
 .__pycache__/
+Backend/basma_api/app/models/vp.pt
+Backend/basma_api/app/models/*.pt
+.models/
