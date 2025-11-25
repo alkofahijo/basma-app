@@ -1,5 +1,7 @@
 import org.gradle.api.JavaVersion
 import org.gradle.api.tasks.compile.JavaCompile
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     // يطابق الإعداد الموجود في settings.gradle.kts
@@ -10,7 +12,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.basma_app"
+    namespace = "com.basma.volunteering"
     // قيم flutter تأتي من Flutter Gradle Plugin
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -28,7 +30,14 @@ android {
 
     defaultConfig {
         // عدّل الـ applicationId لو حابب اسم مختلف
-        applicationId = "com.example.basma_app"
+        applicationId = "com.basma.volunteering"
+
+        // Load signing properties if present (key.properties at project root)
+        val keystorePropertiesFile = rootProject.file("key.properties")
+        val keystoreProperties = Properties()
+        if (keystorePropertiesFile.exists()) {
+            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        }
 
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -36,10 +45,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Release signing will be configured from key.properties when available.
+        if (project.file("key.properties").exists()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // مؤقتاً: نستخدم debug key عشان flutter run --release يشتغل
-            signingConfig = signingConfigs.getByName("debug")
+            // Use release signing if configured, otherwise fall back to debug for local testing.
+            if (signingConfigs.findByName("release") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")

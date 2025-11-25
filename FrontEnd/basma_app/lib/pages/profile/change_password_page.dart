@@ -2,6 +2,7 @@
 
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/inputs/app_password_field.dart';
 import 'package:flutter/material.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -19,9 +20,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   bool _saving = false;
   String? _error;
-
-  bool _obscurePass = true;
-  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -154,29 +152,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   const SizedBox(height: 20),
 
                                   // كلمة المرور الجديدة
-                                  TextFormField(
+                                  AppPasswordField(
                                     controller: _passCtrl,
-                                    obscureText: _obscurePass,
-                                    decoration: InputDecoration(
-                                      labelText: 'كلمة المرور الجديدة',
-                                      filled: true,
-                                      fillColor: Colors.grey.shade50,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(
-                                          _obscurePass
-                                              ? Icons.visibility_off
-                                              : Icons.visibility,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _obscurePass = !_obscurePass;
-                                          });
-                                        },
-                                      ),
-                                    ),
+                                    label: 'كلمة المرور الجديدة',
                                     validator: (v) {
                                       final val = v?.trim() ?? '';
                                       if (val.isEmpty) {
@@ -191,29 +169,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   const SizedBox(height: 12),
 
                                   // تأكيد كلمة المرور
-                                  TextFormField(
+                                  AppPasswordField(
                                     controller: _confirmCtrl,
-                                    obscureText: _obscureConfirm,
-                                    decoration: InputDecoration(
-                                      labelText: 'تأكيد كلمة المرور',
-                                      filled: true,
-                                      fillColor: Colors.grey.shade50,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(
-                                          _obscureConfirm
-                                              ? Icons.visibility_off
-                                              : Icons.visibility,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _obscureConfirm = !_obscureConfirm;
-                                          });
-                                        },
-                                      ),
-                                    ),
+                                    label: 'تأكيد كلمة المرور',
                                     validator: (v) {
                                       final confirm = v?.trim() ?? '';
                                       final pass = _passCtrl.text.trim();

@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:basma_app/models/report_models.dart';
-import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/report_details_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
+import 'package:basma_app/widgets/inputs/app_text_field.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -101,82 +103,104 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
               Row(
                 children: [
                   Expanded(
-                    child: InkWell(
-                      onTap: _isSubmitting
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                              _pickImage(ImageSource.camera);
-                            },
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                    child: Builder(
+                      builder: (ctx) {
+                        final tileHeight = math.min(
+                          120.0,
+                          MediaQuery.of(ctx).size.width * 0.22,
+                        );
+                        return InkWell(
+                          onTap: _isSubmitting
+                              ? null
+                              : () {
+                                  Navigator.pop(context);
+                                  _pickImage(ImageSource.camera);
+                                },
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: .8,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                          child: Container(
+                            height: tileHeight,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: .8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.camera_alt_outlined, size: 26),
-                              SizedBox(height: 6),
-                              Text("التقاط صورة"),
-                            ],
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.camera_alt_outlined,
+                                    size: math.min(32.0, tileHeight * 0.35),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text("التقاط صورة"),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: InkWell(
-                      onTap: _isSubmitting
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                              _pickImage(ImageSource.gallery);
-                            },
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                    child: Builder(
+                      builder: (ctx) {
+                        final tileHeight = math.min(
+                          120.0,
+                          MediaQuery.of(ctx).size.width * 0.22,
+                        );
+                        return InkWell(
+                          onTap: _isSubmitting
+                              ? null
+                              : () {
+                                  Navigator.pop(context);
+                                  _pickImage(ImageSource.gallery);
+                                },
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: .8,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                          child: Container(
+                            height: tileHeight,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: .8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.photo_library_outlined, size: 26),
-                              SizedBox(height: 6),
-                              Text("اختيار من المعرض"),
-                            ],
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.photo_library_outlined,
+                                    size: math.min(32.0, tileHeight * 0.35),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text("اختيار من المعرض"),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -207,11 +231,10 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
 
     try {
       final bytes = await _afterImageFile!.readAsBytes();
-      final imageUrl = await ApiService.uploadImage(bytes, "after.jpg");
-
-      await ApiService.completeReport(
+      await ReportDetailsService.completeReportWithImage(
         reportId: widget.report.id,
-        imageAfterUrl: imageUrl,
+        imageBytes: bytes,
+        filename: 'after.jpg',
         note: _completionNotesController.text.trim().isEmpty
             ? null
             : _completionNotesController.text.trim(),
@@ -367,70 +390,78 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
   Widget _buildUploadBox() {
     return GestureDetector(
       onTap: _isSubmitting ? null : _showImageSourceBottomSheet,
-      child: Container(
-        height: 220,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: _buildUploadBorder(),
-          color: Colors.white,
-        ),
-        child: _afterImageFile == null
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(
-                    Icons.photo_camera_outlined,
-                    size: 52,
-                    color: Colors.black54,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    "اضغط لرفع أو التقاط صورة بعد الإصلاح",
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              )
-            : Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.file(
-                      _afterImageFile!,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: GestureDetector(
-                      onTap: _isSubmitting
-                          ? null
-                          : () {
-                              _safeSetState(() {
-                                _afterImageFile = null;
-                              });
-                            },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        child: const Icon(Icons.close, size: 18),
+      child: Builder(
+        builder: (ctx) {
+          final imageContainerHeight = math.min(
+            360.0,
+            MediaQuery.of(ctx).size.width * 0.62,
+          );
+          return Container(
+            height: imageContainerHeight,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: _buildUploadBorder(),
+              color: Colors.white,
+            ),
+            child: _afterImageFile == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.photo_camera_outlined,
+                        size: math.min(64.0, imageContainerHeight * 0.2),
+                        color: Colors.black54,
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "اضغط لرفع أو التقاط صورة بعد الإصلاح",
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  )
+                : Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.file(
+                          _afterImageFile!,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: GestureDetector(
+                          onTap: _isSubmitting
+                              ? null
+                              : () {
+                                  _safeSetState(() {
+                                    _afterImageFile = null;
+                                  });
+                                },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.close, size: 18),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+          );
+        },
       ),
     );
   }
@@ -491,31 +522,15 @@ class _CompleteReportPageState extends State<CompleteReportPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: TextField(
-                    controller: _completionNotesController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText:
-                          "اذكر بإيجاز ما تم عمله لمعالجة التشوّه البصري...",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.all(14),
-                    ),
-                  ),
+                AppTextField(
+                  controller: _completionNotesController,
+                  hint: "اذكر بإيجاز ما تم عمله لمعالجة التشوّه البصري...",
+                  maxLines: 4,
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
                   value: _isCompletionConfirmed,
-                  activeColor: kPrimaryColor,
+                  fillColor: WidgetStateProperty.all(kPrimaryColor),
                   onChanged: _isSubmitting
                       ? null
                       : (v) => _safeSetState(

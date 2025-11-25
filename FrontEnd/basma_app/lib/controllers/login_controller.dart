@@ -2,6 +2,7 @@ import 'package:basma_app/pages/on_start/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../services/api_service.dart';
+import '../../services/network_exceptions.dart';
 
 class LoginController extends GetxController {
   var email = ''.obs;
@@ -22,7 +23,11 @@ class LoginController extends GetxController {
 
       Get.offAll(() => const HomePage());
     } catch (e) {
-      errorMessage.value = 'خطأ في اسم المستخدم أو كلمة المرور.';
+      if (e is NetworkException) {
+        errorMessage.value = e.error.message;
+      } else {
+        errorMessage.value = 'خطأ في اسم المستخدم أو كلمة المرور.';
+      }
     } finally {
       isLoading.value = false;
     }

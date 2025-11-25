@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/app_logo.dart';
 
 class LoadingCenter extends StatefulWidget {
   const LoadingCenter({super.key});
@@ -33,29 +36,37 @@ class _LoadingCenterState extends State<LoadingCenter>
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
       body: Center(
-        child: SizedBox(
-          width: 150,
-          height: 150,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Image.asset("assets/images/logo-arabic-side.png", width: 80),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final boxSize = min(150.0, screenWidth * 0.5);
 
-              AnimatedBuilder(
-                animation: _controller,
-                builder: (_, child) {
-                  return Transform.rotate(
-                    angle: _controller.value * 6.28318,
-                    child: child,
-                  );
-                },
-                child: CustomPaint(
-                  size: const Size(150, 150),
-                  painter: _CirclePainter(),
-                ),
+            return SizedBox(
+              width: boxSize,
+              height: boxSize,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // keep logo relative to the box size
+                  AppLogo(sizeFactor: boxSize / (screenWidth * 8)),
+
+                  AnimatedBuilder(
+                    animation: _controller,
+                    builder: (_, child) {
+                      return Transform.rotate(
+                        angle: _controller.value * 6.28318,
+                        child: child,
+                      );
+                    },
+                    child: CustomPaint(
+                      size: Size(boxSize, boxSize),
+                      painter: _CirclePainter(),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

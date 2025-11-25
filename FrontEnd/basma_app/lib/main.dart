@@ -1,15 +1,20 @@
 import 'package:basma_app/pages/on_start/splash_screen.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
-import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/services/global_error_handler.dart';
+// app colors used via AppTheme
+import 'package:basma_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   AppSystemUi.applyGreen();
+
+  // Initialize global error handling (shows network errors via snackbar)
+  initGlobalErrorHandler();
 
   final sp = await SharedPreferences.getInstance();
   final token = sp.getString('token');
@@ -18,7 +23,18 @@ Future<void> main() async {
     await sp.clear();
   }
 
-  runApp(const MyApp());
+  // Run the app inside a guarded zone to catch uncaught async errors
+  runZonedGuarded(
+    () {
+      runApp(const MyApp());
+    },
+    (error, stack) {
+      // forward to the global handler
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: error, stack: stack),
+      );
+    },
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -28,6 +44,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       locale: const Locale('ar'),
       fallbackLocale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],
@@ -40,14 +57,7 @@ class MyApp extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
       ),
-      theme: ThemeData(
-        fontFamily: 'Cairo',
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: kPrimaryColor),
-        primaryColor: kPrimaryColor,
-        scaffoldBackgroundColor: const Color(0xFFEFF1F1),
-        chipTheme: const ChipThemeData(showCheckmark: false),
-      ),
+      theme: AppTheme.themeFor(context),
       home: const SplashScreen(),
     );
   }

@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/pages/on_start/landing_page.dart';
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
 import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/pages/reports/history/reports_list_page.dart';
@@ -140,7 +140,10 @@ class _HomePageState extends State<HomePage> {
     if (_checkingAuth) {
       return const Directionality(
         textDirection: TextDirection.rtl,
-        child: Scaffold(body: Center(child: CircularProgressIndicator())),
+        child: Scaffold(
+          appBar: AppMainAppBar(),
+          body: Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
@@ -150,7 +153,7 @@ class _HomePageState extends State<HomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFEFF1F1),
-        appBar: const BasmaAppBar(),
+        appBar: const AppMainAppBar(),
         body: _buildHomeTab(context, size),
         bottomNavigationBar: const BasmaBottomNavPage(currentIndex: 0),
       ),

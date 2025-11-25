@@ -1,7 +1,9 @@
 // lib/pages/on_start/forgot_credentials_help_page.dart
 
+import 'dart:math';
+
 import 'package:basma_app/theme/app_colors.dart';
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,24 +12,48 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
   const ForgotCredentialsHelpPage({super.key});
 
   static const String _phoneDisplay = '0782558012';
-  static final Uri _whatsAppUri = Uri.parse('https://wa.me/962782558012');
+
+  // رابط لفتح واتساب كتطبيق مباشر
+  static final Uri _waAppUri = Uri.parse(
+    'whatsapp://send?phone=962782558012&text=${Uri.encodeComponent('مرحبا، أحتاج لمساعدة في استعادة حسابي في تطبيق بصمة.')}',
+  );
+
+  // رابط ويب (wa.me) كخطة بديلة
+  static final Uri _waWebUri = Uri.parse('https://wa.me/962782558012');
 
   Future<void> _openWhatsApp(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      if (await canLaunchUrl(_whatsAppUri)) {
-        await launchUrl(_whatsAppUri, mode: LaunchMode.externalApplication);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            // ❌ بدون const لتجنب خطأ const
-            content: const Text('تعذّر فتح تطبيق واتساب، حاول لاحقاً.'),
-          ),
+      // 1) جرّب فتح تطبيق واتساب مباشرة
+      if (await canLaunchUrl(_waAppUri)) {
+        final ok = await launchUrl(
+          _waAppUri,
+          mode: LaunchMode.externalApplication,
         );
+        if (ok) return;
       }
+
+      // 2) لو فشل، جرّب رابط wa.me في المتصفح / واتساب
+      if (await canLaunchUrl(_waWebUri)) {
+        final ok = await launchUrl(
+          _waWebUri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (ok) return;
+      }
+
+      // 3) لو ما في أي تطبيق يفتح الرابط
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لا يمكن فتح واتساب أو المتصفّح على هذا الجهاز حالياً.',
+          ),
+        ),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.'),
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.'),
         ),
       );
     }
@@ -36,10 +62,11 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final avatarSize = min(56.0, size.width * 0.12);
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-      appBar: BasmaAppBar(showBack: true, onBack: () => Get.back()),
+      appBar: AppMainAppBar(showBack: true, onBack: () => Get.back()),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
@@ -50,6 +77,7 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ===== العنوان الرئيسي =====
               const Text(
                 'المساعدة في استعادة الحساب',
                 style: TextStyle(
@@ -74,7 +102,8 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
-                elevation: 4,
+                elevation: 6,
+                shadowColor: Colors.black12,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
@@ -83,12 +112,33 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // عنوان البطاقة مع الأيقونة
                       Row(
                         children: [
-                          const CircleAvatar(
-                            radius: 22,
-                            backgroundColor: kPrimaryColor,
-                            child: Icon(
+                          Container(
+                            width: avatarSize,
+                            height: avatarSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  kPrimaryColor,
+                                  kPrimaryColor.withAlpha((0.7 * 255).round()),
+                                ],
+                                begin: Alignment.topRight,
+                                end: Alignment.bottomLeft,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: kPrimaryColor.withAlpha(
+                                    (0.25 * 255).round(),
+                                  ),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
                               Icons.lock_reset,
                               color: Colors.white,
                               size: 26,
@@ -119,7 +169,7 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
 
-                      // رقم الواتساب
+                      // ===== رقم الواتساب (باستخدام Wrap لتجنب overflow) =====
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -127,23 +177,27 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Row(
+                        child: Wrap(
+                          alignment: WrapAlignment.start,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             const Icon(
-                              Icons.chat_outlined, // ✅ بدل Icons.whatsapp
+                              Icons.chat_outlined,
                               color: Colors.green,
+                              size: 22,
                             ),
-                            const SizedBox(width: 8),
                             const Text(
                               'تواصل معنا واتساب على الرقم:',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
+                                color: Colors.black87,
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Text(
                               _phoneDisplay,
                               style: const TextStyle(
@@ -246,7 +300,7 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
 
               SizedBox(height: size.height * 0.03),
 
-              // زر فتح واتساب
+              // ===== زر فتح واتساب =====
               Center(
                 child: SizedBox(
                   width: size.width * 0.7,
@@ -254,13 +308,16 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () => _openWhatsApp(context),
                     icon: const Icon(
-                      Icons.chat_outlined, // ✅ بدل Icons.whatsapp
+                      Icons.chat_outlined,
+                      size: 20,
+                      color: Colors.white,
                     ),
                     label: const Text(
                       'فتح واتساب والتواصل معنا',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -268,6 +325,7 @@ class ForgotCredentialsHelpPage extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
+                      elevation: 4,
                     ),
                   ),
                 ),
@@ -292,7 +350,10 @@ class _BulletPoint extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(fontSize: 16)),
+          const Text(
+            '• ',
+            style: TextStyle(fontSize: 16, color: Colors.black87),
+          ),
           Expanded(
             child: Text(
               text,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/inputs/app_dropdown_form_field.dart';
 import 'package:basma_app/models/report_models.dart';
 import 'package:basma_app/services/api_service.dart';
 
@@ -407,27 +408,14 @@ class _GuestFiltersCardState extends State<GuestFiltersCard> {
         value != null && items.any((item) => item.value == value);
     final T? effectiveValue = hasItemForValue ? value : null;
 
-    return DropdownButtonFormField<T>(
+    return AppDropdownFormField<T>(
       key: key,
-      initialValue: effectiveValue,
-      isExpanded: true,
+      value: effectiveValue,
       items: items,
       onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: disabled ? hintDisabled : null,
-        filled: true,
-        fillColor: disabled ? Colors.grey.shade100 : Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
+      label: label,
+      hint: disabled ? hintDisabled : null,
+      isEnabled: !disabled,
     );
   }
 }

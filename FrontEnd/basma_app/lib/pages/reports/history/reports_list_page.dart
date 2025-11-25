@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/reports_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/inputs/app_search_field.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/models/report_models.dart';
+import 'package:basma_app/services/pagination_manager.dart';
 
 import 'details/report_details_page.dart';
 import 'widgets/reports_status_tabs.dart';
@@ -44,19 +47,11 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
   // status tab: 'open' / 'in_progress' / 'completed'
   String _statusTab = 'open';
 
-  // ---- Reports ----
-  List<ReportPublicSummary> _allReports = [];
+  // ---- Reports + Pagination ----
+  late PaginationController<ReportPublicSummary> _pager;
   List<ReportPublicSummary> _visibleReports = [];
-
-  // loading flags
-  bool _isLoading = true; // أول تحميل / إعادة تحميل كاملة
-  bool _isLoadingMore = false; // تحميل الصفحة التالية
   String? _loadErrorMessage;
-
-  // ---- Pagination ----
   static const int _pageSize = 20;
-  int _currentOffset = 0;
-  bool _hasMore = true;
 
   // Scroll controller للـ infinite scroll
   late final ScrollController _scrollController;
@@ -85,11 +80,26 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
 
+    // Create a placeholder pager so synchronous builds can safely read it
+    _pager = PaginationController<ReportPublicSummary>(
+      fetcher: (page, pageSize) => _reportsPageFetcher(page, pageSize),
+      pageSize: _pageSize,
+    );
+    _pager.addListener(() {
+      _applySearchFilter();
+      _safeSetState(() {
+        _loadErrorMessage = _pager.errorMessage;
+      });
+    });
+
     _checkLoginAndInitialize();
   }
 
   @override
   void dispose() {
+    try {
+      _pager.dispose();
+    } catch (_) {}
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -104,7 +114,6 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
 
   Future<void> _checkLoginAndInitialize() async {
     _safeSetState(() {
-      _isLoading = true;
       _loadErrorMessage = null;
     });
 
@@ -156,10 +165,27 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _governments = results[0] as List<GovernmentOption>;
       _reportTypes = results[1] as List<ReportTypeOption>;
 
-      await _loadReports(reset: true);
+      // Replace placeholder pager with a fresh one (dispose placeholder first)
+      try {
+        _pager.dispose();
+      } catch (_) {}
+
+      _pager = PaginationController<ReportPublicSummary>(
+        fetcher: (page, pageSize) => _reportsPageFetcher(page, pageSize),
+        pageSize: _pageSize,
+      );
+      _pager.addListener(() {
+        // update visible list by applying client-side search on loaded items
+        _applySearchFilter();
+        // propagate any error message
+        _safeSetState(() {
+          _loadErrorMessage = _pager.errorMessage;
+        });
+      });
+
+      await _pager.refresh();
     } catch (_) {
       _safeSetState(() {
-        _isLoading = false;
         _loadErrorMessage = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
       });
     }
@@ -180,111 +206,44 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
     }
   }
 
-  Future<void> _loadReports({bool reset = false}) async {
-    // في حالة إعادة التحميل بالكامل (تغيير التبويب / الفلاتر / الدخول)
-    if (reset) {
-      _currentOffset = 0;
-      _hasMore = true;
-      _safeSetState(() {
-        _isLoading = true;
-        _isLoadingMore = false;
-        _loadErrorMessage = null;
-        _allReports = [];
-        _visibleReports = [];
-        _searchQuery = '';
-        _searchController.clear();
-      });
-    } else {
-      // تحميل صفحة جديدة
-      if (_isLoading || _isLoadingMore || !_hasMore) return;
-      _safeSetState(() {
-        _isLoadingMore = true;
-        _loadErrorMessage = null;
-      });
-    }
+  // page-based fetcher used by the PaginationController. Maps (page,pageSize)
+  // to the ApiService offset/limit parameters and infers total when possible.
+  Future<PaginatedResult<ReportPublicSummary>> _reportsPageFetcher(
+    int page,
+    int pageSize,
+  ) async {
+    final int statusId = _statusIdForTab(_statusTab);
+    final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
 
-    try {
-      final int statusId = _statusIdForTab(_statusTab);
-      final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
-
-      late final List<ReportPublicSummary> page;
-
-      if (isMyReports) {
-        page = await ApiService.listMyReports(
-          statusId: statusId,
-          governmentId: _selectedGovernmentId,
-          districtId: _selectedDistrictId,
-          areaId: _selectedAreaId,
-          reportTypeId: _selectedReportTypeId,
-          limit: _pageSize,
-          offset: _currentOffset,
-        );
-      } else {
-        page = await ApiService.listPublicReports(
-          statusId: statusId,
-          governmentId: _selectedGovernmentId,
-          districtId: _selectedDistrictId,
-          areaId: _selectedAreaId,
-          reportTypeId: _selectedReportTypeId,
-          limit: _pageSize,
-          offset: _currentOffset,
-        );
-      }
-
-      _safeSetState(() {
-        if (reset) {
-          _allReports = page;
-        } else {
-          _allReports.addAll(page);
-        }
-
-        _currentOffset = _allReports.length;
-
-        // إذا جاءت صفحة أقل من limit فهذا يعني لا مزيد من البيانات
-        if (page.length < _pageSize) {
-          _hasMore = false;
-        }
-
-        // إعادة تطبيق البحث (على البيانات المحمّلة فقط)
-        _applySearchFilter();
-      });
-    } catch (_) {
-      _safeSetState(() {
-        if (reset) {
-          _allReports = [];
-          _visibleReports = [];
-          _loadErrorMessage = 'تعذّر تحميل البلاغات، يرجى المحاولة لاحقاً.';
-        }
-      });
-    } finally {
-      _safeSetState(() {
-        if (reset) {
-          _isLoading = false;
-          _isLoadingMore = false;
-        } else {
-          _isLoadingMore = false;
-        }
-      });
-    }
+    return await ReportsService.pageFetcher(
+      page,
+      pageSize,
+      mine: isMyReports,
+      statusId: statusId,
+      governmentId: _selectedGovernmentId,
+      districtId: _selectedDistrictId,
+      areaId: _selectedAreaId,
+      reportTypeId: _selectedReportTypeId,
+    );
   }
 
   // مستمع الـ ScrollController للـ infinite scroll
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    if (_pager.isLoading || _pager.isLoadingMore) return;
 
     final thresholdPixels = 200.0;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
 
     if (maxScroll - currentScroll <= thresholdPixels) {
-      _loadReports(); // صفحة جديدة
+      _pager.loadMore(); // صفحة جديدة
     }
   }
 
   // ========= Tabs =========
 
-  void _switchStatusTab(String newTab) {
+  Future<void> _switchStatusTab(String newTab) async {
     if (_statusTab == newTab) return;
 
     final bool isMyReports = _isLoggedIn && _mainTab == 'mine';
@@ -296,7 +255,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _statusTab = newTab;
     });
 
-    _loadReports(reset: true);
+    await _pager.refresh();
   }
 
   // ========= Filters (IDs only) =========
@@ -307,7 +266,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _selectedDistrictId = null;
       _selectedAreaId = null;
     });
-    await _loadReports(reset: true);
+    await _pager.refresh();
   }
 
   Future<void> _onDistrictChanged(int? districtId) async {
@@ -315,27 +274,27 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
       _selectedDistrictId = districtId;
       _selectedAreaId = null;
     });
-    await _loadReports(reset: true);
+    await _pager.refresh();
   }
 
   Future<void> _onAreaChanged(int? areaId) async {
     _safeSetState(() {
       _selectedAreaId = areaId;
     });
-    await _loadReports(reset: true);
+    await _pager.refresh();
   }
 
   Future<void> _onReportTypeChanged(int? typeId) async {
     _safeSetState(() {
       _selectedReportTypeId = typeId;
     });
-    await _loadReports(reset: true);
+    await _pager.refresh();
   }
 
   // ========= Search (client-side) =========
 
   void _applySearchFilter() {
-    List<ReportPublicSummary> results = List.of(_allReports);
+    List<ReportPublicSummary> results = List.of(_pager.items);
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -440,61 +399,19 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
                   ),
                 ],
               ),
-              child: TextField(
+              child: AppSearchField(
                 controller: _searchController,
-                textInputAction: TextInputAction.search,
+                hint: 'ابحث عن بلاغ معين ...',
                 onChanged: (value) {
                   _searchQuery = value.trim();
                   _applySearchFilter();
                 },
-                style: const TextStyle(fontSize: 13, height: 1.3),
-                decoration: InputDecoration(
-                  hintText: 'ابحث عن بلاغ معين ...',
-                  hintStyle: TextStyle(
-                    fontSize: 15.5,
-                    color: Colors.grey.shade600,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            _searchQuery = '';
-                            _applySearchFilter();
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide(
-                      color: kPrimaryColor.withValues(alpha: 0.8),
-                      width: 1.3,
-                    ),
-                  ),
-                ),
+                onSearch: () => _applySearchFilter(),
+                onClear: () {
+                  _searchController.clear();
+                  _searchQuery = '';
+                  _applySearchFilter();
+                },
               ),
             ),
           ),
@@ -608,11 +525,11 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
 
     return ListView.builder(
       controller: _scrollController,
-      itemCount: _visibleReports.length + (_hasMore ? 1 : 0),
+      itemCount: _visibleReports.length + (_pager.isLoadingMore ? 1 : 0),
       itemBuilder: (_, index) {
         // عنصر تحميل الصفحة التالية في النهاية
-        if (_hasMore && index == _visibleReports.length) {
-          if (_isLoadingMore) {
+        if (index == _visibleReports.length) {
+          if (_pager.isLoadingMore) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
@@ -682,7 +599,7 @@ class _GuestReportsListPageState extends State<GuestReportsListPage> {
               ),
               const SizedBox(height: 6),
               Expanded(
-                child: _isLoading ? const LoadingCenter() : _buildBody(),
+                child: _pager.isLoading ? const LoadingCenter() : _buildBody(),
               ),
             ],
           ),

@@ -6,7 +6,7 @@ import 'package:basma_app/pages/profile/account_info_page.dart';
 import 'package:basma_app/pages/reports/history/details/complete_report_page.dart';
 import 'package:basma_app/pages/reports/history/widgets/adopt_report_dialog.dart';
 import 'package:basma_app/pages/reports/history/widgets/view_location_page.dart';
-import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/report_details_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
@@ -91,9 +91,7 @@ class ReportDetailsPage extends StatefulWidget {
 }
 
 class _ReportDetailsPageState extends State<ReportDetailsPage> {
-  ReportDetail? _report;
-  String? _loadErrorMessage;
-  bool _isLoading = true;
+  late Future<ReportDetail> _reportFuture;
 
   bool _isAuthenticated = false;
   Map<String, dynamic>? _currentUserJson;
@@ -101,58 +99,46 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _initializePage();
+    _reportFuture = _initializePage();
   }
 
-  void _safeSetState(VoidCallback fn) {
-    if (!mounted) return;
-    setState(fn);
+  @override
+  void dispose() {
+    // no-op: comments pagination removed
+    super.dispose();
   }
 
-  Future<void> _initializePage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final isLoggedIn = token != null && token.isNotEmpty;
+  /// Initializes auth state and returns the loaded `ReportDetail`.
+  Future<ReportDetail> _initializePage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final isLoggedIn = token != null && token.isNotEmpty;
 
-      _safeSetState(() {
-        _isAuthenticated = isLoggedIn;
-      });
+    _isAuthenticated = isLoggedIn;
 
-      if (isLoggedIn) {
+    if (isLoggedIn) {
+      try {
         _currentUserJson = await AuthService.currentUser();
-      } else {
+      } catch (_) {
         _currentUserJson = null;
       }
-
-      await _loadReportDetails();
-    } catch (_) {
-      _safeSetState(() {
-        _isAuthenticated = false;
-      });
-      await _loadReportDetails();
+    } else {
+      _currentUserJson = null;
     }
+
+    // Delegate to service which throws on error; caller (FutureBuilder) will handle it.
+    return await ReportDetailsService.getReport(widget.reportId);
   }
 
   Future<void> _loadReportDetails() async {
-    _safeSetState(() {
-      _isLoading = true;
-      _loadErrorMessage = null;
+    setState(() {
+      _reportFuture = ReportDetailsService.getReport(widget.reportId);
     });
 
     try {
-      final data = await ApiService.getReport(widget.reportId);
-      _safeSetState(() {
-        _report = data;
-      });
+      await _reportFuture;
     } catch (_) {
-      _safeSetState(() {
-        _loadErrorMessage = 'تعذّر تحميل بيانات البلاغ، يرجى المحاولة مجددًا.';
-      });
-    } finally {
-      _safeSetState(() {
-        _isLoading = false;
-      });
+      // Let FutureBuilder show the error; no local state to set.
     }
   }
 
@@ -195,57 +181,75 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
-      return const LoadingCenter();
-    }
+    return FutureBuilder<ReportDetail>(
+      future: _reportFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingCenter();
+        }
 
-    if (_loadErrorMessage != null || _report == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            _loadErrorMessage ?? 'حدث خطأ غير متوقع.',
-            style: const TextStyle(color: Colors.red, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
-    final report = _report!;
-
-    return RefreshIndicator(
-      onRefresh: _loadReportDetails,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isTablet = constraints.maxWidth > 700;
-
-          return ListView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 32 : 16,
-              vertical: 16,
+        if (snapshot.hasError) {
+          final err = snapshot.error;
+          final msg = (err is Exception)
+              ? err.toString()
+              : 'تعذّر تحميل بيانات البلاغ.';
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                msg,
+                style: const TextStyle(color: Colors.red, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
             ),
-            children: [
-              _buildHeaderCard(report),
-              const SizedBox(height: 16),
-              _buildBasicInfoSection(report),
-              const SizedBox(height: 16),
-              _buildImagesSection(report),
-              const SizedBox(height: 16),
-              _buildLocationSection(report),
-              const SizedBox(height: 16),
-              _buildReportingSection(report),
-              if (report.statusId == 3 || report.statusId == 4) ...[
-                const SizedBox(height: 16),
-                _buildSolvedBySection(report),
-              ],
-              const SizedBox(height: 24),
-              _buildActionSection(report),
-              const SizedBox(height: 24),
-            ],
           );
-        },
-      ),
+        }
+
+        final report = snapshot.data!;
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            // reassign future to re-run load
+            setState(() {
+              _reportFuture = _initializePage();
+            });
+            await _reportFuture;
+          },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth > 700;
+
+              return ListView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 32 : 16,
+                  vertical: 16,
+                ),
+                children: [
+                  _buildHeaderCard(report),
+                  const SizedBox(height: 16),
+                  _buildBasicInfoSection(report),
+                  const SizedBox(height: 16),
+                  _buildImagesSection(report),
+                  const SizedBox(height: 16),
+                  _buildLocationSection(report),
+                  const SizedBox(height: 16),
+                  _buildReportingSection(report),
+                  if (report.statusId == 3 || report.statusId == 4) ...[
+                    const SizedBox(height: 16),
+                    _buildSolvedBySection(report),
+                  ],
+                  const SizedBox(height: 24),
+                  _buildActionSection(report),
+                  const SizedBox(height: 24),
+
+                  // COMMENTS / ATTACHMENTS
+                  // Comments/attachments removed per request
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -955,4 +959,6 @@ class _ReportDetailsPageState extends State<ReportDetailsPage> {
     // حساب عادي: يجب أن يكون هو نفس account الذي تبنّى البلاغ
     return myAccountId == report.adoptedByAccountId;
   }
+
+  // Comments and attachments UI removed.
 }
