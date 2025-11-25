@@ -6,6 +6,25 @@ python-dotenv==1.0.1
 PyMySQL==1.1.1
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
-Pillow==12.0.0
+Pillow==11.3.0
 httpx==0.28.1
 python-multipart==0.0.20
+
+# HTTP & utilities
+requests==2.32.5
+starlette==0.38.6
+click==8.3.1
+
+# ML and computer vision packages (for AI endpoints)
+# Note: install PyTorch CPU build using the official PyTorch index for best compatibility
+torch==2.9.1
+torchvision==0.24.1
+opencv-python-headless==4.12.0.88
+yolov5==7.0.14
+
+# Inference SDK (test/dev only) - moved to `requirements-dev.txt`
+# inference-sdk==0.60.0
+
+# Optional / helpful packages already present in the dev environment
+ultralytics==8.3.228
+opencv-python==4.10.0.84
