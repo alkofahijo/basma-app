@@ -172,11 +172,57 @@ async def ai_resolve_location(payload: ResolveLocationRequest, db: Session = Dep
         area_name = _clean_area_name(area_raw)
         loc_name = loc_raw.strip() if loc_raw else ""
 
+        # If gov or district are missing, try broader parsing of the returned
+        # address object (region, province, municipality, town, display_name)
         if not gov_name or not dist_name:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="غير قادر على تحديد المحافظة أو اللواء من الإحداثيات.",
-            )
+            address = geo.get("address", {}) or {}
+            # broader candidate fields for governorate
+            gov_candidates = [
+                address.get("state"),
+                address.get("region"),
+                address.get("province"),
+                address.get("county"),
+                address.get("country"),
+            ]
+            # broader candidate fields for district
+            dist_candidates = [
+                address.get("state_district"),
+                address.get("county"),
+                address.get("municipality"),
+                address.get("town"),
+                address.get("city_district"),
+                address.get("city"),
+            ]
+
+            if not gov_name:
+                for cand in gov_candidates:
+                    if cand:
+                        gov_name = _clean_admin_name(str(cand))
+                        break
+
+            if not dist_name:
+                for cand in dist_candidates:
+                    if cand:
+                        dist_name = _clean_admin_name(str(cand))
+                        break
+
+            # As a last resort, try to parse the display_name (comma-separated)
+            if (not gov_name or not dist_name) and loc_raw:
+                parts = [p.strip() for p in (loc_raw or "").split(",") if p.strip()]
+                # Prefer taking higher-level admin names from the tail of display_name
+                if parts:
+                    # parts[-1] is typically country, parts[-2] province/region
+                    if not gov_name and len(parts) >= 2:
+                        gov_name = _clean_admin_name(parts[-2])
+                    if not dist_name and len(parts) >= 3:
+                        dist_name = _clean_admin_name(parts[-3])
+
+        # If still missing, use a best-effort default names (we will still create DB rows)
+        if not gov_name:
+            gov_name = "محافظة غير محددة"
+        if not dist_name:
+            dist_name = "لواء/قضاء غير محدد"
+
         if not area_name:
             area_name = "منطقة بدون اسم"
 
