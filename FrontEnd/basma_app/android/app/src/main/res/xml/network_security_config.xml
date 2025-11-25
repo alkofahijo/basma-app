@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!--
+    Default policy: do not permit cleartext (HTTP) traffic.
+    To allow cleartext for specific development hosts, add a <domain-config>
+    entry with cleartextTrafficPermitted="true" for that domain.
+    Example (development only):
+
+    <domain-config cleartextTrafficPermitted="true">
+      <domain includeSubdomains="true">dev.example.com</domain>
+    </domain-config>
+
+  -->
+  <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

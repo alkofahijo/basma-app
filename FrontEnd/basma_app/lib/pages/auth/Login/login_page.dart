@@ -1,8 +1,11 @@
 import 'package:basma_app/pages/on_start/landing_page.dart';
 import 'package:basma_app/theme/app_colors.dart';
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:basma_app/widgets/buttons/app_buttons.dart';
+import 'package:basma_app/widgets/inputs/app_text_field.dart';
+import 'package:basma_app/widgets/inputs/app_password_field.dart';
 
 import '../../../controllers/login_controller.dart';
 import '../Registeration/register_account_info_page.dart';
@@ -19,7 +22,7 @@ class LoginPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-      appBar: BasmaAppBar(
+      appBar: AppMainAppBar(
         showBack: true,
         onBack: () => Get.offAll(() => const LandingPage()),
       ),
@@ -83,25 +86,10 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: size.height * 0.01),
-              TextField(
+              AppTextField(
                 onChanged: (v) => controller.email.value = v,
+                hint: 'أدخل اسم المستخدم',
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'أدخل اسم المستخدم',
-                  hintStyle: const TextStyle(
-                    color: Color.fromARGB(255, 154, 157, 154),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: size.width * 0.04,
-                    vertical: size.height * 0.02,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
               ),
               SizedBox(height: size.height * 0.02),
 
@@ -113,36 +101,9 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: size.height * 0.01),
-              Obx(
-                () => TextField(
-                  onChanged: (v) => controller.password.value = v,
-                  obscureText: controller.obscurePassword.value,
-                  decoration: InputDecoration(
-                    hintText: 'أدخل كلمة المرور',
-                    hintStyle: const TextStyle(
-                      color: Color.fromARGB(255, 154, 157, 154),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        controller.obscurePassword.value
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: const Color.fromARGB(255, 117, 119, 117),
-                      ),
-                      onPressed: controller.togglePassword,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.04,
-                      vertical: size.height * 0.02,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
+              AppPasswordField(
+                hint: 'أدخل كلمة المرور',
+                onChanged: (v) => controller.password.value = v,
               ),
               SizedBox(height: size.height * 0.01),
 
@@ -166,28 +127,13 @@ class LoginPage extends StatelessWidget {
               Obx(
                 () => SizedBox(
                   width: size.width * 0.8,
-                  height: size.height * 0.06,
-                  child: ElevatedButton(
+                  child: AppPrimaryButton(
+                    label: 'تسجيل الدخول',
+                    isLoading: controller.isLoading.value,
                     onPressed:
                         controller.isLoading.value && controller.isFormValid
                         ? null
                         : controller.login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: controller.isLoading.value
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'تسجيل الدخول',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                   ),
                 ),
               ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:basma_app/widgets/inputs/app_text_field.dart';
 
+/// Backwards-compatible wrapper kept for a smooth migration.
+/// Prefer importing `AppTextField` from `widgets/inputs` directly.
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -22,38 +25,14 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          obscureText: obscure,
-          keyboardType: inputType,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            hintText: hint,
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            errorText: errorText,
-          ),
-        ),
-      ],
+    return AppTextField(
+      controller: controller,
+      label: label,
+      hint: hint,
+      obscureText: obscure,
+      keyboardType: inputType,
+      errorText: errorText,
+      onChanged: onChanged,
     );
   }
 }

@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:basma_app/models/account_models.dart';
 import 'package:basma_app/models/location_models.dart';
 import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/upload_service.dart';
+import 'package:basma_app/services/network_exceptions.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -73,7 +75,11 @@ class RegisterAccountController extends GetxController {
         selectedAccountType.value = null;
       }
     } catch (e) {
-      loadError.value = 'فشل تحميل البيانات: $e';
+      if (e is NetworkException) {
+        loadError.value = e.error.message;
+      } else {
+        loadError.value = 'فشل تحميل البيانات: $e';
+      }
     } finally {
       isLoadingInitial.value = false;
     }
@@ -179,7 +185,7 @@ class RegisterAccountController extends GetxController {
       final file = logoFile.value;
       if (file != null) {
         final bytes = await file.readAsBytes();
-        logoUrl = await ApiService.uploadImage(bytes, 'account_logo.png');
+        logoUrl = await UploadService.uploadImage(bytes, 'account_logo.png');
         uploadedLogoUrl = logoUrl;
       }
 
@@ -215,11 +221,12 @@ class RegisterAccountController extends GetxController {
 
       Get.back(); // رجوع مثلاً لشاشة تسجيل الدخول
     } catch (e) {
+      final msg = e is NetworkException ? e.error.message : e.toString();
       Get.snackbar(
         'خطأ',
-        e.toString(),
+        msg,
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.1),
+        backgroundColor: Colors.red.withAlpha((0.1 * 255).round()),
       );
     } finally {
       isSubmitting.value = false;

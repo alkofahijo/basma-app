@@ -1,5 +1,6 @@
 import 'package:basma_app/pages/reports/history/widgets/zoomable_image.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:basma_app/config/base_url.dart';
 
 class BeforeAfterImages extends StatelessWidget {
@@ -30,12 +31,12 @@ class BeforeAfterImages extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           after == null
-              ? _buildCard("الصورة قبل", before) // FULL WIDTH
+              ? _buildCard(context, "الصورة قبل", before) // FULL WIDTH
               : Row(
                   children: [
-                    Expanded(child: _buildCard("الصورة قبل", before)),
+                    Expanded(child: _buildCard(context, "الصورة قبل", before)),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildCard("الصورة بعد", after)),
+                    Expanded(child: _buildCard(context, "الصورة بعد", after)),
                   ],
                 ),
         ],
@@ -43,7 +44,7 @@ class BeforeAfterImages extends StatelessWidget {
     );
   }
 
-  Widget _buildCard(String title, String? url) {
+  Widget _buildCard(BuildContext context, String title, String? url) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -73,13 +74,21 @@ class BeforeAfterImages extends StatelessWidget {
 
           ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(14)),
-            child: Container(
-              height: 180,
-              width: double.infinity,
-              color: Colors.grey.shade200,
-              child: url == null
-                  ? const SizedBox()
-                  : ZoomableImage(imageUrl: url),
+            child: Builder(
+              builder: (ctx) {
+                final maxH = math.min(
+                  420.0,
+                  MediaQuery.of(ctx).size.width * 0.45,
+                );
+                return Container(
+                  height: maxH,
+                  width: double.infinity,
+                  color: Colors.grey.shade200,
+                  child: url == null
+                      ? const SizedBox()
+                      : ZoomableImage(imageUrl: url),
+                );
+              },
             ),
           ),
         ],

@@ -1,6 +1,13 @@
-import 'package:basma_app/theme/app_system_ui.dart';
-import 'package:flutter/material.dart';
+// Deprecated compatibility wrapper.
+// Use `AppMainAppBar` instead. This file remains to avoid a breaking change
+// during transition; it delegates to `AppMainAppBar`.
 
+import 'package:flutter/material.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
+
+@Deprecated(
+  'Use `AppMainAppBar` instead. This wrapper will be removed in a future release.',
+)
 class BasmaAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
@@ -9,24 +16,7 @@ class BasmaAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
-    return AppBar(
-      backgroundColor: const Color(0xFFEFF1F1),
-      elevation: 0,
-      centerTitle: true,
-      systemOverlayStyle: AppSystemUi.green,
-      leading: showBack
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-            )
-          : null,
-      title: Image.asset(
-        "assets/images/logo-arabic-side.png",
-        height: size.height * 0.05,
-      ),
-    );
+    return AppMainAppBar(showBack: showBack, onBack: onBack);
   }
 
   @override

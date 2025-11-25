@@ -3,7 +3,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/network_exceptions.dart';
+import 'package:basma_app/services/pagination_manager.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/inputs/app_search_field.dart';
+import 'package:basma_app/widgets/inputs/app_dropdown_form_field.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
 import 'package:basma_app/widgets/basma_bottom_nav.dart';
 import 'package:basma_app/widgets/loading_center.dart';
@@ -22,12 +26,15 @@ class AccountsListPage extends StatefulWidget {
   State<AccountsListPage> createState() => _AccountsListPageState();
 }
 
+// Top-level reusable Filters card used by AccountsListPage.
+// (Old filters card removed; new compact search + modal filter implemented below.)
+
 class _AccountsListPageState extends State<AccountsListPage> {
   // ---- Data ----
-  List<Account> _accounts = [];
+  late final PaginationController<Account> _pager;
   List<GovernmentOption> _governments = [];
   List<AccountTypeOption> _accountTypes = [];
-
+  // (Removed old _FiltersCard) -- new compact filter flow implemented below.
   // ---- Filters ----
   int? _selectedGovernmentId;
   int? _selectedAccountTypeId;
@@ -37,23 +44,30 @@ class _AccountsListPageState extends State<AccountsListPage> {
   String _searchQuery = '';
 
   // ---- Pagination ----
-  int _currentPage = 1;
   final int _pageSize = 20;
-  int _total = 0;
 
   // ---- Loading / Error ----
-  bool _isLoading = true;
   String? _loadErrorMessage;
 
   @override
   void initState() {
     super.initState();
+    // create a placeholder pager so builds can safely read its state
+    _pager = PaginationController<Account>(
+      fetcher: (page, pageSize) => _pageFetcher(page, pageSize),
+      pageSize: _pageSize,
+    );
+    _pager.addListener(() => _safeSetState(() {}));
+
     _initialize();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    try {
+      _pager.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -105,7 +119,6 @@ class _AccountsListPageState extends State<AccountsListPage> {
 
   Future<void> _initialize() async {
     _safeSetState(() {
-      _isLoading = true;
       _loadErrorMessage = null;
     });
 
@@ -118,275 +131,252 @@ class _AccountsListPageState extends State<AccountsListPage> {
       _governments = results[0] as List<GovernmentOption>;
       _accountTypes = results[1] as List<AccountTypeOption>;
 
-      await _loadAccounts(resetPage: true);
-    } catch (_) {
+      // dispose placeholder before replacing with real pager
+      try {
+        _pager.dispose();
+      } catch (_) {}
+
+      _pager = PaginationController<Account>(
+        fetcher: (page, pageSize) => _pageFetcher(page, pageSize),
+        pageSize: _pageSize,
+      );
+      _pager.addListener(() => _safeSetState(() {}));
+
+      await _pager.refresh();
+    } catch (e) {
+      String message = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
+      if (e is NetworkException) message = e.error.message;
       _safeSetState(() {
-        _isLoading = false;
-        _loadErrorMessage = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
+        _loadErrorMessage = message;
       });
+      // show snackbar
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
     }
   }
 
-  Future<void> _loadAccounts({bool resetPage = false}) async {
-    if (resetPage) {
-      _currentPage = 1;
-    }
-
-    _safeSetState(() {
-      _isLoading = true;
-      _loadErrorMessage = null;
-    });
-
-    try {
-      final result = await ApiService.listAccountsPaged(
-        page: _currentPage,
-        pageSize: _pageSize,
-        governmentId: _selectedGovernmentId,
-        accountTypeId: _selectedAccountTypeId,
-        search: _searchQuery.isEmpty ? null : _searchQuery,
-      );
-
-      _safeSetState(() {
-        _accounts = result.items;
-        _total = result.total;
-      });
-    } catch (_) {
-      _safeSetState(() {
-        _accounts = [];
-        _total = 0;
-        _loadErrorMessage = 'تعذّر تحميل قائمة الحسابات، يرجى المحاولة لاحقاً.';
-      });
-    } finally {
-      _safeSetState(() {
-        _isLoading = false;
-      });
-    }
+  Future<PaginatedResult<Account>> _pageFetcher(int page, int pageSize) async {
+    final res = await ApiService.listAccountsPaged(
+      page: page,
+      pageSize: pageSize,
+      governmentId: _selectedGovernmentId,
+      accountTypeId: _selectedAccountTypeId,
+      search: _searchQuery.isEmpty ? null : _searchQuery,
+    );
+    return PaginatedResult<Account>(res.items, res.total);
   }
 
   int get _totalPages {
-    if (_total == 0) return 1;
-    return ((_total + _pageSize - 1) ~/ _pageSize).clamp(1, 999999);
+    final total = _pager.total;
+    if (total <= 0) return 1;
+    return ((total + _pageSize - 1) ~/ _pageSize).clamp(1, 999999);
   }
 
   // ========= Filters =========
-
-  Future<void> _onGovernmentChanged(int? id) async {
-    _safeSetState(() {
-      _selectedGovernmentId = id;
-    });
-    await _loadAccounts(resetPage: true);
-  }
-
-  Future<void> _onAccountTypeChanged(int? id) async {
-    _safeSetState(() {
-      _selectedAccountTypeId = id;
-    });
-    await _loadAccounts(resetPage: true);
-  }
-
-  // ========= UI: Dropdown helper =========
-
-  Widget _buildDropdownFilter({
-    required String label,
-    required int? value,
-    required List<DropdownMenuItem<int?>> items,
-    required ValueChanged<int?> onChanged,
-  }) {
-    final bool hasItemForValue =
-        value != null && items.any((item) => item.value == value);
-    final int? effectiveValue = hasItemForValue ? value : null;
-
-    return DropdownButtonFormField<int?>(
-      isExpanded: true,
-      value: effectiveValue,
-      items: items,
-      onChanged: onChanged,
-      dropdownColor: Colors.white,
-      style: const TextStyle(fontSize: 13, color: Colors.black87),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 13, color: Colors.black87),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: kPrimaryColor.withValues(alpha: 0.9),
-            width: 1.4,
-          ),
-        ),
-      ),
-      hint: Text(
-        'الكل',
-        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-      ),
-    );
-  }
 
   // ========= UI: Filters Bar =========
 
   Widget _buildFiltersBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // العنوان الصغير
-              Row(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: AppSearchField(
+              controller: _searchController,
+              hint: 'ابحث عن جهة...',
+              onChanged: (value) => _searchQuery = value.trim(),
+              onSearch: () => _pager.refresh(),
+              onClear: () {
+                _searchController.clear();
+                _searchQuery = '';
+                _pager.refresh();
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Filter button
+          Builder(
+            builder: (ctx) {
+              final bool hasFilters =
+                  _selectedGovernmentId != null ||
+                  _selectedAccountTypeId != null;
+              return Stack(
+                alignment: Alignment.topRight,
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: kPrimaryColor.withValues(alpha: 0.08),
+                  Material(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.groups_2_rounded,
-                      color: kPrimaryColor,
-                      size: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.filter_list),
+                      onPressed: () {
+                        showModalBottomSheet<void>(
+                          context: ctx,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (modalCtx) {
+                            return DraggableScrollableSheet(
+                              initialChildSize: 0.5,
+                              minChildSize: 0.3,
+                              maxChildSize: 0.9,
+                              builder: (_, controller) {
+                                int? localGov = _selectedGovernmentId;
+                                int? localType = _selectedAccountTypeId;
+                                return Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(18),
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    12,
+                                    16,
+                                    20,
+                                  ),
+                                  child: StatefulBuilder(
+                                    builder: (c, setModalState) {
+                                      return ListView(
+                                        controller: controller,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                'تصفية النتائج',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              IconButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(modalCtx),
+                                                icon: const Icon(Icons.close),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Divider(),
+                                          const SizedBox(height: 8),
+
+                                          // Government
+                                          AppDropdownFormField<int?>(
+                                            value: localGov,
+                                            items: [
+                                              const DropdownMenuItem<int?>(
+                                                value: null,
+                                                child: Text('الكل'),
+                                              ),
+                                              ..._governments.map(
+                                                (g) => DropdownMenuItem<int?>(
+                                                  value: g.id,
+                                                  child: Text(g.nameAr),
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: (v) => setModalState(
+                                              () => localGov = v,
+                                            ),
+                                            label: 'المحافظة',
+                                            hint: 'الكل',
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // Account type
+                                          AppDropdownFormField<int?>(
+                                            value: localType,
+                                            items: [
+                                              const DropdownMenuItem<int?>(
+                                                value: null,
+                                                child: Text('الكل'),
+                                              ),
+                                              ..._accountTypes.map(
+                                                (t) => DropdownMenuItem<int?>(
+                                                  value: t.id,
+                                                  child: Text(t.nameAr),
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: (v) => setModalState(
+                                              () => localType = v,
+                                            ),
+                                            label: 'نوع الحساب',
+                                            hint: 'الكل',
+                                          ),
+                                          const SizedBox(height: 18),
+
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  onPressed: () {
+                                                    setModalState(() {
+                                                      localGov = null;
+                                                      localType = null;
+                                                    });
+                                                  },
+                                                  child: const Text(
+                                                    'مسح الفلاتر',
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () {
+                                                    // apply
+                                                    setState(() {
+                                                      _selectedGovernmentId =
+                                                          localGov;
+                                                      _selectedAccountTypeId =
+                                                          localType;
+                                                    });
+                                                    Navigator.pop(modalCtx);
+                                                    _pager.loadPage(1);
+                                                  },
+                                                  child: const Text('تطبيق'),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'استكشف المتطوعين والجهات المساهمة',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                  if (hasFilters)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: kPrimaryColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
-                  ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              const Divider(height: 18),
-              const SizedBox(height: 10),
-
-              // المحافظة
-              _buildDropdownFilter(
-                label: 'المحافظة',
-                value: _selectedGovernmentId,
-                items: <DropdownMenuItem<int?>>[
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('الكل '),
-                  ),
-                  ..._governments.map(
-                    (g) => DropdownMenuItem<int?>(
-                      value: g.id,
-                      child: Text(g.nameAr),
-                    ),
-                  ),
-                ],
-                onChanged: (value) => _onGovernmentChanged(value),
-              ),
-              const SizedBox(height: 12),
-
-              // نوع الحساب
-              _buildDropdownFilter(
-                label: 'نوع الحساب',
-                value: _selectedAccountTypeId,
-                items: <DropdownMenuItem<int?>>[
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('الكل '),
-                  ),
-                  ..._accountTypes.map(
-                    (t) => DropdownMenuItem<int?>(
-                      value: t.id,
-                      child: Text(t.nameAr),
-                    ),
-                  ),
-                ],
-                onChanged: (value) => _onAccountTypeChanged(value),
-              ),
-              const SizedBox(height: 12),
-
-              // البحث
-              TextField(
-                controller: _searchController,
-                textInputAction: TextInputAction.search,
-                onChanged: (value) {
-                  _searchQuery = value.trim();
-                },
-                onSubmitted: (_) => _loadAccounts(resetPage: true),
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.3,
-                  color: Colors.black87,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'بحث',
-                  labelStyle: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                  hintText: 'ابحث باسم الجهة   ...',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            _searchQuery = '';
-                            _loadAccounts(resetPage: true);
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: kPrimaryColor.withValues(alpha: 0.9),
-                      width: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              );
+            },
           ),
-        ),
+        ],
       ),
     );
   }
@@ -415,202 +405,145 @@ class _AccountsListPageState extends State<AccountsListPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       elevation: 4,
       shadowColor: Colors.black12,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => _openAccountDetails(account),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // الصف العلوي: صورة + تفاصيل + Chips
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // صورة (Thumbnail) بتصميم حديث
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: 82,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topRight,
-                          end: Alignment.bottomLeft,
-                          colors: [
-                            kPrimaryColor.withValues(alpha: 0.22),
-                            const Color(0xFF4B5563).withValues(alpha: 0.08),
-                          ],
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo / Avatar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: imageUrl != null
+                      ? Image.network(
+                          imageUrl,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 64,
+                          height: 64,
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.account_circle,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
                         ),
-                      ),
-                      child: imageUrl != null
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.image_not_supported),
-                            )
-                          : const Icon(
-                              Icons.apartment,
-                              size: 32,
-                              color: Colors.white,
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                ),
+                const SizedBox(width: 12),
 
-                  // الاسم + البلاغات + Chips
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Row: الاسم + Chips (الاسم يمين – Chips يسار في RTL)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // الاسم + البلاغات (يمين)
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // اسم الجهة
-                                  Text(
-                                    displayName,
-                                    style: const TextStyle(
-                                      fontSize: 15.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black87,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 6),
-
-                                  Text(
-                                    account.governmentNameAr != null &&
-                                            account.governmentNameAr!.isNotEmpty
-                                        ? 'المحافظة: ${account.governmentNameAr}'
-                                        : '',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  // عدد البلاغات المنجزة
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 22,
-                                        height: 22,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: kPrimaryColor.withValues(
-                                            alpha: 0.09,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.done_all_rounded,
-                                          size: 14,
-                                          color: kPrimaryColor,
-                                        ),
-                                      ),
-
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          'البلاغات المنجزة: ${account.reportsCompletedCount}',
-                                          style: const TextStyle(
-                                            fontSize: 12.5,
-                                            color: Colors.black87,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Chips (نوع الجهة + المحافظة) على اليسار
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 4,
-                                  children: [
-                                    if (typeName != null &&
-                                        typeName.trim().isNotEmpty)
-                                      Chip(
-                                        label: Text(
-                                          typeName,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        backgroundColor: typeColor,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                        ),
-                                        materialTapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // سطر أخير: موقع مختصر + زر "عرض التفاصيل"
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // نص صغير عن المحافظة (إن وجد)
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 34,
-                    child: ElevatedButton(
-                      onPressed: () => _openAccountDetails(account),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'عرض التفاصيل',
-                        style: TextStyle(
-                          fontSize: 13,
+                // Main info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          fontSize: 15,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        account.governmentNameAr ?? '',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.report_outlined,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'البلاغات المنجزة: ${account.reportsCompletedCount}',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Type chip
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (typeName != null && typeName.trim().isNotEmpty)
+                      Chip(
+                        label: Text(
+                          typeName,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white,
+                          ),
+                        ),
+                        backgroundColor: typeColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Bottom actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                SizedBox(
+                  height: 34,
+                  child: ElevatedButton(
+                    onPressed: () => _openAccountDetails(account),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'عرض التفاصيل',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -632,7 +565,20 @@ class _AccountsListPageState extends State<AccountsListPage> {
       );
     }
 
-    if (_accounts.isEmpty) {
+    if (_pager.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            _pager.errorMessage!,
+            style: const TextStyle(color: Colors.red, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    if (_pager.items.isEmpty && !_pager.isLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 24),
@@ -646,10 +592,22 @@ class _AccountsListPageState extends State<AccountsListPage> {
     }
 
     return ListView.builder(
-      itemCount: _accounts.length,
+      itemCount: _pager.items.length + (_pager.isLoadingMore ? 1 : 0),
       itemBuilder: (_, index) {
-        final account = _accounts[index];
-        return _buildAccountCard(account);
+        if (index < _pager.items.length) {
+          final account = _pager.items[index];
+          return _buildAccountCard(account);
+        }
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
       },
     );
   }
@@ -657,35 +615,56 @@ class _AccountsListPageState extends State<AccountsListPage> {
   // ========= Pagination Bar =========
 
   Widget _buildPaginationBar() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.transparent,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            onPressed: _currentPage > 1 && !_isLoading
-                ? () {
-                    _currentPage -= 1;
-                    _loadAccounts();
-                  }
-                : null,
-            icon: const Icon(Icons.chevron_left),
+          SizedBox(
+            height: 36,
+            child: OutlinedButton.icon(
+              onPressed: _pager.page > 1 && !_pager.isLoading
+                  ? () {
+                      _pager.loadPage(_pager.page - 1);
+                    }
+                  : null,
+              icon: const Icon(Icons.chevron_left, size: 18),
+              label: const Text('السابق'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Text(
-            'صفحة $_currentPage من $_totalPages',
+            'صفحة ${_pager.page} من $_totalPages',
             style: const TextStyle(fontSize: 13),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: _currentPage < _totalPages && !_isLoading && _total > 0
-                ? () {
-                    _currentPage += 1;
-                    _loadAccounts();
-                  }
-                : null,
-            icon: const Icon(Icons.chevron_right),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 36,
+            child: ElevatedButton.icon(
+              onPressed:
+                  _pager.page < _totalPages &&
+                      !_pager.isLoading &&
+                      _pager.total > 0
+                  ? () {
+                      _pager.loadPage(_pager.page + 1);
+                    }
+                  : null,
+              icon: const Icon(Icons.chevron_right, size: 18),
+              label: const Text('التالي'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+            ),
           ),
         ],
       ),
@@ -719,7 +698,7 @@ class _AccountsListPageState extends State<AccountsListPage> {
               _buildFiltersBar(),
               const SizedBox(height: 4),
               Expanded(
-                child: _isLoading ? const LoadingCenter() : _buildBody(),
+                child: _pager.isLoading ? const LoadingCenter() : _buildBody(),
               ),
               _buildPaginationBar(),
             ],

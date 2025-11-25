@@ -6,10 +6,16 @@
 		<string>التطبيق يحتاج إلى استخدام موقعك لاختيار الموقع على الخريطة.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 		<string>التطبيق يحتاج إلى استخدام موقعك لاختيار الموقع على الخريطة.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>التطبيق يحتاج إلى الوصول إلى الكاميرا لالتقاط صور التقارير أو الصور الشخصية.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>التطبيق يحتاج إلى الوصول إلى مكتبة الصور لاختيار صور من جهازك وتحميلها إلى التقارير.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>التطبيق يحتاج إلى إمكانية حفظ الصور إلى مكتبة الصور عند الضرورة.</string>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Basma App</string>
+		<string>basma.volunteering</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>

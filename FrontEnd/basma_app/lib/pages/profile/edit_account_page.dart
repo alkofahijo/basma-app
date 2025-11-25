@@ -4,8 +4,11 @@ import 'dart:io';
 
 import 'package:basma_app/config/base_url.dart';
 import 'package:basma_app/models/account_models.dart';
+import 'package:basma_app/services/upload_service.dart';
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
+import 'package:basma_app/widgets/inputs/app_text_field.dart';
+import 'package:basma_app/widgets/inputs/app_dropdown_form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -159,7 +162,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
       if (_logoFile != null) {
         final bytes = await _logoFile!.readAsBytes();
         final fileName = 'account_logo_${widget.account.id}.jpg';
-        logoUrlToSend = await ApiService.uploadImage(bytes, fileName);
+        logoUrlToSend = await UploadService.uploadImage(bytes, fileName);
         _currentLogoUrl = logoUrlToSend;
       }
 
@@ -329,16 +332,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       const SizedBox(height: 10),
 
                       // الاسم بالعربية (إلزامي)
-                      TextFormField(
+                      AppTextField(
                         controller: _nameArCtrl,
-                        decoration: InputDecoration(
-                          label: _buildRequiredLabel('الاسم بالعربية'),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        labelWidget: _buildRequiredLabel('الاسم بالعربية'),
+                        errorText: null,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
                             return 'الاسم بالعربية مطلوب';
@@ -349,16 +346,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       const SizedBox(height: 12),
 
                       // الاسم بالإنجليزية (إلزامي)
-                      TextFormField(
+                      AppTextField(
                         controller: _nameEnCtrl,
-                        decoration: InputDecoration(
-                          label: _buildRequiredLabel('الاسم بالإنجليزية'),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        labelWidget: _buildRequiredLabel('الاسم بالإنجليزية'),
+                        errorText: null,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
                             return 'الاسم بالإنجليزية مطلوب';
@@ -369,18 +360,11 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       const SizedBox(height: 12),
 
                       // رقم الهاتف (إلزامي، 10 أرقام، يبدأ بـ 07)
-                      TextFormField(
+                      AppTextField(
                         controller: _mobileCtrl,
                         keyboardType: TextInputType.phone,
-                        decoration: InputDecoration(
-                          label: _buildRequiredLabel('رقم الهاتف'),
-                          hintText: 'مثال: 07XXXXXXXX',
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        labelWidget: _buildRequiredLabel('رقم الهاتف'),
+                        hint: 'مثال: 07XXXXXXXX',
                         validator: (v) {
                           final val = v?.trim() ?? '';
                           if (val.isEmpty) {
@@ -396,19 +380,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       const SizedBox(height: 12),
 
                       // رابط نموذج التقديم / موقع أو صفحة الجهة (إلزامي فقط)
-                      TextFormField(
+                      AppTextField(
                         controller: _joinFormCtrl,
-                        decoration: InputDecoration(
-                          label: _buildRequiredLabel(
-                            'رابط نموذج التقديم / موقع أو صفحة الجهة',
-                          ),
-                          hintText: 'مثال: https://example.com',
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                        labelWidget: _buildRequiredLabel(
+                          'رابط نموذج التقديم / موقع أو صفحة الجهة',
                         ),
+                        hint: 'مثال: https://example.com',
                         validator: (v) {
                           final val = v?.trim() ?? '';
                           if (val.isEmpty) {
@@ -420,16 +397,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       const SizedBox(height: 16),
 
                       // نوع الحساب (إلزامي)
-                      DropdownButtonFormField<int>(
+                      AppDropdownFormField<int>(
                         value: _selectedAccountTypeId,
-                        decoration: InputDecoration(
-                          label: _buildRequiredLabel('نوع الحساب'),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                         items: _accountTypes
                             .map(
                               (e) => DropdownMenuItem<int>(
@@ -443,26 +412,14 @@ class _EditAccountPageState extends State<EditAccountPage> {
                             _selectedAccountTypeId = val;
                           });
                         },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'نوع الحساب مطلوب';
-                          }
-                          return null;
-                        },
+                        labelWidget: _buildRequiredLabel('نوع الحساب'),
+                        isEnabled: true,
                       ),
                       const SizedBox(height: 12),
 
                       // المحافظة (إلزامية)
-                      DropdownButtonFormField<int>(
+                      AppDropdownFormField<int>(
                         value: _selectedGovernmentId,
-                        decoration: InputDecoration(
-                          label: _buildRequiredLabel('المحافظة'),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                         items: _governments
                             .map(
                               (g) => DropdownMenuItem<int>(
@@ -476,12 +433,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
                             _selectedGovernmentId = val;
                           });
                         },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'المحافظة مطلوبة';
-                          }
-                          return null;
-                        },
+                        labelWidget: _buildRequiredLabel('المحافظة'),
+                        isEnabled: true,
                       ),
                       const SizedBox(height: 8),
 
@@ -493,7 +446,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                           style: TextStyle(fontSize: 12),
                         ),
                         value: _showDetails,
-                        activeColor: kPrimaryColor,
+                        activeThumbColor: kPrimaryColor,
                         onChanged: (v) {
                           setState(() {
                             _showDetails = v;

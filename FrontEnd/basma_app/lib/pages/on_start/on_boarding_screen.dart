@@ -1,5 +1,5 @@
 import 'package:basma_app/pages/on_start/landing_page.dart';
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:basma_app/theme/app_colors.dart';
@@ -40,7 +40,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-      appBar: const BasmaAppBar(),
+      appBar: const AppMainAppBar(),
       body: Column(
         children: [
           Expanded(
@@ -101,9 +101,9 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                   effect: ExpandingDotsEffect(
                     activeDotColor: kPrimaryColor,
                     dotColor: Colors.grey,
-                    dotHeight: 8,
-                    dotWidth: 8,
-                    spacing: 8,
+                    dotHeight: size.height * 0.012,
+                    dotWidth: size.width * 0.021,
+                    spacing: size.width * 0.021,
                   ),
                 ),
                 SizedBox(height: size.height * 0.13),

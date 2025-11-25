@@ -1,0 +1,37 @@
+# Fastlane stub for basma_app
+# Usage:
+# - Install fastlane on your machine/CI
+# - Set environment variables / provide secrets for uploads
+# - Run lanes: `fastlane android_release` or `fastlane ios_release`
+
+default_platform(:android)
+
+platform :android do
+  desc "Build Android AAB and (optionally) upload to Google Play"
+  lane :android_release do |options|
+    gradle(task: "bundle", build_type: "Release")
+
+    # Option A: use supply and a service account json file
+    # export GOOGLE_PLAY_JSON=/path/to/service-account.json
+    if ENV["GOOGLE_PLAY_JSON"]
+      supply(track: options[:track] || 'internal', json_key: ENV["GOOGLE_PLAY_JSON"]) 
+    else
+      UI.message("GOOGLE_PLAY_JSON not set; skipping upload. Built bundle is under build/outputs/bundle/")
+    end
+  end
+end
+
+platform :ios do
+  desc "Build iOS IPA and upload to TestFlight"
+  lane :ios_release do |options|
+    # Build via Flutter
+    sh("flutter build ipa --export-options-plist=ios/ExportOptions.plist")
+
+    # Upload to TestFlight using pilot. Requires App Store Connect API key or fastlane session.
+    if ENV["APP_STORE_CONNECT_API_KEY"]
+      upload_to_testflight(api_key: ENV["APP_STORE_CONNECT_API_KEY"]) 
+    else
+      UI.message("APP_STORE_CONNECT_API_KEY not set; skipping TestFlight upload. Built IPA is under build/ios/ipa/")
+    end
+  end
+end

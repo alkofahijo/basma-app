@@ -10,6 +10,8 @@ int _asInt(dynamic v) {
   throw Exception("Invalid int: $v");
 }
 
+// Report comments/attachments models removed — not used in current UI.
+
 int? _asIntOrNull(dynamic v) {
   if (v == null) return null;
   return _asInt(v);

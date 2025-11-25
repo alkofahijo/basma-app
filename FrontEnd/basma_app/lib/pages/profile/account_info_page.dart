@@ -8,6 +8,7 @@ import 'package:basma_app/widgets/loading_center.dart';
 import 'package:basma_app/widgets/network_image_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:math' as math;
 
 const Color _pageBackground = Color(0xFFEFF1F1);
 
@@ -233,28 +234,39 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
           child: Column(
             children: [
-              Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(
-                    255,
-                    97,
-                    102,
-                    97,
-                  ).withValues(alpha: 0.06),
-                  shape: BoxShape.circle,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(55),
-                  child: imageUrl != null && imageUrl.isNotEmpty
-                      ? NetworkImageViewer(url: imageUrl, height: 110)
-                      : const Icon(
-                          Icons.apartment,
-                          size: 64,
-                          color: Color.fromARGB(255, 47, 50, 47),
-                        ),
-                ),
+              Builder(
+                builder: (ctx) {
+                  final avatarSize = math.min(
+                    110.0,
+                    MediaQuery.of(ctx).size.width * 0.28,
+                  );
+                  return Container(
+                    width: avatarSize,
+                    height: avatarSize,
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(
+                        255,
+                        97,
+                        102,
+                        97,
+                      ).withValues(alpha: 0.06),
+                      shape: BoxShape.circle,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(avatarSize / 2),
+                      child: imageUrl != null && imageUrl.isNotEmpty
+                          ? NetworkImageViewer(
+                              url: imageUrl,
+                              height: avatarSize,
+                            )
+                          : Icon(
+                              Icons.apartment,
+                              size: avatarSize * 0.58,
+                              color: const Color.fromARGB(255, 47, 50, 47),
+                            ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               Text(

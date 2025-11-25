@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:basma_app/models/report_models.dart';
@@ -72,6 +73,12 @@ class GuestReportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = _resolveImageUrl(report.imageBeforeUrl);
 
+    final thumbWidth = math.min(
+      160.0,
+      MediaQuery.of(context).size.width * 0.32,
+    );
+    final thumbHeight = thumbWidth * 0.72;
+
     return Card(
       color: Colors.white,
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -94,8 +101,8 @@ class GuestReportCard extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      width: 140,
-                      height: 100,
+                      width: thumbWidth,
+                      height: thumbHeight,
                       color: Colors.grey.shade200,
                       child: imageUrl != null
                           ? Image.network(
@@ -104,9 +111,9 @@ class GuestReportCard extends StatelessWidget {
                               errorBuilder: (_, _, _) =>
                                   const Icon(Icons.image_not_supported),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.image,
-                              size: 40,
+                              size: math.min(48.0, thumbWidth * 0.45),
                               color: Colors.grey,
                             ),
                     ),

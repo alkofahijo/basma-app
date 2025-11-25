@@ -1,6 +1,6 @@
 import 'package:basma_app/controllers/register_account_controller.dart';
-import 'package:basma_app/widgets/basma_app_bar.dart';
-import 'package:basma_app/widgets/custom_text_field.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
+import 'package:basma_app/widgets/inputs/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -15,7 +15,7 @@ class RegisterAccountCredentialsPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF1F1),
-      appBar: const BasmaAppBar(showBack: true),
+      appBar: const AppMainAppBar(showBack: true),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Obx(
@@ -31,21 +31,25 @@ class RegisterAccountCredentialsPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              CustomTextField(
+              AppTextField(
                 controller: controller.usernameCtrl,
                 label: 'اسم المستخدم',
                 hint: 'أدخل اسم المستخدم',
-                errorText: controller.usernameError.value,
+                errorText: controller.usernameError.value.isEmpty
+                    ? null
+                    : controller.usernameError.value,
                 onChanged: controller.validateUsername,
               ),
               const SizedBox(height: 18),
 
-              CustomTextField(
+              AppTextField(
                 controller: controller.passwordCtrl,
                 label: 'كلمة المرور',
                 hint: 'أدخل كلمة المرور',
-                obscure: true,
-                errorText: controller.passwordError.value,
+                obscureText: true,
+                errorText: controller.passwordError.value.isEmpty
+                    ? null
+                    : controller.passwordError.value,
                 onChanged: controller.validatePassword,
               ),
               const SizedBox(height: 30),

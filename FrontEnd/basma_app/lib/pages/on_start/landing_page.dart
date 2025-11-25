@@ -1,4 +1,4 @@
-import 'package:basma_app/widgets/basma_app_bar.dart';
+import 'package:basma_app/widgets/app_main_app_bar.dart';
 import 'package:basma_app/widgets/custom_option_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -18,7 +18,7 @@ class LandingPage extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFEFF1F1),
-        appBar: const BasmaAppBar(),
+        appBar: const AppMainAppBar(),
         body: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: size.width * 0.06,

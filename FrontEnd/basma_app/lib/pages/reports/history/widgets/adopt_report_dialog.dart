@@ -1,6 +1,6 @@
 // lib/pages/reports/history/widgets/adopt_report_dialog.dart
 
-import 'package:basma_app/services/api_service.dart';
+import 'package:basma_app/services/report_details_service.dart';
 import 'package:basma_app/services/auth_service.dart';
 import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -75,8 +75,11 @@ class _SolveReportDialogState extends State<SolveReportDialog> {
         return;
       }
 
-      // استدعاء API للتبنّي
-      await ApiService.adopt(reportId: widget.reportId, accountId: accountId);
+      // استدعاء service للتبنّي (يغلف ApiService)
+      await ReportDetailsService.adoptReport(
+        reportId: widget.reportId,
+        accountId: accountId,
+      );
 
       if (!mounted) return;
 

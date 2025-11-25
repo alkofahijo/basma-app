@@ -1,6 +1,6 @@
 // lib/pages/shared/select_location_on_map_page.dart
 
-import 'dart:convert';
+// dart:convert removed; ExternalService provides JSON parsing
 
 import 'package:basma_app/services/api_service.dart';
 import 'package:basma_app/theme/app_system_ui.dart';
@@ -8,20 +8,10 @@ import 'package:basma_app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
+// http removed; ExternalService handles external HTTP calls
+import 'package:basma_app/services/external_service.dart';
+import 'package:basma_app/widgets/inputs/app_search_field.dart';
 import 'package:latlong2/latlong.dart';
-
-// ===================== Nominatim Settings =====================
-
-// مهم جداً: هذا الـ User-Agent يُستخدم عند طلب Nominatim.
-// يحتوي على:
-// - اسم التطبيق: BasmaApp/1.0
-// - المنصات: Android & iOS
-// - إيميل تواصل حقيقي: futuretechvoljo@gmail.com
-//
-// هذا يتوافق مع شروط الاستخدام الخاصة بـ Nominatim.
-const String _nominatimUserAgent =
-    'BasmaApp/1.0 (Android & iOS; contact=futuretechvoljo@gmail.com)';
 
 // =============================================================
 
@@ -276,45 +266,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
 
     // 2) بحث نصي عبر OpenStreetMap (Nominatim) داخل الأردن فقط
     try {
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'format': 'jsonv2',
-        'q': query,
-        'addressdetails': '1',
-        'accept-language': 'ar',
-        'limit': '7',
-        'countrycodes': 'jo', // ✅ الأردن فقط
-      });
-
-      final resp = await http.get(
-        uri,
-        headers: {
-          // مهم جداً لتفادي 403 من Nominatim:
-          'User-Agent': _nominatimUserAgent,
-          'Accept': 'application/json',
-        },
-      );
-
-      debugPrint(
-        'Nominatim response status: ${resp.statusCode}, body: ${resp.body}',
-      );
-
-      if (resp.statusCode == 403) {
-        _showSnack(
-          "خدمة البحث رفضت الطلب (403). تأكد أن معلومات User-Agent صحيحة مع إيميل حقيقي.",
-        );
-        if (mounted) {
-          setState(() {
-            _searching = false;
-          });
-        }
-        return;
-      }
-
-      if (resp.statusCode != 200) {
-        throw Exception('Nominatim status ${resp.statusCode}');
-      }
-
-      final List<dynamic> data = jsonDecode(resp.body);
+      final List<dynamic> data = await ExternalService.nominatimSearch(query);
 
       if (data.isEmpty) {
         _showSnack("لم يتم العثور على نتائج لهذا البحث داخل الأردن.");
@@ -423,35 +375,15 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
     return Material(
       elevation: 3,
       borderRadius: BorderRadius.circular(12),
-      child: TextField(
+      child: AppSearchField(
         controller: _searchController,
-        focusNode: _searchFocusNode,
-        textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _onSearchPressed(),
-        decoration: InputDecoration(
-          hintText: "ابحث عن موقع",
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
-          filled: true,
-          fillColor: Colors.white,
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searching
-              ? const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              : IconButton(
-                  onPressed: _onSearchPressed,
-                  icon: const Icon(Icons.check),
-                ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-        ),
+        hint: 'ابحث عن موقع',
+        onChanged: (_) {},
+        onSearch: _onSearchPressed,
+        isLoading: _searching,
+        onClear: () {
+          _searchController.clear();
+        },
       ),
     );
   }
@@ -467,7 +399,7 @@ class _SelectLocationOnMapPageState extends State<SelectLocationOnMapPage> {
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: _searchResults.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (context, index) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final item = _searchResults[index];
             return ListTile(
