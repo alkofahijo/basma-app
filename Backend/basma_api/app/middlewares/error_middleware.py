@@ -31,8 +31,17 @@ class ErrorHandlingMiddleware:
         except Exception as exc:  # noqa: BLE001 - intentionally broad to centralize
             # Log the error with traceback to stdout/stderr so ops can collect it.
             tb = traceback.format_exc()
-            print("Unhandled exception in request:", request.method, request.url)
-            print(tb)
+            # Also persist the traceback to a file for debugging in environments
+            # where stdout/stderr may not be visible.
+            try:
+                with open("error_middleware.log", "a", encoding="utf-8") as fh:
+                    fh.write(f"Unhandled exception in request: {request.method} {request.url}\n")
+                    fh.write(tb)
+                    fh.write("\n")
+            except Exception:
+                # fallback to stdout if file write fails
+                print("Unhandled exception in request:", request.method, request.url)
+                print(tb)
 
             # Return a safe JSON response. Keep shape consistent with FastAPI's
             # default error responses ({"detail": ...}). Use Arabic message.

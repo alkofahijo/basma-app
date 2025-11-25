@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional, Tuple, Dict, Any, TYPE_CHECKING
+import traceback
 
 import httpx
 from fastapi import HTTPException, status, UploadFile, File, Depends
@@ -147,87 +148,111 @@ def extract_components(geo: Dict[str, Any]) -> Tuple[str, str, str, str]:
 
 
 async def ai_resolve_location(payload: ResolveLocationRequest, db: Session = Depends(get_db)) -> ResolveLocationResponse:
-    lat = payload.latitude
-    lon = payload.longitude
-
-    geo = await reverse_geocode(lat, lon)
-    gov_raw, dist_raw, area_raw, loc_raw = extract_components(geo)
-
-    gov_name = _clean_admin_name(gov_raw)
-    dist_name = _clean_admin_name(dist_raw)
-    area_name = _clean_area_name(area_raw)
-    loc_name = loc_raw.strip() if loc_raw else ""
-
-    if not gov_name or not dist_name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="غير قادر على تحديد المحافظة أو اللواء من الإحداثيات.",
-        )
-    if not area_name:
-        area_name = "منطقة بدون اسم"
-
     try:
-        gov = get_or_create_government(db, gov_name)
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="حدث خطأ أثناء حفظ بيانات المحافظة.",
-        ) from e
+        lat = payload.latitude
+        lon = payload.longitude
 
-    try:
-        dist = get_or_create_district(db, gov.id, dist_name)
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء.",
-        ) from e
-
-    try:
-        area = get_or_create_area(db, gov.id, dist.id, area_name)
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
-        ) from e
-
-    location_obj: Optional[models.Location] = None
-    if loc_name:
+        # debug markers (append to file so we can inspect execution flow)
         try:
-            location_obj = (
-                db.query(models.Location)
-                .filter(
-                    models.Location.area_id == area.id,
-                    models.Location.name_ar == loc_name,
-                )
-                .first()
+            with open("ai_resolve_location_debug.log", "a", encoding="utf-8") as fh:
+                fh.write(f"ENTER: lat={lat} lon={lon}\n")
+        except Exception:
+            pass
+
+        geo = await reverse_geocode(lat, lon)
+        try:
+            with open("ai_resolve_location_debug.log", "a", encoding="utf-8") as fh:
+                fh.write("AFTER_REVERSE_GEOCODE\n")
+        except Exception:
+            pass
+        gov_raw, dist_raw, area_raw, loc_raw = extract_components(geo)
+
+        gov_name = _clean_admin_name(gov_raw)
+        dist_name = _clean_admin_name(dist_raw)
+        area_name = _clean_area_name(area_raw)
+        loc_name = loc_raw.strip() if loc_raw else ""
+
+        if not gov_name or not dist_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="غير قادر على تحديد المحافظة أو اللواء من الإحداثيات.",
             )
-            if not location_obj:
-                location_obj = models.Location(area_id=area.id, name_ar=loc_name, longitude=lon, latitude=lat, is_active=1)
-                db.add(location_obj)
-                db.commit()
-                db.refresh(location_obj)
-        except SQLAlchemyError:
+        if not area_name:
+            area_name = "منطقة بدون اسم"
+
+        try:
+            gov = get_or_create_government(db, gov_name)
+        except SQLAlchemyError as e:
             db.rollback()
-            location_obj = None
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="حدث خطأ أثناء حفظ بيانات المحافظة.",
+            ) from e
 
-    location_point = None
-    if location_obj:
-        location_point = LocationPoint(
-            id=location_obj.id,
-            name_ar=location_obj.name_ar,
-            latitude=getattr(location_obj, "latitude", None),
-            longitude=getattr(location_obj, "longitude", None),
+        try:
+            dist = get_or_create_district(db, gov.id, dist_name)
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="حدث خطأ أثناء حفظ بيانات اللواء/القضاء.",
+            ) from e
+
+        try:
+            area = get_or_create_area(db, gov.id, dist.id, area_name)
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="حدث خطأ أثناء حفظ بيانات المنطقة (البلدة/الحي).",
+            ) from e
+
+        location_obj: Optional[models.Location] = None
+        if loc_name:
+            try:
+                location_obj = (
+                    db.query(models.Location)
+                    .filter(
+                        models.Location.area_id == area.id,
+                        models.Location.name_ar == loc_name,
+                    )
+                    .first()
+                )
+                if not location_obj:
+                    location_obj = models.Location(area_id=area.id, name_ar=loc_name, longitude=lon, latitude=lat, is_active=1)
+                    db.add(location_obj)
+                    db.commit()
+                    db.refresh(location_obj)
+            except SQLAlchemyError:
+                db.rollback()
+                location_obj = None
+
+        location_point = None
+        if location_obj:
+            location_point = LocationPoint(
+                id=location_obj.id,
+                name_ar=location_obj.name_ar,
+                latitude=getattr(location_obj, "latitude", None),
+                longitude=getattr(location_obj, "longitude", None),
+            )
+
+        return ResolveLocationResponse(
+            government=LocationInfo(id=gov.id, name_ar=gov.name_ar, name_en=getattr(gov, "name_en", None)),
+            district=LocationInfo(id=dist.id, name_ar=dist.name_ar, name_en=getattr(dist, "name_en", None)),
+            area=LocationInfo(id=area.id, name_ar=area.name_ar, name_en=getattr(area, "name_en", None)),
+            location=location_point,
         )
-
-    return ResolveLocationResponse(
-        government=LocationInfo(id=gov.id, name_ar=gov.name_ar, name_en=getattr(gov, "name_en", None)),
-        district=LocationInfo(id=dist.id, name_ar=dist.name_ar, name_en=getattr(dist, "name_en", None)),
-        area=LocationInfo(id=area.id, name_ar=area.name_ar, name_en=getattr(area, "name_en", None)),
-        location=location_point,
-    )
+    except Exception:
+        tb = traceback.format_exc()
+        # Write traceback to a debug file for diagnosis
+        try:
+            with open("ai_resolve_location_error.log", "a", encoding="utf-8") as fh:
+                fh.write("--- Exception in ai_resolve_location ---\n")
+                fh.write(tb)
+                fh.write("\n")
+        except Exception:
+            pass
+        raise
 
 
 def generate_text_suggestions(
