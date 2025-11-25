@@ -31,7 +31,7 @@ class AccountsListPage extends StatefulWidget {
 
 class _AccountsListPageState extends State<AccountsListPage> {
   // ---- Data ----
-  late final PaginationController<Account> _pager;
+  late PaginationController<Account> _pager;
   List<GovernmentOption> _governments = [];
   List<AccountTypeOption> _accountTypes = [];
   // (Removed old _FiltersCard) -- new compact filter flow implemented below.
@@ -145,11 +145,20 @@ class _AccountsListPageState extends State<AccountsListPage> {
       await _pager.refresh();
     } catch (e) {
       String message = 'تعذّر تحميل البيانات، يرجى المحاولة لاحقاً.';
-      if (e is NetworkException) message = e.error.message;
+      String debugInfo = e.toString();
+      if (e is NetworkException) {
+        message = e.error.message;
+        final code = e.error.statusCode;
+        if (code != null) message = '$message (رمز: $code)';
+        debugInfo = e.error.raw?.toString() ?? e.toString();
+      }
+
+      debugPrint('AccountsListPage._initialize error: $debugInfo');
+
       _safeSetState(() {
         _loadErrorMessage = message;
       });
-      // show snackbar
+      // show snackbar with short message
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -556,10 +565,31 @@ class _AccountsListPageState extends State<AccountsListPage> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            _loadErrorMessage!,
-            style: const TextStyle(color: Colors.red, fontSize: 14),
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _loadErrorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 180,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _safeSetState(() {
+                      _loadErrorMessage = null;
+                    });
+                    _initialize();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                  ),
+                  child: const Text('حاول مرة أخرى'),
+                ),
+              ),
+            ],
           ),
         ),
       );

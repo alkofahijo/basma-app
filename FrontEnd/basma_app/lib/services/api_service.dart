@@ -308,11 +308,44 @@ class ApiService {
       final uri = Uri.parse(
         '$base/accounts/paged',
       ).replace(queryParameters: query);
-      final res = await _getRequest(uri, headers: _headers(null));
-      if (res.statusCode != 200)
-        throw mapHttpResponse(res, fallback: 'فشل تحميل قائمة الحسابات');
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return PaginatedAccountsResult.fromJson(data);
+
+      // First try unauthenticated (public) endpoint.
+      try {
+        final res = await _getRequest(uri, headers: _headers(null));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body) as Map<String, dynamic>;
+          return PaginatedAccountsResult.fromJson(data);
+        }
+
+        // If we got 401 Unauthorized, fall through to try with token below.
+        if (res.statusCode != 401) {
+          throw mapHttpResponse(res, fallback: 'فشل تحميل قائمة الحسابات');
+        }
+      } catch (e) {
+        // If the exception is a NetworkException with 401 detail, try with token.
+        if (e is NetworkException) {
+          final sc = e.error.statusCode ?? -1;
+          if (sc != 401) throw e;
+          // else fallthrough and try with token
+        } else {
+          // Non-network errors -> rethrow
+          // For timeout/socket/etc we'll try once more with token below only if we have one.
+        }
+      }
+
+      // Try with token if available (some deployments protect this endpoint)
+      final tok = await _token();
+      if (tok == null || tok.isEmpty) {
+        throw NetworkException(
+          NetworkError('غير مصرح. الرجاء تسجيل الدخول.', statusCode: 401),
+        );
+      }
+
+      final res2 = await _getRequest(uri, headers: _headers(tok));
+      if (res2.statusCode != 200)
+        throw mapHttpResponse(res2, fallback: 'فشل تحميل قائمة الحسابات');
+      final data2 = jsonDecode(res2.body) as Map<String, dynamic>;
+      return PaginatedAccountsResult.fromJson(data2);
     } catch (e) {
       throw mapException(e);
     }

@@ -10,22 +10,23 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  AppSystemUi.applyGreen();
-
-  // Initialize global error handling (shows network errors via snackbar)
-  initGlobalErrorHandler();
-
-  final sp = await SharedPreferences.getInstance();
-  final token = sp.getString('token');
-
-  if (token == null || token.isEmpty) {
-    await sp.clear();
-  }
-
-  // Run the app inside a guarded zone to catch uncaught async errors
+  // Run the app inside a guarded zone and initialize Flutter bindings
+  // inside that same zone to avoid Zone mismatch errors.
   runZonedGuarded(
-    () {
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      AppSystemUi.applyGreen();
+
+      // Initialize global error handling (shows network errors via snackbar)
+      initGlobalErrorHandler();
+
+      final sp = await SharedPreferences.getInstance();
+      final token = sp.getString('token');
+
+      if (token == null || token.isEmpty) {
+        await sp.clear();
+      }
+
       runApp(const MyApp());
     },
     (error, stack) {

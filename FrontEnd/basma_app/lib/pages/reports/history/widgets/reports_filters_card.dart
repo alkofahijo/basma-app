@@ -370,17 +370,9 @@ class _GuestFiltersCardState extends State<GuestFiltersCard> {
               ...widget.reportTypes.map(
                 (t) => DropdownMenuItem<int?>(
                   value: t.id,
-                  child: Row(
-                    children: [
-                      Icon(
-                        widget.iconForReportType(t.code),
-                        size: 18,
-                        color: kPrimaryColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(t.nameAr)),
-                    ],
-                  ),
+                  // Use plain Text here so the selector shows the Arabic name
+                  // reliably (avoids nested Row/Expanded debug labels).
+                  child: Text(t.nameAr),
                 ),
               ),
             ],
